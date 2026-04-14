@@ -4,7 +4,11 @@ const path = require('path');
 const app = express();
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// index.htmlをルートで直接配信
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Claude APIへのプロキシ
 app.post('/api/claude', async (req, res) => {
@@ -28,7 +32,6 @@ app.post('/api/claude', async (req, res) => {
 // Zapierからのwebhook受信
 app.post('/webhook', (req, res) => {
   const data = req.body;
-  // 受信したメッセージをクライアントに転送（SSE）
   latestMessage = data;
   res.json({ ok: true });
 });
