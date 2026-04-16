@@ -8,11 +8,73 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// ===== Google Sheets JWT認証 =====
+async function getGoogleAccessToken() {
+  const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'RS256', typ: 'JWT' };
+  const payload = {
+    iss: creds.client_email,
+    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600,
+    iat: now,
+  };
+  const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
+  const signingInput = `${b64(header)}.${b64(payload)}`;
+  const { createSign } = require('crypto');
+  const sign = createSign('RSA-SHA256');
+  sign.update(signingInput);
+  const signature = sign.sign(creds.private_key, 'base64url');
+  const jwt = `${signingInput}.${signature}`;
+  const res = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`,
+  });
+  const data = await res.json();
+  return data.access_token;
+}
+
+// ===== Sheetsへ状態を書き込む =====
+async function writeStateToSheet(rowIndex, read, starred, replied, memo) {
+  try {
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    // rowIndex は1始まり（ヘッダー行=1、データ行=2〜）
+    const dataRow = rowIndex + 1; // ヘッダー分+1
+    // read=H列, starred=I列, replied=J列, memo=K列
+    const range = `${sheetName}!H${dataRow}:K${dataRow}`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?valueInputOption=RAW`;
+    await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        range: `シート1!H${dataRow}:K${dataRow}`,
+        majorDimension: 'ROWS',
+        values: [[
+          read ? 'true' : 'false',
+          starred ? 'true' : 'false',
+          replied ? 'true' : 'false',
+          memo || ''
+        ]],
+      }),
+    });
+  } catch (e) {
+    console.error('writeStateToSheet error:', e.message);
+  }
+}
+
 // ===== eBayメール解析関数 =====
 function parseEbayEmail(rawBody, fromName) {
-  if (!rawBody) return { buyer: fromName || 'unknown', newMsg: '', history: [], itemId: '', orderId: '', itemName: '' };
+  if (!rawBody) return { buyer: fromName || 'unknown', newMsg: '', history: [], itemId: '', orderId: '', itemName: '', sold: false };
 
-  // 1. バイヤー名：「eBay - username」→「username」
+  // 1. バイヤー名
   let buyer = fromName || '';
   const buyerFromName = buyer.match(/eBay\s*-\s*(.+)/);
   if (buyerFromName) {
@@ -31,75 +93,66 @@ function parseEbayEmail(rawBody, fromName) {
     if (fallback) newMsg = fallback[1].trim();
   }
 
-  // 3. 会話履歴抽出（送受信バグ修正版）
-  // eBayメールの構造：
-  //   "Dear samuraisoul142142,\n\nTEXT\n\n- buyer名"  → バイヤーが送信したメッセージ
-  //   "Dear buyer名,\n\nTEXT\n\n- samuraisoul142142"  → 自分(Ken)が送信したメッセージ
+  // 3. 会話履歴抽出
   const SELLER = 'samuraisoul142142';
   const history = [];
   const seen = new Set();
   const blockRe = /Dear ([^,\n]+),\s*\n+([\s\S]*?)\n+- (\S+)(?:\n|$)/g;
   let match;
   while ((match = blockRe.exec(rawBody)) !== null) {
-    const recipient = match[1].trim();   // "Dear ○○," の○○
     const text = match[2].trim();
-    const sender = match[3].trim();      // "- ○○" の○○
+    const sender = match[3].trim();
     const key = text.substring(0, 60);
     if (seen.has(key)) continue;
     if (text === newMsg) continue;
     seen.add(key);
-    // 送信者がSELLER（samuraisoul142142）ならfrom='me'、それ以外はfrom='buyer'
     const from = sender.toLowerCase() === SELLER.toLowerCase() ? 'me' : 'buyer';
     history.push({ from, text });
   }
-  history.reverse(); // 古い順
+  history.reverse();
 
   // 4. Item ID / Order番号
   const itemIdMatch = rawBody.match(/Item ID:\s*(\d+)/);
   const orderMatch = rawBody.match(/Order number:\s*([\d-]+)/);
 
-  // 5. 商品名（メール本文の末尾付近に商品名が含まれる）
-  // 例: "FUJITSU ScanSnap S1500 FI-S1500 Network Ready 599 g New\nOrder status: Paid"
+  // 5. 商品名（Item IDの前の行から）
   let itemName = '';
-  const itemNameMatch = rawBody.match(/Item ID:\s*\d+\s*\n+Transaction ID:[\s\S]*?\n+([\s\S]*?)\n+Order status:/);
-  if (!itemNameMatch) {
-    // 別パターン: Item IDの前の行
-    const lines = rawBody.split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].match(/Item ID:\s*\d+/) && i > 0) {
-        // Item IDの直前の行が商品名のことが多い
-        const candidate = lines[i - 1].trim();
-        if (candidate && candidate.length > 3 && !candidate.match(/^(Dear|Hi|Hello|Thank|Best|Ken|View|Order|Email|We |©)/i)) {
-          itemName = candidate;
-          break;
-        }
+  const lines = rawBody.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].match(/Item ID:\s*\d+/) && i > 0) {
+      const candidate = lines[i - 1].trim();
+      if (candidate && candidate.length > 3 && !candidate.match(/^(Dear|Hi|Hello|Thank|Best|Ken|View|Order|Email|We |©)/i)) {
+        itemName = candidate;
+        break;
       }
     }
-  } else {
-    itemName = itemNameMatch[1].trim().split('\n')[0].trim();
   }
 
-  // 5. SOLD判定：メール本文に「Order status: Paid」があれば購入済み
-  const sold = /Order status:\s*(Paid|Shipped|Complete)/i.test(rawBody)
-    || /Order number:/i.test(rawBody);
+  // 6. SOLD判定
+  const sold = /Order status:\s*(Paid|Shipped|Complete)/i.test(rawBody) || /Order number:/i.test(rawBody);
 
-  return {
-    buyer,
-    newMsg,
-    history,
-    itemId: itemIdMatch ? itemIdMatch[1] : '',
-    orderId: orderMatch ? orderMatch[1] : '',
-    itemName,
-    sold,
-  };
+  return { buyer, newMsg, history, itemId: itemIdMatch ? itemIdMatch[1] : '', orderId: orderMatch ? orderMatch[1] : '', itemName, sold };
 }
 
-// ===== Item IDからeBayサムネURL生成 =====
-function getEbayThumbUrl(itemId) {
-  if (!itemId) return '';
-  // eBayの公開サムネURL（APIなし）
-  return `https://i.ebayimg.com/thumbs/images/g/~~/s-l225.jpg`;
-  // ※ 実際はitem固有URLはAPIが必要なため、Item IDリンクで代替
+// ===== 件名から商品名を抽出 =====
+function extractItemFromSubject(subject) {
+  if (!subject) return '';
+  // 最優先：PDT - 商品名
+  let m = subject.match(/PDT\s+-\s+(.+)/i);
+  if (m) return m[1].trim();
+  // about 商品名 #ID（"item"という単語だけは除外）
+  m = subject.match(/(?:about|regarding)\s+(.+?)(?:\s+#\d+|$)/i);
+  if (m) {
+    const candidate = m[1].trim();
+    if (candidate.toLowerCase() !== 'item') return candidate;
+  }
+  // イタリア語
+  m = subject.match(/relativo\s+a\s+(.+?)(?:\s+n[°o\s]*\d+|\s+#\d+|$)/i);
+  if (m) return m[1].trim();
+  // スペイン語
+  m = subject.match(/sobre\s+(.+?)(?:\s+#\d+|$)/i);
+  if (m) return m[1].trim();
+  return '';
 }
 
 // ===== Claude API プロキシ =====
@@ -121,16 +174,8 @@ app.post('/api/claude', async (req, res) => {
   }
 });
 
-// ===== Googleスプレッドシート書き込み（状態保存） =====
-async function saveStateToSheet(sheetId, apiKey, rowIndex, readVal, starredVal, repliedVal, memoVal) {
-  // Google Sheets API v4 でセルを更新（OAuth不要のAPIキーでは書き込み不可のため、
-  // 書き込みはRenderのメモリに保持し、読み込み時にシートから取得する方式）
-  // ※ 書き込みにはサービスアカウントが必要。現状はメモリ保持のみ。
-}
-
-// ===== インメモリ状態ストア（F5対策：シートのIDをキーに状態を保持） =====
-// Renderは再起動するとリセットされるが、シートから再読み込みする構造にする
-let stateStore = {}; // { [sheetRowId]: { read, starred, replied, memo } }
+// ===== インメモリ状態ストア（フォールバック用） =====
+let stateStore = {};
 let messages = [];
 
 // ===== Zapier Webhook受信 =====
@@ -139,7 +184,6 @@ app.post('/webhook', (req, res) => {
   const rawBody = data.message || '';
   const fromName = data.buyer || '';
   const parsed = parseEbayEmail(rawBody, fromName);
-
   const msg = {
     id: Date.now(),
     buyer: parsed.buyer || 'unknown',
@@ -153,47 +197,20 @@ app.post('/webhook', (req, res) => {
     imgUrl: data.imgUrl || '',
     sold: parsed.sold || !!data.sold,
     timestamp: new Date().toISOString(),
-    read: false,
-    starred: false,
-    replied: false,
-    memo: '',
-    replyHistory: [],
-    reply: '',
-    status: 'pending'
+    read: false, starred: false, replied: false, memo: '',
+    replyHistory: [], reply: '', status: 'pending'
   };
   messages.unshift(msg);
   if (messages.length > 200) messages = messages.slice(0, 200);
   res.json({ ok: true });
 });
 
-// 件名から商品名を抽出（多言語・多パターン対応）
-function extractItemFromSubject(subject) {
-  if (!subject) return '';
-  // ★最優先：「ending on DATE PDT - ITEM NAME」パターン
-  // 例: "ending on May-11-26 19:24:36 PDT - Kyosho Original..."
-  let m = subject.match(/PDT\s+-\s+(.+)/i);
-  if (m) return m[1].trim();
-  // 英語: "sent a message about ITEM NAME #ITEMID"
-  // ※ "about item #数字" の場合は除外（itemという単語だけの場合）
-  m = subject.match(/(?:about|regarding)\s+(.+?)(?:\s+#\d+|$)/i);
-  if (m) {
-    const candidate = m[1].trim();
-    // "item" という単語だけなら除外
-    if (candidate.toLowerCase() !== 'item') return candidate;
-  }
-  // イタリア語: "relativo a ITEM n° ID" or "#ID"
-  m = subject.match(/relativo\s+a\s+(.+?)(?:\s+n[°o\s]*\d+|\s+#\d+|$)/i);
-  if (m) return m[1].trim();
-  // スペイン語: "sobre ITEM"
-  m = subject.match(/sobre\s+(.+?)(?:\s+#\d+|$)/i);
-  if (m) return m[1].trim();
-  return '';
-}
-
-// ===== 状態更新API（F5対策） =====
-app.post('/api/state', (req, res) => {
+// ===== 状態更新API（スプレッドシートに永続保存） =====
+app.post('/api/state', async (req, res) => {
   const { id, read, starred, replied, memo } = req.body;
   if (!id) return res.json({ ok: false });
+
+  // メモリに保存
   stateStore[id] = { read, starred, replied, memo };
 
   // messagesにも反映
@@ -204,6 +221,10 @@ app.post('/api/state', (req, res) => {
     if (replied !== undefined) msg.replied = replied;
     if (memo !== undefined) msg.memo = memo;
   }
+
+  // スプレッドシートに書き込み（非同期・エラーがあっても続行）
+  writeStateToSheet(Number(id), read, starred, replied, memo).catch(e => console.error(e));
+
   res.json({ ok: true });
 });
 
@@ -216,9 +237,8 @@ app.get('/api/messages', async (req, res) => {
   try {
     const sheetId = process.env.SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!sheetId || !apiKey) {
-      return res.json({ messages });
-    }
+    if (!sheetId || !apiKey) return res.json({ messages });
+
     const sheetName = encodeURIComponent('シート1');
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?key=${apiKey}`;
     const response = await fetch(url);
@@ -241,6 +261,13 @@ app.get('/api/messages', async (req, res) => {
       const parsed = parseEbayEmail(rawBody, fromName);
       const id = i + 1;
       const savedState = stateStore[id] || {};
+
+      // シートの値を優先、なければメモリのstateStore
+      const readVal = savedState.read !== undefined ? savedState.read : (obj.read === 'true');
+      const starredVal = savedState.starred !== undefined ? savedState.starred : (obj.starred === 'true');
+      const repliedVal = savedState.replied !== undefined ? savedState.replied : (obj.replied === 'true');
+      const memoVal = savedState.memo !== undefined ? savedState.memo : (obj.memo || '');
+
       return {
         id,
         buyer: parsed.buyer || 'unknown',
@@ -254,72 +281,49 @@ app.get('/api/messages', async (req, res) => {
         imgUrl: obj.imgUrl || '',
         sold: parsed.sold || obj.sold === 'true' || obj.sold === true,
         timestamp: obj.timestamp || '',
-        read: savedState.read !== undefined ? savedState.read : (obj.read === 'true'),
-        starred: savedState.starred !== undefined ? savedState.starred : (obj.starred === 'true'),
-        replied: savedState.replied !== undefined ? savedState.replied : (obj.replied === 'true'),
-        memo: savedState.memo !== undefined ? savedState.memo : (obj.memo || ''),
+        read: readVal,
+        starred: starredVal,
+        replied: repliedVal,
+        memo: memoVal,
       };
     });
 
     // ===== 同一バイヤーをスレッドにまとめる =====
-    // 同じバイヤーのメッセージを1つにまとめ、古いものを履歴に、最新を本文に
     const threadMap = {};
-    // 古い順（行番号順）に処理
     rawMessages.forEach(m => {
       const key = m.buyer.toLowerCase();
       if (!threadMap[key]) {
         threadMap[key] = { ...m, threadMessages: [m], sold: m.sold };
       } else {
-        // 既存スレッドに追加
         const thread = threadMap[key];
         thread.threadMessages.push(m);
-        // 最新のtimestampで更新
         if (m.timestamp > thread.timestamp) {
           thread.timestamp = m.timestamp;
-          thread.id = m.id; // 最新のIDを使用
+          thread.id = m.id;
         }
-        // orderId/itemIdも最新のものを優先
         if (m.orderId) thread.orderId = m.orderId;
         if (m.itemId) thread.itemId = m.itemId;
         if (m.item) thread.item = m.item;
-        // 既読・フラグは1つでも未読ならまとめて未読
         if (!m.read) thread.read = false;
         if (m.starred) thread.starred = true;
         if (m.replied) thread.replied = true;
-        // soldは1つでもSOLDなら全体をSOLD扱い
+        if (m.memo) thread.memo = m.memo;
         if (m.sold) thread.sold = true;
       }
     });
 
-    // スレッドを組み立て：全メッセージを時系列順に history + 最新msg にする
     const threads = Object.values(threadMap).map(thread => {
       const sorted = thread.threadMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
       const latest = sorted[sorted.length - 1];
-
-      // 全メッセージの履歴を時系列で収集
-      // 各メールには「過去のやり取り(history)」と「そのメールの最新メッセージ(msg)」がある
-      // 全部をフラットにして重複除去する
       const allHistory = [];
-
       sorted.forEach((m, idx) => {
-        // そのメールに含まれる過去の会話履歴を追加
         if (m.history && m.history.length > 0) {
-          m.history.forEach(h => allHistory.push({
-            from: h.from,
-            text: h.text,
-            time: h.time || m.timestamp
-          }));
+          m.history.forEach(h => allHistory.push({ from: h.from, text: h.text, time: h.time || m.timestamp }));
         }
-        // 最新メール以外は、そのメールのmsgも履歴に追加
-        // fromは「メールの送信者」= バイヤーからのメールなのでfrom:'buyer'が正しい
-        // ただし最新メールのmsgは別途 msg フィールドとして返す
         if (idx < sorted.length - 1 && m.msg) {
-          // このメールはZapierがバイヤーのメッセージを受信したもの → from:'buyer'
           allHistory.push({ from: 'buyer', text: m.msg, time: m.timestamp });
         }
       });
-
-      // 重複除去（同じ内容が履歴とmsgに両方含まれることがあるため）
       const seenTexts = new Set();
       const dedupedHistory = allHistory.filter(h => {
         if (!h.text) return false;
@@ -328,24 +332,12 @@ app.get('/api/messages', async (req, res) => {
         seenTexts.add(k);
         return true;
       });
-
-      // 最新メッセージの from を正しく判定
-      // Zapierに届くメールは「バイヤーから受信したもの」なので最新msgはfrom:'buyer'
-      // ただし latest.history の最後が自分の送信で終わっている場合はそれを表示
-      let finalMsg = latest.msg;
-      let finalFrom = 'buyer';
-
-      // latest.historyの最後の要素が'me'かつlatest.msgより新しい場合
-      // → 最後が自分の送信 = 自分が最後に返信済みの状態
-      // この場合でもlatest.msgはバイヤーの直近メッセージとして表示する
-      // （バイヤーからの最新問い合わせが常に表示されるべき）
-
       return {
         id: latest.id,
         buyer: thread.buyer,
         subject: latest.subject,
-        msg: finalMsg,
-        msgFrom: finalFrom,
+        msg: latest.msg,
+        msgFrom: 'buyer',
         history: dedupedHistory,
         item: thread.item || latest.item,
         orderId: thread.orderId || latest.orderId,
@@ -360,7 +352,6 @@ app.get('/api/messages', async (req, res) => {
       };
     });
 
-    // 新着順にソート
     threads.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
     res.json({ messages: threads });
   } catch (e) {
