@@ -5,12 +5,11 @@ const app = express();
 
 app.use(express.json());
 
-// index.htmlをルートで直接配信
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Claude APIへのプロキシ
+// Claude APIプロキシ
 app.post('/api/claude', async (req, res) => {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -29,19 +28,70 @@ app.post('/api/claude', async (req, res) => {
   }
 });
 
-// Zapierからのwebhook受信
+// Zapierからのwebhook受信 → メモリに保持
+let messages = [];
 app.post('/webhook', (req, res) => {
   const data = req.body;
-  latestMessage = data;
+  const msg = {
+    id: Date.now(),
+    buyer: data.buyer || 'unknown',
+    subject: data.subject || '',
+    message: data.message || '',
+    item: data.item || '',
+    orderId: data.orderId || '',
+    itemId: data.itemId || '',
+    timestamp: new Date().toISOString(),
+    read: false,
+    starred: false,
+    replied: false,
+    memo: ''
+  };
+  messages.unshift(msg);
+  if (messages.length > 200) messages = messages.slice(0, 200);
   res.json({ ok: true });
 });
 
-// クライアントが新着メッセージをポーリングで取得
-let latestMessage = null;
+// Googleスプレッドシートからメッセージを取得
+app.get('/api/messages', async (req, res) => {
+  try {
+    const sheetId = process.env.SHEET_ID;
+    const apiKey = process.env.GOOGLE_API_KEY;
+    if (!sheetId || !apiKey) {
+      return res.json({ messages });
+    }
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/シート1?key=${apiKey}`;
+    const response = await fetch(url);
+    const data = await response.json();
+    const rows = data.values || [];
+    if (rows.length <= 1) return res.json({ messages });
+    const headers = rows[0];
+    const sheetMessages = rows.slice(1).reverse().map((row, i) => {
+      const obj = {};
+      headers.forEach((h, j) => { obj[h] = row[j] || ''; });
+      return {
+        id: rows.length - i,
+        buyer: obj.buyer || 'unknown',
+        subject: obj.subject || '',
+        message: obj.message || '',
+        item: obj.item || '',
+        orderId: obj.orderId || '',
+        itemId: obj.itemId || '',
+        timestamp: obj.timestamp || '',
+        read: false,
+        starred: false,
+        replied: false,
+        memo: ''
+      };
+    });
+    res.json({ messages: sheetMessages });
+  } catch (e) {
+    res.json({ messages });
+  }
+});
+
 app.get('/latest', (req, res) => {
-  if (latestMessage) {
-    const msg = latestMessage;
-    latestMessage = null;
+  if (messages.length > 0) {
+    const msg = messages[0];
     res.json({ message: msg });
   } else {
     res.json({ message: null });
