@@ -9,7 +9,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Claude APIプロキシ
 app.post('/api/claude', async (req, res) => {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -28,7 +27,6 @@ app.post('/api/claude', async (req, res) => {
   }
 });
 
-// Zapierからのwebhook受信 → メモリに保持
 let messages = [];
 app.post('/webhook', (req, res) => {
   const data = req.body;
@@ -51,7 +49,6 @@ app.post('/webhook', (req, res) => {
   res.json({ ok: true });
 });
 
-// Googleスプレッドシートからメッセージを取得
 app.get('/api/messages', async (req, res) => {
   try {
     const sheetId = process.env.SHEET_ID;
@@ -59,11 +56,22 @@ app.get('/api/messages', async (req, res) => {
     if (!sheetId || !apiKey) {
       return res.json({ messages });
     }
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/シート1?key=${apiKey}`;
+    // シート1をURLエンコード
+    const sheetName = encodeURIComponent('シート1');
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?key=${apiKey}`;
+    console.log('Fetching:', url);
     const response = await fetch(url);
     const data = await response.json();
+    console.log('Sheet response:', JSON.stringify(data).substring(0, 200));
+    
+    if (data.error) {
+      console.error('Sheet error:', data.error);
+      return res.json({ messages, error: data.error });
+    }
+    
     const rows = data.values || [];
     if (rows.length <= 1) return res.json({ messages });
+    
     const headers = rows[0];
     const sheetMessages = rows.slice(1).reverse().map((row, i) => {
       const obj = {};
@@ -85,14 +93,14 @@ app.get('/api/messages', async (req, res) => {
     });
     res.json({ messages: sheetMessages });
   } catch (e) {
+    console.error('Error:', e.message);
     res.json({ messages });
   }
 });
 
 app.get('/latest', (req, res) => {
   if (messages.length > 0) {
-    const msg = messages[0];
-    res.json({ message: msg });
+    res.json({ message: messages[0] });
   } else {
     res.json({ message: null });
   }
