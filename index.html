@@ -379,6 +379,32 @@ const DEMO_DATA=[
    msg:"I will open case in ebay you didn't want to return my money",replyHistory:[],reply:'',status:'pending'},
 ];
 
+
+function extractNewMessage(body){
+  if(!body) return '';
+  // メール本文から最新メッセージだけ抽出
+  // パターン1: "New message from: xxxxx
+
+メッセージ本文"
+  const patterns = [
+    /New message from:[\s\S]*?\(\d+[^)]*\)\s*\n([\s\S]*?)(?:\n-->[\s\S]*$|\nReply[\s\S]*$|$)/,
+    /New message:\s*([^\n]+)/
+  ];
+  
+  // "New message from:" の後のバイヤー名と評価の後の本文を取得
+  const match1 = body.match(/New message from:[\s\S]*?\(\d+[^)]*\)\s*\n([\s\S]*?)(?=\n-->|\nReply\n|\nMake an offer|$)/);
+  if(match1 && match1[1].trim()){
+    return match1[1].trim();
+  }
+  
+  // フォールバック: "New message: " の後の最初の行
+  const match2 = body.match(/New message:\s*(.+)/);
+  if(match2) return match2[1].trim();
+  
+  // それも無ければ最初の200文字
+  return body.substring(0, 200);
+}
+
 function renderList(){
   const el=document.getElementById('msg-list');
   const filtered=messages.filter(m=>{
@@ -764,7 +790,8 @@ window.addEventListener('load',()=>{
       if(d.messages&&d.messages.length>0){
         messages=d.messages.map(m=>({
           ...m,
-          msg: m.message||m.msg||'',
+          msg: extractNewMessage(m.message||m.msg||''),
+          fullMsg: m.message||m.msg||'',
           date: m.timestamp?m.timestamp.split(' ')[0]:'',
           time: m.timestamp?m.timestamp.split(' ')[1]||'':'',
           history: m.history||[],
