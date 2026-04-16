@@ -762,10 +762,19 @@ window.addEventListener('load',()=>{
       const r=await fetch('/api/messages');
       const d=await r.json();
       if(d.messages&&d.messages.length>0){
-        messages=d.messages;
+        messages=d.messages.map(m=>({
+          ...m,
+          msg: m.message||m.msg||'',
+          date: m.timestamp?m.timestamp.split(' ')[0]:'',
+          time: m.timestamp?m.timestamp.split(' ')[1]||'':'',
+          history: m.history||[],
+          replyHistory: m.replyHistory||[],
+          reply: m.reply||'',
+          status: m.status||'pending'
+        }));
         renderList();
       }
-    }catch(e){}
+    }catch(e){console.error('loadFromSheet error:',e);}
   }
   loadFromSheet();
 
