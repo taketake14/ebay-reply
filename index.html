@@ -756,14 +756,33 @@ function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").r
 })();
 
 window.addEventListener('load',()=>{
-  // Zapierからの新着メッセージを10秒ごとにチェック
+  // 起動時にスプレッドシートからメッセージを読み込む
+  async function loadFromSheet(){
+    try{
+      const r=await fetch('/api/messages');
+      const d=await r.json();
+      if(d.messages&&d.messages.length>0){
+        messages=d.messages;
+        renderList();
+      }
+    }catch(e){}
+  }
+  loadFromSheet();
+
+  // 新着メッセージを30秒ごとにチェック
   setInterval(async()=>{
     try{
       const r=await fetch('/latest');
       const d=await r.json();
-      if(d.message) window.receiveFromZapier(d.message);
+      if(d.message){
+        const exists=messages.find(m=>m.id===d.message.id);
+        if(!exists){
+          messages.unshift(d.message);
+          renderList();
+        }
+      }
     }catch(e){}
-  },10000);
+  },30000);
 
   // Zapierからの新着メッセージをポーリング
   
