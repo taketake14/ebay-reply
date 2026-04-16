@@ -2,60 +2,83 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>eBay Reply Assistant</title>
+<title>eBayReply</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --bg:#f0f2f5;--bg2:#ffffff;--bg3:#f5f7fa;--border:#e4e7ec;--border2:#d0d5dd;
-  --text:#111827;--text2:#4b5563;--text3:#9ca3af;
-  --accent:#2563eb;--accent2:#1d4ed8;--accent-light:#eff6ff;
-  --danger:#dc2626;--warn:#d97706;--success:#059669;--purple:#7c3aed;
-  --mono:'IBM Plex Mono',monospace;--sans:'Noto Sans JP',sans-serif;
-  --shadow:0 1px 4px rgba(0,0,0,0.08);--shadow2:0 4px 16px rgba(0,0,0,0.12);
+  --navy:#0f172a;--navy2:#1e293b;--navy3:#334155;
+  --orange:#fb923c;--orange2:#ea7c25;--orange-light:#fff7ed;--orange-border:#fed7aa;
+  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;
+  --border:#e2e8f0;--border2:#cbd5e1;
+  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
+  --accent:#2563eb;--success:#059669;--danger:#dc2626;--warn:#d97706;
+  --sans:'Noto Sans JP',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,0.08);--shadow2:0 4px 16px rgba(0,0,0,0.1);
 }
-body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.65;height:100vh;overflow:hidden;}
-.layout{display:grid;grid-template-columns:300px 1fr;height:100vh;overflow:hidden;}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
-/* SIDEBAR */
-.sidebar{background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
-.topbar{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0;}
-.logo{font-family:var(--mono);font-size:14px;color:var(--accent);font-weight:700;}
-.logo span{color:var(--text3);font-weight:400;}
-.nav-tabs{display:flex;gap:2px;margin-left:auto;}
-.nav-tab{padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-family:var(--sans);font-weight:500;}
-.nav-tab.active{background:var(--accent-light);color:var(--accent);font-weight:700;}
-.nav-tab:hover:not(.active){background:var(--bg3);}
-.sidebar-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:7px;flex-shrink:0;}
-.sidebar-title-row{display:flex;align-items:center;}
-.sidebar-title{font-size:11px;color:var(--text3);font-family:var(--mono);letter-spacing:0.08em;text-transform:uppercase;font-weight:500;}
-.msg-count{font-size:12px;color:var(--accent);font-family:var(--mono);margin-left:auto;font-weight:700;}
-.filter-row{display:flex;gap:4px;flex-wrap:wrap;}
-.filter-btn{font-size:11px;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;white-space:nowrap;font-weight:500;transition:all 0.1s;}
-.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-.filter-btn:hover:not(.active){background:var(--bg3);}
-.msg-list{overflow-y:auto;flex:1;}
-.msg-item{padding:10px 12px 10px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;display:flex;gap:8px;align-items:flex-start;}
-.msg-item:hover{background:var(--bg3);}
-.msg-item.active{background:var(--accent-light);border-left:3px solid var(--accent);}
-.msg-item.read .msg-buyer{color:var(--text2);font-weight:500;}
-.msg-item.read .msg-preview{color:var(--text3);}
-.msg-item-left{display:flex;flex-direction:column;align-items:center;gap:5px;padding-top:3px;width:14px;flex-shrink:0;}
-.unread-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;}
-.star-btn{background:none;border:none;cursor:pointer;font-size:13px;padding:0;line-height:1;color:var(--text3);}
-.star-btn.starred{color:#f59e0b;}
-.star-btn:hover{color:#f59e0b;}
-.msg-body{flex:1;min-width:0;}
-.msg-top-row{display:flex;align-items:flex-start;gap:4px;margin-bottom:2px;}
-.msg-buyer{font-size:13px;font-weight:700;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);}
-.msg-right{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0;}
-.msg-time{font-size:11px;color:var(--text3);font-family:var(--mono);}
-.sold-pill{font-size:10px;padding:1px 6px;border-radius:20px;background:#d1fae5;color:#065f46;font-weight:700;}
-.replied-pill{font-size:10px;padding:1px 6px;border-radius:20px;background:#dbeafe;color:#1e40af;font-weight:600;}
-.msg-item-name{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px;}
-.msg-tags{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:3px;}
-.msg-preview{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.tag{font-size:10px;padding:2px 7px;border-radius:20px;flex-shrink:0;font-weight:600;}
+/* ===== ログイン ===== */
+#login-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:44px;width:380px;text-align:center;}
+.login-logo{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px;}
+.login-logo em{color:var(--orange);font-style:normal;}
+.login-sub{font-size:13px;color:#94a3b8;margin-bottom:26px;}
+.login-field{position:relative;margin-bottom:12px;}
+.login-field input{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px 42px 12px 14px;color:#e2e8f0;font-size:14px;outline:none;}
+.login-field input:focus{border-color:var(--orange);}
+.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;}
+.eye-btn:hover{color:var(--orange);}
+.login-btn{width:100%;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
+.login-btn:hover{background:var(--orange2);}
+.login-btn.loading{background:#475569;cursor:not-allowed;}
+.login-error{color:#f87171;font-size:12px;margin-top:8px;display:none;padding:9px;background:#1c0606;border-radius:8px;}
+
+/* ===== グローバルヘッダー ===== */
+.app-header{height:46px;background:var(--navy);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:100;}
+.app-logo{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.01em;white-space:nowrap;}
+.app-logo em{color:var(--orange);font-style:normal;}
+.header-search{flex:1;max-width:320px;background:var(--navy2);border:1px solid var(--navy3);border-radius:7px;padding:6px 12px;font-size:12px;color:#94a3b8;outline:none;}
+.header-search:focus{border-color:var(--orange);}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+.h-badge-wrap{display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;}
+.h-badge{font-size:10px;padding:1px 6px;border-radius:20px;font-weight:700;}
+.h-badge-orange{background:var(--orange);color:#fff;}
+.h-badge-red{background:var(--danger);color:#fff;}
+.h-avatar{width:30px;height:30px;border-radius:50%;background:var(--navy3);display:flex;align-items:center;justify-content:center;font-size:12px;color:#cbd5e1;font-weight:500;}
+
+/* ===== SCREEN 1: 受信者一覧 ===== */
+#screen-list{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#screen-chat{flex:1;display:none;flex-direction:column;overflow:hidden;}
+
+.s1-toolbar{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg2);flex-shrink:0;}
+.s1-title{font-size:15px;font-weight:600;color:var(--text);}
+.s1-count-badge{font-size:11px;background:var(--orange);color:#fff;border-radius:20px;padding:2px 8px;font-weight:700;}
+.s1-filters{display:flex;gap:5px;margin-left:auto;}
+.s1-filter{font-size:11px;padding:4px 12px;border-radius:20px;border:1px solid var(--border2);color:var(--text2);cursor:pointer;background:transparent;transition:all 0.1s;font-weight:500;}
+.s1-filter.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.s1-filter:hover:not(.on){background:var(--bg3);}
+
+.s1-table-header{display:grid;grid-template-columns:24px 2fr 1.4fr 120px 70px 80px 36px;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
+.s1-th{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;}
+.s1-body{flex:1;overflow-y:auto;}
+
+.s1-row{display:grid;grid-template-columns:24px 2fr 1.4fr 120px 70px 80px 36px;gap:0;padding:11px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row:hover{background:#f0f9ff;}
+.s1-row.unread{background:var(--bg2);}
+.s1-row.unread .s1-buyer-name{font-weight:700;color:var(--text);}
+.s1-row.read{background:var(--bg);}
+.s1-row.read .s1-buyer-name{font-weight:400;color:var(--text2);}
+.s1-unread-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);}
+.s1-read-dot{width:8px;height:8px;}
+.s1-buyer-cell{display:flex;align-items:center;gap:10px;min-width:0;}
+.s1-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
+.s1-buyer-info{min-width:0;}
+.s1-buyer-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-item-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px;}
+.s1-tags{display:flex;gap:3px;flex-wrap:wrap;}
+.tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
 .tag-discount{background:#fee2e2;color:#b91c1c;}
 .tag-stock{background:#dbeafe;color:#1d4ed8;}
 .tag-ship{background:#e0f2fe;color:#0369a1;}
@@ -63,140 +86,147 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tag-spec{background:#ede9fe;color:#6d28d9;}
 .tag-cancel{background:#fef3c7;color:#92400e;}
 .tag-urgent{background:#dc2626;color:#fff;font-weight:700;}
-.tag-other{background:#f3f4f6;color:var(--text2);}
+.tag-other{background:#f1f5f9;color:var(--text2);}
+.s1-sold-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#d1fae5;color:#065f46;font-weight:700;}
+.s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:600;}
+.s1-time{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
+.s1-star-btn.on{color:#f59e0b;}
+.s1-star-btn:hover{color:#f59e0b;}
+.s1-empty{padding:40px;text-align:center;color:var(--text3);font-size:13px;}
 
-/* MAIN */
-.main{display:flex;flex-direction:column;overflow:hidden;}
-.main-pane{display:none;flex-direction:column;flex:1;overflow:hidden;}
-.main-pane.active{display:flex;}
-.global-bar{padding:7px 18px;background:#eff6ff;border-bottom:1px solid #bfdbfe;font-size:11px;color:#2563eb;font-family:var(--mono);display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.global-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 2s infinite;flex-shrink:0;}
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-.lang-toggle{display:flex;border:1px solid #93c5fd;border-radius:6px;overflow:hidden;margin-left:auto;}
-.lang-btn{padding:3px 12px;font-size:11px;font-family:var(--mono);cursor:pointer;border:none;background:transparent;color:#3b82f6;transition:all 0.12s;font-weight:500;}
-.lang-btn.active{background:var(--accent);color:#fff;}
-.lang-btn.loading{color:var(--warn);cursor:wait;}
-.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);}
-.empty-text{font-size:13px;font-family:var(--mono);margin-top:12px;}
-.detail-wrap{display:none;flex-direction:column;flex:1;overflow:hidden;}
+/* ===== SCREEN 2: チャット全画面 ===== */
+.s2-header{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg2);flex-shrink:0;}
+.s2-back{font-size:12px;color:var(--orange);cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:600;padding:4px 8px;border-radius:6px;border:1px solid var(--orange-border);background:var(--orange-light);white-space:nowrap;}
+.s2-back:hover{background:var(--orange-border);}
+.s2-sep{width:1px;height:18px;background:var(--border);}
+.s2-buyer-name{font-size:15px;font-weight:700;color:var(--text);}
+.s2-header-tags{display:flex;gap:5px;}
+.s2-header-actions{margin-left:auto;display:flex;gap:6px;align-items:center;}
+.s2-btn{font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);color:var(--text2);background:transparent;cursor:pointer;font-weight:500;transition:all 0.1s;}
+.s2-btn:hover{background:var(--bg3);}
+.s2-btn.on{color:#f59e0b;border-color:#fde68a;background:#fffbeb;}
+.s2-btn-primary{background:var(--orange);color:#fff;border-color:var(--orange);}
+.s2-btn-primary:hover{background:var(--orange2);}
+.s2-btn-primary.done{background:var(--success);border-color:var(--success);}
 
-/* DETAIL HEADER */
-.detail-header{padding:12px 18px;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg2);}
-.detail-top-row{display:flex;align-items:flex-start;gap:12px;margin-bottom:8px;}
-.product-thumb{width:50px;height:50px;border-radius:8px;object-fit:cover;border:1px solid var(--border2);flex-shrink:0;}
-.product-thumb-ph{width:50px;height:50px;border-radius:8px;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:20px;flex-shrink:0;}
-.detail-info{flex:1;min-width:0;}
-.detail-buyer-name{font-size:15px;font-weight:700;margin-bottom:2px;display:flex;align-items:center;gap:6px;color:var(--text);}
-.detail-item-name{font-size:12px;color:var(--text2);margin-bottom:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.link-row{display:flex;gap:5px;flex-wrap:wrap;}
-.link-chip{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:6px;border:1px solid #bfdbfe;font-size:11px;font-family:var(--mono);cursor:pointer;background:#eff6ff;color:var(--accent);text-decoration:none;font-weight:500;}
-.link-chip:hover{background:#dbeafe;}
-.copy-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:4px;}
-.chip{display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:6px;border:1px solid var(--border2);font-size:11px;font-family:var(--mono);cursor:pointer;background:var(--bg3);color:var(--text2);user-select:none;font-weight:500;}
-.chip:hover{border-color:var(--accent);color:var(--accent);background:#eff6ff;}
-.chip.copied{border-color:var(--success);color:var(--success);background:#ecfdf5;}
-.action-chips{display:flex;gap:5px;flex-wrap:wrap;}
-.action-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 10px;border-radius:6px;border:1px solid var(--border2);font-size:11px;cursor:pointer;background:var(--bg3);color:var(--text2);user-select:none;font-weight:500;}
-.action-chip:hover{background:var(--bg);color:var(--text);}
-.action-chip.active-chip{color:var(--warn);border-color:#fde68a;background:#fffbeb;}
+.s2-main{flex:1;display:flex;overflow:hidden;}
 
-/* CHAT */
-.chat-area{flex:0 0 44%;overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:10px;border-bottom:1px solid var(--border);min-height:0;background:var(--bg);}
-.chat-bubble-wrap{display:flex;flex-direction:column;gap:3px;}
-.chat-bubble-wrap.mine{align-items:flex-end;}
-.chat-bubble-wrap.theirs{align-items:flex-start;}
-.chat-bubble{max-width:78%;padding:9px 14px;font-size:14px;line-height:1.75;word-break:break-word;}
-.chat-bubble-wrap.mine .chat-bubble{background:#dbeafe;color:#1e3a5f;border-radius:16px 16px 4px 16px;border:1px solid #bfdbfe;}
-.chat-bubble-wrap.theirs .chat-bubble{background:#fff;color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
-.chat-bubble-wrap.new-msg.theirs .chat-bubble{border-color:#93c5fd;box-shadow:0 2px 8px rgba(37,99,235,0.1);}
-.chat-meta{font-size:11px;color:var(--text3);font-family:var(--mono);padding:0 4px;}
-.new-badge{font-size:11px;font-weight:700;color:var(--accent);font-family:var(--mono);text-align:center;padding:5px 0;margin:4px 0;border-top:2px dashed #93c5fd;border-bottom:2px dashed #93c5fd;background:#f0f7ff;border-radius:4px;}
+/* チャットカラム */
+.s2-chat-col{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border);}
+.chat-area{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;background:var(--bg3);}
+.bbl-wrap{display:flex;flex-direction:column;gap:3px;}
+.bbl-wrap.mine{align-items:flex-end;}
+.bbl-wrap.theirs{align-items:flex-start;}
+.bbl{max-width:74%;padding:10px 14px;font-size:13px;line-height:1.7;word-break:break-word;}
+.bbl.mine{background:var(--navy);color:#e2e8f0;border-radius:16px 16px 4px 16px;}
+.bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
+.bbl.theirs.new-msg{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-light);}
+.bbl-meta{font-size:10px;color:var(--text3);padding:0 4px;font-family:var(--mono);}
+.new-badge{font-size:11px;font-weight:700;color:var(--orange);text-align:center;padding:5px 0;margin:4px 0;border-top:2px dashed var(--orange-border);border-bottom:2px dashed var(--orange-border);background:#fffbeb;border-radius:4px;}
 
-/* MEMO */
-.memo-area{padding:8px 18px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:8px;background:#fffbeb;}
-.memo-label-text{font-size:11px;color:var(--warn);font-weight:700;white-space:nowrap;}
-.memo-input{flex:1;background:transparent;border:none;outline:none;font-size:12px;font-family:var(--sans);color:var(--text);}
-.memo-input::placeholder{color:#b45309;opacity:0.6;}
-.memo-save-btn{font-size:11px;padding:3px 10px;border-radius:6px;border:1px solid #fde68a;background:#fef3c7;color:#92400e;cursor:pointer;font-weight:600;white-space:nowrap;}
-.memo-save-btn:hover{background:#fde68a;}
-
-/* REPLY SPLIT */
-.reply-section{flex:1;display:flex;flex-direction:column;overflow:hidden;padding:10px 18px 12px;min-height:0;background:var(--bg2);}
-.reply-top-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-shrink:0;flex-wrap:wrap;}
-.reply-label{font-size:11px;color:var(--text3);font-family:var(--mono);letter-spacing:0.08em;text-transform:uppercase;font-weight:700;}
-.status-badge{font-size:11px;padding:2px 10px;border-radius:20px;font-family:var(--mono);font-weight:600;}
-.status-generating{background:#d1fae5;color:#065f46;animation:blink 1.2s infinite;}
+/* 返信エリア */
+.reply-area{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg2);}
+.reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;}
+.reply-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;}
+.reply-status{font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600;}
+.status-generating{background:#d1fae5;color:#065f46;}
 .status-done{background:#d1fae5;color:#065f46;}
-.status-error{background:#fee2e2;color:#dc2626;}
-.history-select{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;color:var(--text2);font-size:11px;font-family:var(--mono);padding:2px 8px;cursor:pointer;outline:none;margin-left:auto;}
-.reply-split{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px;min-height:0;overflow:hidden;}
-.reply-col{display:flex;flex-direction:column;min-height:0;}
-.reply-col-label{font-size:10px;color:var(--text3);font-family:var(--mono);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;display:flex;align-items:center;gap:5px;}
-.reply-col-label span{display:inline-block;width:8px;height:8px;border-radius:50%;}
-.col-en .reply-col-label span{background:var(--accent);}
-.col-ja .reply-col-label span{background:var(--success);}
-.reply-box{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;font-size:14px;line-height:1.8;color:var(--text);overflow-y:auto;white-space:pre-wrap;outline:none;min-height:0;}
-.reply-box:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.08);}
-.reply-box.editable{border-color:var(--warn);box-shadow:0 0 0 3px rgba(217,119,6,0.08);}
-.reply-box-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:11px 13px;font-size:14px;line-height:1.8;color:var(--text);overflow-y:auto;white-space:pre-wrap;min-height:0;}
-.reply-actions{display:flex;gap:6px;margin-top:8px;flex-shrink:0;flex-wrap:wrap;align-items:center;}
-.btn{padding:7px 16px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid var(--border2);font-family:var(--sans);transition:all 0.12s;font-weight:600;}
-.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent);}
-.btn-accent:hover{background:var(--accent2);}
+.status-error{background:#fee2e2;color:var(--danger);}
+.reply-history-select{font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;color:var(--text2);outline:none;margin-left:auto;cursor:pointer;}
+.reply-split{display:grid;grid-template-columns:1fr 1fr;padding:8px 18px;gap:12px;}
+.reply-col{display:flex;flex-direction:column;gap:5px;}
+.reply-col-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:5px;}
+.reply-col-dot{width:7px;height:7px;border-radius:50%;}
+.reply-box{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.75;color:var(--text);min-height:72px;outline:none;white-space:pre-wrap;overflow-y:auto;}
+.reply-box:focus{border-color:var(--accent);}
+.reply-box.editable{border-color:var(--warn);}
+.reply-box-ja{background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.75;color:var(--text2);min-height:72px;overflow-y:auto;white-space:pre-wrap;}
+.reply-actions{padding:6px 18px 12px;display:flex;gap:6px;align-items:center;position:relative;}
+.btn{padding:6px 14px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid var(--border2);font-family:var(--sans);font-weight:600;transition:all 0.12s;}
+.btn-primary{background:var(--orange);color:#fff;border-color:var(--orange);}
+.btn-primary:hover{background:var(--orange2);}
+.btn-primary.copied{background:var(--success);border-color:var(--success);}
 .btn-ghost{background:transparent;color:var(--text2);}
-.btn-ghost:hover{background:var(--bg3);color:var(--text);}
+.btn-ghost:hover{background:var(--bg3);}
 .btn-warn{background:transparent;color:var(--warn);border-color:#fde68a;}
 .btn-warn:hover{background:#fffbeb;}
-.btn.copied{color:var(--success);border-color:#6ee7b7;background:#ecfdf5;}
-.canned-panel{position:absolute;bottom:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;z-index:100;display:none;flex-direction:column;gap:3px;margin-bottom:6px;box-shadow:var(--shadow2);}
+.canned-panel{position:absolute;bottom:100%;left:18px;right:18px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;z-index:200;display:none;flex-direction:column;gap:3px;margin-bottom:6px;box-shadow:var(--shadow2);}
 .canned-panel.open{display:flex;}
 .canned-item{padding:7px 10px;border-radius:7px;font-size:12px;cursor:pointer;color:var(--text2);line-height:1.5;}
 .canned-item:hover{background:var(--bg3);color:var(--text);}
-.canned-item strong{display:block;font-size:11px;color:var(--accent);font-family:var(--mono);margin-bottom:2px;font-weight:700;}
-.reply-actions-wrap{position:relative;}
+.canned-item strong{display:block;font-size:10px;color:var(--orange);font-family:var(--mono);margin-bottom:2px;font-weight:700;}
 
-/* SIDEBAR FOOTER */
-.sidebar-footer{padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;display:flex;flex-direction:column;gap:6px;background:var(--bg2);}
-.add-msg-form{display:flex;flex-direction:column;gap:5px;}
-.form-label{font-size:10px;color:var(--text3);font-family:var(--mono);margin-bottom:1px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;}
-.add-msg-form input,.add-msg-form textarea,.add-msg-form select{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:5px 9px;color:var(--text);font-size:12px;font-family:var(--sans);outline:none;width:100%;}
-.add-msg-form input:focus,.add-msg-form textarea:focus{border-color:var(--accent);}
-.add-msg-form textarea{min-height:55px;resize:vertical;}
-.collapse-btn{background:transparent;border:none;color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--sans);padding:0;text-align:left;font-weight:600;}
-.collapse-btn:hover{color:var(--accent);}
-.scroll-pane{flex:1;overflow-y:auto;padding:22px;}
-.scroll-pane h3{font-size:13px;color:var(--text2);font-family:var(--mono);margin-bottom:8px;font-weight:700;}
-.scroll-pane p{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.75;}
-.scroll-pane textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:14px;color:var(--text);font-size:13px;font-family:var(--mono);line-height:1.7;resize:vertical;min-height:360px;outline:none;}
-.scroll-pane textarea:focus{border-color:var(--accent);}
+/* 右パネル */
+.s2-right-panel{width:230px;display:flex;flex-direction:column;flex-shrink:0;background:var(--bg2);}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);}
+.panel-tab{flex:1;text-align:center;padding:9px 0;font-size:11px;color:var(--text3);cursor:pointer;border-bottom:2px solid transparent;font-weight:500;transition:all 0.1s;}
+.panel-tab.on{color:var(--orange);border-bottom-color:var(--orange);font-weight:700;}
+.panel-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}
+
+/* 商品パネル */
+.prod-img-wrap{width:100%;height:90px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border);overflow:hidden;}
+.prod-img-wrap img{width:100%;height:100%;object-fit:cover;}
+.prod-name{font-size:12px;font-weight:600;color:var(--text);line-height:1.5;}
+.prod-kv{display:flex;flex-direction:column;gap:0;}
+.prod-kv-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);}
+.prod-kv-row:last-child{border-bottom:none;}
+.kv-k{font-size:10px;color:var(--text3);font-weight:500;}
+.kv-v{font-size:11px;font-weight:600;color:var(--text);}
+.kv-v.link{color:var(--accent);cursor:pointer;text-decoration:none;}
+.kv-v.link:hover{text-decoration:underline;}
+.copy-chips-section{display:flex;flex-direction:column;gap:6px;}
+.copy-chips-label{font-size:9px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;}
+.copy-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.copy-chip{font-size:10px;padding:3px 9px;border-radius:5px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);cursor:pointer;font-weight:500;}
+.copy-chip:hover{border-color:var(--orange);color:var(--orange);}
+.copy-chip.copied{border-color:var(--success);color:var(--success);background:#ecfdf5;}
+
+/* バイヤーパネル */
+.buyer-panel-row{display:flex;align-items:center;gap:10px;}
+.buyer-panel-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
+.buyer-panel-name{font-size:13px;font-weight:600;color:var(--text);}
+.buyer-panel-sub{font-size:11px;color:var(--text3);}
+.buyer-links{display:flex;flex-direction:column;gap:6px;}
+.buyer-link-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);text-decoration:none;color:var(--accent);font-size:11px;font-weight:500;}
+.buyer-link-chip:hover{background:#eff6ff;border-color:var(--accent);}
+
+/* メモパネル */
+.memo-panel{display:flex;flex-direction:column;gap:8px;}
+.memo-label{font-size:10px;font-weight:700;color:var(--warn);display:flex;align-items:center;gap:5px;}
+.memo-textarea{width:100%;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 10px;font-size:12px;color:var(--text);font-family:var(--sans);resize:vertical;min-height:80px;outline:none;line-height:1.6;}
+.memo-save-btn{font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid #fde68a;background:#fef3c7;color:#92400e;cursor:pointer;font-weight:600;align-self:flex-start;}
+.memo-save-btn:hover{background:#fde68a;}
+
+/* マニュアル・Zapierタブ */
+.nav-tabs-wrap{display:flex;gap:2px;padding:8px 18px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.nav-tab-btn{padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-weight:500;font-family:var(--sans);}
+.nav-tab-btn.on{background:#eff6ff;color:var(--accent);font-weight:700;}
+.nav-tab-btn:hover:not(.on){background:var(--bg3);}
+.tab-content{display:none;flex:1;overflow-y:auto;padding:22px;}
+.tab-content.on{display:block;}
+.tab-content textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:14px;color:var(--text);font-size:13px;font-family:var(--mono);line-height:1.7;resize:vertical;min-height:360px;outline:none;}
+.tab-content textarea:focus{border-color:var(--accent);}
+.tab-content h3{font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:600;}
+.tab-content p{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.75;}
 .manual-actions{display:flex;gap:8px;margin-top:10px;align-items:center;}
-.save-msg{font-size:12px;color:var(--success);font-family:var(--mono);font-weight:600;}
+.save-ok{font-size:12px;color:var(--success);font-weight:600;display:none;}
 .step-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
-.step-num{font-size:11px;color:var(--accent);font-family:var(--mono);margin-bottom:4px;font-weight:700;}
+.step-num{font-size:10px;color:var(--orange);font-family:var(--mono);margin-bottom:4px;font-weight:700;}
 .step-title{font-size:13px;font-weight:700;margin-bottom:3px;}
 .step-desc{font-size:12px;color:var(--text2);line-height:1.75;}
 
-/* LOGIN */
-#login-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:9999;}
-.login-box{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:44px;width:380px;text-align:center;box-shadow:var(--shadow2);}
-.login-logo{font-family:'IBM Plex Mono',monospace;font-size:22px;color:var(--accent);margin-bottom:6px;font-weight:700;}
-.login-sub{font-size:13px;color:var(--text2);margin-bottom:26px;}
-.login-field{position:relative;margin-bottom:12px;}
-.login-field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:12px 42px 12px 14px;color:var(--text);font-size:14px;outline:none;}
-.login-field input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.1);}
-.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;}
-.eye-btn:hover{color:var(--accent);}
-.login-btn{width:100%;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;transition:all 0.15s;margin-top:6px;}
-.login-btn:hover{background:var(--accent2);}
-.login-btn:active{transform:scale(0.98);}
-.login-btn.loading{background:var(--text3);cursor:not-allowed;}
-.login-error{color:var(--danger);font-size:12px;margin-top:8px;display:none;padding:9px;background:#fee2e2;border-radius:8px;font-weight:500;}
+/* デモボタン */
+.demo-btn{font-size:11px;padding:6px 14px;border-radius:6px;border:1px dashed var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-weight:500;}
+.demo-btn:hover{border-color:var(--orange);color:var(--orange);}
 </style>
 </head>
 <body>
+
+<!-- ログイン -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">eBay<span style="color:var(--text3);font-weight:400;">Reply</span></div>
+    <div class="login-logo">eBay<em>Reply</em></div>
     <div class="login-sub">IDとパスワードを入力してください</div>
     <div class="login-field">
       <input type="email" id="id-input" placeholder="メールアドレス（ID）" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
@@ -209,142 +239,161 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="login-error" id="pw-error">IDまたはパスワードが違います</div>
   </div>
 </div>
-<div class="layout">
-  <div class="sidebar">
-    <div class="topbar">
-      <div class="logo">eBay<span>Reply</span></div>
-      <div class="nav-tabs">
-        <button class="nav-tab active" onclick="showNav('messages',this)">受信</button>
-        <button class="nav-tab" onclick="showNav('manual',this)">マニュアル</button>
-        <button class="nav-tab" onclick="showNav('zapier',this)">Zapier</button>
-      </div>
-    </div>
-    <div class="sidebar-header">
-      <div class="sidebar-title-row">
-        <span class="sidebar-title">Messages</span>
-        <span class="msg-count" id="msg-count">0</span>
-      </div>
-      <div class="filter-row">
-        <button class="filter-btn active" onclick="setFilter('all',this)">すべて</button>
-        <button class="filter-btn" onclick="setFilter('unread',this)">未読</button>
-        <button class="filter-btn" onclick="setFilter('starred',this)">★</button>
-        <button class="filter-btn" onclick="setFilter('sold',this)">SOLD</button>
-        <button class="filter-btn" onclick="setFilter('urgent',this)">要対応</button>
-        <button class="filter-btn" onclick="setFilter('replied',this)">返信済</button>
-      </div>
-    </div>
-    <div class="msg-list" id="msg-list"></div>
-    <div class="sidebar-footer">
-      <button class="collapse-btn" onclick="toggleAddForm()" id="add-form-btn">＋ メッセージを手動追加</button>
-      <div id="add-form" style="display:none;" class="add-msg-form">
-        <div><div class="form-label">バイヤー名 *</div><input type="text" id="f-buyer" placeholder="例: mcalextu"></div>
-        <div><div class="form-label">オーダー番号</div><input type="text" id="f-order" placeholder="例: 03-12345-67890"></div>
-        <div><div class="form-label">Item ID</div><input type="text" id="f-itemid" placeholder="例: 303873725849"></div>
-        <div><div class="form-label">商品名</div><input type="text" id="f-item" placeholder="例: Coleman Lantern"></div>
-        <div><div class="form-label">商品画像URL</div><input type="text" id="f-img" placeholder="https://..."></div>
-        <div><div class="form-label">購入状況</div>
-          <select id="f-sold"><option value="false">未購入</option><option value="true">購入済み (SOLD)</option></select>
-        </div>
-        <div><div class="form-label">メッセージ *</div><textarea id="f-msg" placeholder="バイヤーのメッセージを貼り付け..."></textarea></div>
-        <button class="btn btn-accent" onclick="addMessage()" style="width:100%;font-size:12px;">追加して返信案を生成</button>
-      </div>
-      <button class="btn btn-ghost" style="width:100%;font-size:11px;border-style:dashed;" onclick="loadDemo()">デモデータを読み込む</button>
-    </div>
+
+<!-- グローバルヘッダー -->
+<div class="app-header">
+  <span class="app-logo">eBay<em>Reply</em></span>
+  <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / 注文番号で検索..." oninput="onSearch(this.value)">
+  <div class="header-right">
+    <div class="h-badge-wrap">未読 <span class="h-badge h-badge-orange" id="h-unread-count">0</span></div>
+    <div class="h-badge-wrap">要対応 <span class="h-badge h-badge-red" id="h-urgent-count">0</span></div>
+    <button class="demo-btn" onclick="loadDemo()">デモデータ</button>
+    <div class="h-avatar">K</div>
   </div>
-  <div class="main">
-    <div class="global-bar">
-      <div class="global-dot"></div>
-      <span>Zapier連携後はメッセージが自動で届きます</span>
-      <div class="lang-toggle">
-        <button class="lang-btn active" id="g-btn-orig" onclick="setGlobalLang('orig')">原文</button>
-        <button class="lang-btn" id="g-btn-ja" onclick="setGlobalLang('ja')">日本語</button>
+</div>
+
+<!-- ===== SCREEN 1: 受信者一覧 ===== -->
+<div id="screen-list">
+  <div class="nav-tabs-wrap">
+    <button class="nav-tab-btn on" onclick="showMainTab('messages',this)">受信</button>
+    <button class="nav-tab-btn" onclick="showMainTab('manual',this)">マニュアル</button>
+    <button class="nav-tab-btn" onclick="showMainTab('zapier',this)">Zapier</button>
+  </div>
+
+  <!-- 受信タブ -->
+  <div id="tab-messages" class="tab-content on" style="padding:0;display:flex;flex-direction:column;flex:1;overflow:hidden;">
+    <div class="s1-toolbar">
+      <span class="s1-title">受信トレイ</span>
+      <span class="s1-count-badge" id="msg-count">0</span>
+      <div class="s1-filters">
+        <button class="s1-filter on" onclick="setFilter('all',this)">すべて</button>
+        <button class="s1-filter" onclick="setFilter('unread',this)">未読</button>
+        <button class="s1-filter" onclick="setFilter('starred',this)">★</button>
+        <button class="s1-filter" onclick="setFilter('sold',this)">SOLD</button>
+        <button class="s1-filter" onclick="setFilter('urgent',this)">要対応</button>
+        <button class="s1-filter" onclick="setFilter('replied',this)">返信済み</button>
       </div>
     </div>
-    <div id="pane-messages" class="main-pane active">
-      <div class="empty-state" id="empty-state">
-        <svg width="44" height="44" viewBox="0 0 44 44" fill="none"><rect x="6" y="6" width="32" height="32" rx="6" stroke="#d1d5db" stroke-width="2"/><path d="M14 18h16M14 24h10" stroke="#d1d5db" stroke-width="2" stroke-linecap="round"/></svg>
-        <div class="empty-text">メッセージを選択してください</div>
-      </div>
-      <div id="detail-wrap" class="detail-wrap">
-        <div class="detail-header">
-          <div class="detail-top-row">
-            <div id="d-thumb" class="product-thumb-ph">&#128230;</div>
-            <div class="detail-info">
-              <div class="detail-buyer-name">
-                <span id="d-name">&#8212;</span>
-                <span id="d-sold-pill" style="display:none;" class="sold-pill">SOLD</span>
-                <span id="d-replied-pill" style="display:none;" class="replied-pill">&#10003; 返信済</span>
-              </div>
-              <div class="detail-item-name" id="d-item-name">&#8212;</div>
-              <div class="link-row" id="d-link-row"></div>
-            </div>
-          </div>
-          <div class="copy-row" id="d-copy-row"></div>
-          <div class="action-chips">
-            <div class="action-chip" id="chip-star" onclick="toggleStar()">&#9734; 優先フラグ</div>
-            <div class="action-chip" id="chip-unread" onclick="markUnread()">&#9679; 未読に戻す</div>
-          </div>
-        </div>
-        <div class="chat-area" id="chat-area"></div>
-        <div class="memo-area">
-          <span class="memo-label-text">&#128221; メモ</span>
-          <input class="memo-input" id="memo-input" placeholder="メモを入力（例：要確認、外注に確認中）" onkeydown="if(event.key==='Enter')saveMemo()">
-          <button class="memo-save-btn" onclick="saveMemo()">保存</button>
-        </div>
-        <div class="reply-section">
-          <div class="reply-top-row">
-            <span class="reply-label">返信案</span>
-            <span class="status-badge" id="d-status"></span>
-            <select class="history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
-              <option value="-1">最新の返信案</option>
-            </select>
-          </div>
-          <div class="reply-split">
-            <div class="reply-col col-en">
-              <div class="reply-col-label"><span></span>英語（返信文）</div>
-              <div class="reply-box" id="d-reply" contenteditable="false"></div>
-            </div>
-            <div class="reply-col col-ja">
-              <div class="reply-col-label"><span></span>日本語訳</div>
-              <div class="reply-box-ja" id="d-reply-ja">&#8212;</div>
-            </div>
-          </div>
-          <div class="reply-actions-wrap">
-            <div class="canned-panel" id="canned-panel"></div>
-            <div class="reply-actions">
-              <button class="btn btn-accent" id="btn-copy-reply" onclick="copyReply()">返信文をコピー</button>
-              <button class="btn btn-ghost" onclick="regenReply()">再生成</button>
-              <button class="btn btn-warn" onclick="makeEditable()">手動修正</button>
-              <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="s1-table-header">
+      <div class="s1-th"></div>
+      <div class="s1-th">バイヤー / メッセージ</div>
+      <div class="s1-th">商品名</div>
+      <div class="s1-th">タグ</div>
+      <div class="s1-th">状態</div>
+      <div class="s1-th">受信日時</div>
+      <div class="s1-th">★</div>
     </div>
-    <div id="pane-manual" class="main-pane">
-      <div class="scroll-pane">
-        <h3>// 対応マニュアル</h3>
-        <p>ここに対応ルールを日本語で書いて保存。返信案の生成に毎回反映されます。使いながら追記することで精度が上がります。</p>
-        <textarea id="manual-text" placeholder="例：
+    <div class="s1-body" id="msg-list"></div>
+  </div>
+
+  <!-- マニュアルタブ -->
+  <div id="tab-manual" class="tab-content">
+    <h3>// 対応マニュアル</h3>
+    <p>ここに対応ルールを日本語で書いて保存。返信案の生成に毎回反映されます。</p>
+    <textarea id="manual-text" placeholder="例：
 ・値引きは一切しない。Make Offer機能を案内する。
 ・写真リクエストには「遠方の倉庫にあるため写真の送付は対応できない」と答える。
 ・返金・キャンセルは絶対に約束しない。「確認してから回答する」とだけ伝える。
 ・仕様の詳細は絶対に推測で答えない。「確認してから回答する」と伝える。
 ・在庫確認は「確認中です」と答える。在庫ありとは言わない。
 ・丁寧かつ簡潔に。名義はKenで返信する。"></textarea>
-        <div class="manual-actions">
-          <button class="btn btn-accent" onclick="saveManual()">保存</button>
-          <span class="save-msg" id="save-msg" style="display:none;">&#10003; 保存しました</span>
+    <div class="manual-actions">
+      <button class="btn btn-primary" onclick="saveManual()">保存</button>
+      <span class="save-ok" id="save-ok">&#10003; 保存しました</span>
+    </div>
+  </div>
+
+  <!-- Zapierタブ -->
+  <div id="tab-zapier" class="tab-content">
+    <h3>// Zapier連携セットアップ手順</h3>
+    <div class="step-card"><div class="step-num">STEP 01</div><div class="step-title">GmailトリガーをZapierで設定</div><div class="step-desc">Zapierで新規Zapを作成。トリガーに「Gmail」→「New Email（ラベル: eBay/ebay_msgs）」を選択。</div></div>
+    <div class="step-card"><div class="step-num">STEP 02</div><div class="step-title">Webhookでサーバーに送信</div><div class="step-desc">アクションに「Webhooks by Zapier」→「POST」。URL: https://ebay-reply.onrender.com/webhook<br>Data: buyer=From Name, message=Body Plain, subject=Subject</div></div>
+    <div class="step-card"><div class="step-num">STEP 03</div><div class="step-title">自動で返信案が生成される</div><div class="step-desc">eBayにメッセージが届くと自動でこのアプリに表示され、返信案（英語）と日本語訳が同時生成されます。</div></div>
+  </div>
+</div>
+
+<!-- ===== SCREEN 2: チャット全画面 ===== -->
+<div id="screen-chat">
+  <div class="s2-header">
+    <div class="s2-back" onclick="backToList()">&#8592; 受信一覧</div>
+    <div class="s2-sep"></div>
+    <div class="s2-buyer-name" id="d-name">—</div>
+    <div class="s2-header-tags" id="d-header-tags"></div>
+    <div class="s2-header-actions">
+      <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグ</button>
+      <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
+      <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()">&#10003; 返信済みにする</button>
+    </div>
+  </div>
+
+  <div class="s2-main">
+    <!-- チャットカラム -->
+    <div class="s2-chat-col">
+      <div class="chat-area" id="chat-area"></div>
+
+      <div class="reply-area">
+        <div class="reply-top">
+          <span class="reply-label">返信案</span>
+          <span class="reply-status" id="d-status"></span>
+          <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
+            <option value="-1">最新の返信案</option>
+          </select>
+        </div>
+        <div class="reply-split">
+          <div class="reply-col">
+            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--accent);"></span>英語（返信文）</div>
+            <div class="reply-box" id="d-reply" contenteditable="false"></div>
+          </div>
+          <div class="reply-col">
+            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--success);"></span>日本語訳</div>
+            <div class="reply-box-ja" id="d-reply-ja">&#8212;</div>
+          </div>
+        </div>
+        <div class="reply-actions">
+          <div class="canned-panel" id="canned-panel"></div>
+          <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">返信文をコピー</button>
+          <button class="btn btn-ghost" onclick="regenReply()">再生成</button>
+          <button class="btn btn-warn" onclick="makeEditable()">手動修正</button>
+          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
         </div>
       </div>
     </div>
-    <div id="pane-zapier" class="main-pane">
-      <div class="scroll-pane">
-        <h3>// Zapier連携セットアップ手順</h3>
-        <div class="step-card"><div class="step-num">STEP 01</div><div class="step-title">GmailトリガーをZapierで設定</div><div class="step-desc">Zapierで新規Zapを作成。トリガーに「Gmail」→「New Email（ラベル: eBay/ebay_msgs）」を選択。</div></div>
-        <div class="step-card"><div class="step-num">STEP 02</div><div class="step-title">Webhookでサーバーに送信</div><div class="step-desc">アクションに「Webhooks by Zapier」→「POST」。URL: https://ebay-reply.onrender.com/webhook</div></div>
-        <div class="step-card"><div class="step-num">STEP 03</div><div class="step-title">フィールドマッピング</div><div class="step-desc">buyer=From Name, message=Body Plain, subject=Subject をマッピング。</div></div>
-        <div class="step-card"><div class="step-num">STEP 04</div><div class="step-title">自動で返信案が生成される</div><div class="step-desc">eBayにメッセージが届くと自動でこのアプリに表示され、返信案（英語）と日本語訳が同時生成されます。</div></div>
+
+    <!-- 右パネル -->
+    <div class="s2-right-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab on" onclick="switchPanel('product',this)">商品</div>
+        <div class="panel-tab" onclick="switchPanel('buyer',this)">バイヤー</div>
+        <div class="panel-tab" onclick="switchPanel('memo',this)">メモ</div>
+      </div>
+
+      <!-- 商品パネル -->
+      <div id="panel-product" class="panel-body">
+        <div class="prod-img-wrap" id="prod-img-wrap">&#128230;</div>
+        <div class="prod-name" id="prod-name">—</div>
+        <div class="prod-kv" id="prod-kv"></div>
+        <div class="copy-chips-section">
+          <div class="copy-chips-label">ワンクリックコピー</div>
+          <div class="copy-chips" id="copy-chips"></div>
+        </div>
+      </div>
+
+      <!-- バイヤーパネル -->
+      <div id="panel-buyer" class="panel-body" style="display:none;">
+        <div class="buyer-panel-row">
+          <div class="buyer-panel-avatar" id="buyer-avatar"></div>
+          <div><div class="buyer-panel-name" id="buyer-panel-name">—</div><div class="buyer-panel-sub" id="buyer-panel-sub"></div></div>
+        </div>
+        <div class="buyer-links" id="buyer-links"></div>
+      </div>
+
+      <!-- メモパネル -->
+      <div id="panel-memo" class="panel-body" style="display:none;">
+        <div class="memo-panel">
+          <div class="memo-label">&#128221; メモ</div>
+          <textarea class="memo-textarea" id="memo-input" placeholder="ここにメモを入力（例：要確認、外注に確認中）"></textarea>
+          <button class="memo-save-btn" onclick="saveMemo()">保存</button>
+        </div>
       </div>
     </div>
   </div>
@@ -357,13 +406,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   var VALID_PW = 'ebayreply2026';
   var KEY = 'ebay_auth';
   function doLogin() {
-    var idVal = document.getElementById('id-input').value.trim();
-    var pwVal = document.getElementById('pw-input').value;
+    var id = document.getElementById('id-input').value.trim();
+    var pw = document.getElementById('pw-input').value;
     var btn = document.getElementById('login-btn');
     var err = document.getElementById('pw-error');
     btn.textContent = '確認中...'; btn.classList.add('loading'); err.style.display = 'none';
     setTimeout(function() {
-      if (idVal === VALID_ID && pwVal === VALID_PW) {
+      if (id === VALID_ID && pw === VALID_PW) {
         sessionStorage.setItem(KEY, '1');
         document.getElementById('login-screen').style.display = 'none';
       } else {
@@ -376,25 +425,24 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   function toggleEye() {
     var input = document.getElementById('pw-input');
     var btn = document.getElementById('eye-btn');
-    if (input.type === 'password') { input.type = 'text'; btn.style.color = 'var(--accent)'; }
-    else { input.type = 'password'; btn.style.color = ''; }
+    input.type = input.type === 'password' ? 'text' : 'password';
+    btn.style.color = input.type === 'text' ? 'var(--orange)' : '';
   }
-  window.doLogin = doLogin;
-  window.toggleEye = toggleEye;
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function() {
-      if (sessionStorage.getItem(KEY) === '1') { var ls = document.getElementById('login-screen'); if (ls) ls.style.display = 'none'; }
-    });
-  } else {
-    if (sessionStorage.getItem(KEY) === '1') { var ls = document.getElementById('login-screen'); if (ls) ls.style.display = 'none'; }
-  }
+  window.doLogin = doLogin; window.toggleEye = toggleEye;
+  var check = function() {
+    if (sessionStorage.getItem(KEY) === '1') {
+      var ls = document.getElementById('login-screen');
+      if (ls) ls.style.display = 'none';
+    }
+  };
+  document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', check) : check();
 })();
 
-// ===== アプリ本体 =====
+// ===== アプリ変数 =====
 var messages = [];
 var currentIdx = null;
 var currentFilter = 'all';
-var globalLang = 'orig';
+var searchQuery = '';
 var translationCache = {};
 var replyJaCache = {};
 var cannedOpen = false;
@@ -417,454 +465,444 @@ var TAG_DEFS = [
   {key:'urgent', label:'要対応', cls:'tag-urgent', test:function(m){return /refund|waiting.*respond|open.*case|ebay.*case|not.*received|haven.*received|still.*waiting|dispute|return.*money/i.test(m);}},
 ];
 function getTags(msg) {
-  var found = TAG_DEFS.filter(function(t) { return t.test(msg); });
-  return found.length ? found : [{key:'other', label:'その他', cls:'tag-other'}];
+  var found = TAG_DEFS.filter(function(t){return t.test(msg);});
+  return found.length ? found : [{key:'other',label:'その他',cls:'tag-other'}];
+}
+
+var AVATAR_COLORS = ['#dbeafe:#1e40af','#d1fae5:#065f46','#fef3c7:#92400e','#ede9fe:#6d28d9','#fee2e2:#b91c1c','#e0f2fe:#0369a1','#ffedd5:#9a3412'];
+function getAvatarStyle(buyer) {
+  var i = buyer.charCodeAt(0) % AVATAR_COLORS.length;
+  var parts = AVATAR_COLORS[i].split(':');
+  return 'background:' + parts[0] + ';color:' + parts[1] + ';';
 }
 
 var DEMO_DATA = [
-  {id:1,buyer:'frlask398',orderId:'03-12345-67890',itemId:'334567890123',item:'Major Craft Seabass Bass Rod Tide Lift',imgUrl:'',sold:false,read:false,starred:false,replied:false,memo:'',time:'01:29',date:'2026-04-14',history:[],msg:'What is the maximum casting weight ?',replyHistory:[],reply:'',status:'pending'},
+  {id:1,buyer:'frlask398',orderId:'03-12345-67890',itemId:'334567890123',item:'Major Craft Seabass Bass Rod Tide Lift',imgUrl:'',sold:false,read:false,starred:false,replied:false,memo:'',time:'01:29',date:'2026-04-14',history:[],msg:'What is the maximum casting weight?',replyHistory:[],reply:'',status:'pending'},
   {id:2,buyer:'mcalextu',orderId:'03-98765-43210',itemId:'303873725849',item:'Coleman Lantern Lumiere 205588',imgUrl:'',sold:true,read:false,starred:false,replied:false,memo:'',time:'04:31',date:'2026-04-14',
    history:[{from:'buyer',text:'Hi, I have a question about this item.',time:'2026-04-11 03:20'},{from:'me',text:'Thank you for your message! Please feel free to ask anything.',time:'2026-04-11 09:15'}],
    msg:'Hi I still waiting for the respond',replyHistory:[],reply:'',status:'pending'},
-  {id:3,buyer:'shattockd',orderId:'24-14411-18421',itemId:'305795300103',item:'FUJITSU ScanSnap S1500',imgUrl:'',sold:true,read:false,starred:true,replied:false,memo:'',time:'09:22',date:'2026-04-14',history:[],
-   msg:'Hi Ken, the rubber rollers that pull the paper through must be perished. The rollers feel sticky to touch. I don\'t think this can be sorted without replacing the rollers. Regards Dave',replyHistory:[],reply:'',status:'pending'},
+  {id:3,buyer:'shattockd',orderId:'24-14411-18421',itemId:'305795300103',item:'FUJITSU ScanSnap S1500',imgUrl:'',sold:true,read:false,starred:true,replied:false,memo:'ローラー交換の件要確認',time:'09:22',date:'2026-04-14',history:[],
+   msg:'Hi Ken, the rubber rollers must be perished. The rollers feel sticky to touch. Regards Dave',replyHistory:[],reply:'',status:'pending'},
   {id:4,buyer:'gib-9689',orderId:'',itemId:'306203867233',item:'High School DxD Light Novel Vol.1-25',imgUrl:'',sold:false,read:false,starred:false,replied:false,memo:'',time:'09:05',date:'2026-04-16',history:[],
    msg:'So have no drawings is only written right?',replyHistory:[],reply:'',status:'pending'},
   {id:5,buyer:'carlos_mx',orderId:'',itemId:'',item:'Tokina Macro Lens FIRIN 100mm F2.8',imgUrl:'',sold:false,read:false,starred:false,replied:false,memo:'',time:'23:10',date:'2026-04-13',history:[],
    msg:'donde puedo ver la fecha de entrega? Gracias',replyHistory:[],reply:'',status:'pending'},
 ];
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escAttr(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n'); }
-function toJST(ts) {
-  if (!ts) return {date:'', time:''};
-  var d = new Date(ts);
-  if (isNaN(d)) { var p = String(ts).split(' '); return {date:p[0]||'', time:p[1]||''}; }
-  return {
-    date: d.toLocaleDateString('ja-JP', {timeZone:'Asia/Tokyo'}),
-    time: d.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', timeZone:'Asia/Tokyo'})
-  };
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');}
+function toJST(ts){
+  if(!ts) return {date:'',time:''};
+  var d=new Date(ts);
+  if(isNaN(d)){var p=String(ts).split(' ');return {date:p[0]||'',time:p[1]||''};}
+  return {date:d.toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'}),time:d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'})};
 }
 
-function renderList() {
-  var el = document.getElementById('msg-list');
-  var filtered = messages.filter(function(m) {
-    if (currentFilter === 'unread') return !m.read;
-    if (currentFilter === 'starred') return m.starred;
-    if (currentFilter === 'sold') return m.sold;
-    if (currentFilter === 'urgent') { var u = TAG_DEFS.filter(function(t){return t.key==='urgent';})[0]; return u && u.test(m.msg); }
-    if (currentFilter === 'replied') return m.replied;
+// ===== 状態保存 =====
+function saveState(m){
+  if(!m||!m.id) return;
+  fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:m.id,read:m.read,starred:m.starred,replied:m.replied,memo:m.memo||''})}).catch(function(){});
+}
+
+// ===== 画面切り替え =====
+function backToList(){
+  document.getElementById('screen-list').style.display='flex';
+  document.getElementById('screen-chat').style.display='none';
+  renderList();
+}
+function showChat(){
+  document.getElementById('screen-list').style.display='none';
+  document.getElementById('screen-chat').style.display='flex';
+}
+function showMainTab(name, btn){
+  document.querySelectorAll('.nav-tab-btn').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('on');});
+  var t = document.getElementById('tab-'+name);
+  if(t) t.classList.add('on');
+}
+
+// ===== フィルター・検索 =====
+function setFilter(f,btn){
+  currentFilter=f;
+  document.querySelectorAll('.s1-filter').forEach(function(b){b.classList.remove('on');});
+  btn.classList.add('on');
+  renderList();
+}
+function onSearch(q){
+  searchQuery=q.toLowerCase();
+  renderList();
+}
+
+// ===== 一覧レンダリング =====
+function renderList(){
+  var el=document.getElementById('msg-list');
+  var unread=messages.filter(function(m){return !m.read;}).length;
+  var urgent=messages.filter(function(m){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}).length;
+  document.getElementById('msg-count').textContent=messages.length+'件 / 未読'+unread;
+  document.getElementById('h-unread-count').textContent=unread;
+  document.getElementById('h-urgent-count').textContent=urgent;
+
+  var filtered=messages.filter(function(m){
+    if(currentFilter==='unread') return !m.read;
+    if(currentFilter==='starred') return m.starred;
+    if(currentFilter==='sold') return m.sold;
+    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
+    if(currentFilter==='replied') return m.replied;
     return true;
   });
-  var unread = messages.filter(function(m){return !m.read;}).length;
-  document.getElementById('msg-count').textContent = unread > 0 ? ('未読 ' + unread) : (messages.length + '件');
-  if (!filtered.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">該当なし</div>'; return; }
-  el.innerHTML = filtered.map(function(m) {
-    var ri = messages.indexOf(m);
-    var tags = getTags(m.msg);
-    var tagsHtml = tags.map(function(t){return '<span class="tag ' + t.cls + '">' + t.label + '</span>';}).join('');
-    return '<div class="msg-item ' + (currentIdx===ri?'active':'') + ' ' + (m.read?'read':'') + '" onclick="selectMsg(' + ri + ')">'
-      + '<div class="msg-item-left">'
-      + (!m.read ? '<div class="unread-dot"></div>' : '<div style="width:8px;height:8px;"></div>')
-      + '<button class="star-btn ' + (m.starred?'starred':'') + '" onclick="event.stopPropagation();toggleStarIdx(' + ri + ')">' + (m.starred?'&#9733;':'&#9734;') + '</button>'
-      + '</div><div class="msg-body">'
-      + '<div class="msg-top-row"><span class="msg-buyer">' + esc(m.buyer) + '</span>'
-      + '<div class="msg-right"><span class="msg-time">' + (m.time||'') + '</span>'
-      + (m.sold ? '<span class="sold-pill">SOLD</span>' : '')
-      + (m.replied ? '<span class="replied-pill">&#10003;</span>' : '')
-      + '</div></div>'
-      + '<div class="msg-item-name">' + esc(m.item||'') + '</div>'
-      + '<div class="msg-tags">' + tagsHtml + '</div>'
-      + '<div class="msg-preview">' + (m.memo ? '&#128221; '+esc(m.memo) : esc(m.msg)) + '</div>'
-      + '</div></div>';
+  if(searchQuery){
+    filtered=filtered.filter(function(m){
+      return m.buyer.toLowerCase().includes(searchQuery)||
+        (m.item||'').toLowerCase().includes(searchQuery)||
+        (m.orderId||'').toLowerCase().includes(searchQuery)||
+        (m.msg||'').toLowerCase().includes(searchQuery);
+    });
+  }
+  if(!filtered.length){el.innerHTML='<div class="s1-empty">該当するメッセージがありません</div>';return;}
+
+  el.innerHTML=filtered.map(function(m){
+    var ri=messages.indexOf(m);
+    var tags=getTags(m.msg);
+    var tagsHtml=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
+    var initials=m.buyer.charAt(0).toUpperCase();
+    var avatarStyle=getAvatarStyle(m.buyer);
+    var statusHtml='';
+    if(m.sold) statusHtml+='<span class="s1-sold-badge">SOLD</span> ';
+    if(m.replied) statusHtml+='<span class="s1-replied-badge">&#10003; 返信済み</span>';
+    if(!m.sold&&!m.replied) statusHtml='—';
+    return '<div class="s1-row '+(m.read?'read':'unread')+'" onclick="selectMsg('+ri+')">'
+      +'<div>'+(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')+'</div>'
+      +'<div class="s1-buyer-cell">'
+        +'<div class="s1-avatar" style="'+avatarStyle+'">'+initials+'</div>'
+        +'<div class="s1-buyer-info">'
+          +'<div class="s1-buyer-name">'+esc(m.buyer)+'</div>'
+          +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
+        +'</div>'
+      +'</div>'
+      +'<div class="s1-item-name">'+esc(m.item||'—')+'</div>'
+      +'<div class="s1-tags">'+tagsHtml+'</div>'
+      +'<div>'+statusHtml+'</div>'
+      +'<div class="s1-time">'+(m.time||m.date||'')+'</div>'
+      +'<div><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>'
+      +'</div>';
   }).join('');
 }
 
-function setFilter(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active'); renderList();
+function toggleStarIdx(i){
+  messages[i].starred=!messages[i].starred;
+  saveState(messages[i]);
+  renderList();
+  if(currentIdx===i) updateStarBtn();
 }
 
-function selectMsg(i) {
-  currentIdx = i;
-  var m = messages[i];
-  m.read = true;
+// ===== メッセージ選択 =====
+function selectMsg(i){
+  currentIdx=i;
+  var m=messages[i];
+  m.read=true;
   saveState(m);
-  renderList();
-  document.getElementById('empty-state').style.display = 'none';
-  document.getElementById('detail-wrap').style.display = 'flex';
+  showChat();
+  renderChatDetail();
+}
 
-  // 商品画像：imgUrl優先、なければItemIDからeBay画像URL生成
-  var thumbEl = document.getElementById('d-thumb');
-  var thumbUrl = m.imgUrl || (m.itemId ? ('https://i.ebayimg.com/images/g/' + m.itemId + '/s-l225.jpg') : '');
-  if (thumbUrl) {
-    var img = document.createElement('img');
-    img.id = 'd-thumb'; img.className = 'product-thumb'; img.src = thumbUrl;
-    img.onerror = function() {
-      var d2 = document.createElement('div');
-      d2.id = 'd-thumb'; d2.className = 'product-thumb-ph';
-      d2.innerHTML = m.itemId ? '<a href="https://www.ebay.com/itm/'+m.itemId+'" target="_blank" style="font-size:9px;color:var(--accent);text-decoration:none;line-height:1.3;display:flex;flex-direction:column;align-items:center;">&#128247;<br>eBay</a>' : '&#128230;';
-      this.replaceWith(d2);
-    };
-    thumbEl.replaceWith(img);
+function renderChatDetail(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+
+  // ヘッダー
+  document.getElementById('d-name').textContent=m.buyer;
+  var tags=getTags(m.msg);
+  document.getElementById('d-header-tags').innerHTML=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
+  updateStarBtn();
+  var repliedBtn=document.getElementById('btn-replied');
+  if(m.replied){repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');}
+  else{repliedBtn.textContent='&#10003; 返信済みにする';repliedBtn.classList.remove('done');}
+
+  // 右パネル：商品
+  var imgWrap=document.getElementById('prod-img-wrap');
+  var thumbUrl=m.imgUrl||(m.itemId?('https://i.ebayimg.com/images/g/'+m.itemId+'/s-l225.jpg'):'');
+  if(thumbUrl){
+    imgWrap.innerHTML='<img src="'+thumbUrl+'" onerror="this.parentElement.innerHTML=\'&#128230;\'" style="width:100%;height:100%;object-fit:cover;">';
   } else {
-    if (thumbEl.tagName === 'IMG') {
-      var d2 = document.createElement('div');
-      d2.id = 'd-thumb'; d2.className = 'product-thumb-ph'; d2.textContent = '📦';
-      thumbEl.replaceWith(d2);
-    }
+    imgWrap.innerHTML='&#128230;';
   }
-  document.getElementById('d-name').textContent = m.buyer;
-  document.getElementById('d-sold-pill').style.display = m.sold ? 'inline' : 'none';
-  document.getElementById('d-replied-pill').style.display = m.replied ? 'inline' : 'none';
-  document.getElementById('d-item-name').textContent = m.item || '（商品名なし）';
-  var linkHtml = '';
-  if (m.orderId) linkHtml += '<a class="link-chip" href="https://www.ebay.com/mesh/ord/details?orderid=' + encodeURIComponent(m.orderId) + '" target="_blank">&#128279; Order: ' + esc(m.orderId) + '</a>';
-  if (m.itemId) linkHtml += '<a class="link-chip" href="https://www.ebay.com/itm/' + esc(m.itemId) + '" target="_blank">&#128279; Item: ' + esc(m.itemId) + '</a>';
-  document.getElementById('d-link-row').innerHTML = linkHtml;
-  var copyHtml = '<div class="chip" onclick="copyChip(\'' + escAttr(m.buyer) + '\',this)">&#128100; ' + esc(m.buyer) + '</div>';
-  if (m.orderId) copyHtml += '<div class="chip" onclick="copyChip(\'' + escAttr(m.orderId) + '\',this)">&#128203; Order番号</div>';
-  if (m.itemId) copyHtml += '<div class="chip" onclick="copyChip(\'' + escAttr(m.itemId) + '\',this)">&#128204; Item ID</div>';
-  copyHtml += '<div class="chip" onclick="copyChip(' + JSON.stringify(m.msg) + ',this)">&#128172; メッセージ</div>';
-  document.getElementById('d-copy-row').innerHTML = copyHtml;
-  var sc = document.getElementById('chip-star');
-  sc.textContent = m.starred ? '★ フラグ解除' : '☆ 優先フラグ';
-  sc.classList.toggle('active-chip', m.starred);
-  document.getElementById('memo-input').value = m.memo || '';
+  document.getElementById('prod-name').textContent=m.item||'（商品名なし）';
+  var kvHtml='';
+  if(m.orderId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">注文番号</span><a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">'+esc(m.orderId)+'</a></div>';
+  if(m.itemId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">Item ID</span><a class="kv-v link" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">'+esc(m.itemId)+'</a></div>';
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">SOLD</span><span class="kv-v">'+(m.sold?'<span class="s1-sold-badge">SOLD</span>':'—')+'</span></div>';
+  document.getElementById('prod-kv').innerHTML=kvHtml;
+
+  // コピーチップ
+  var chipHtml='<div class="copy-chip" onclick="copyText(\''+escAttr(m.buyer)+'\',this)">&#128100; '+esc(m.buyer)+'</div>';
+  if(m.orderId) chipHtml+='<div class="copy-chip" onclick="copyText(\''+escAttr(m.orderId)+'\',this)">&#128203; 注文番号</div>';
+  if(m.itemId) chipHtml+='<div class="copy-chip" onclick="copyText(\''+escAttr(m.itemId)+'\',this)">&#128204; Item ID</div>';
+  chipHtml+='<div class="copy-chip" onclick="copyText('+JSON.stringify(m.msg)+',this)">&#128172; メッセージ</div>';
+  document.getElementById('copy-chips').innerHTML=chipHtml;
+
+  // バイヤーパネル
+  var initials=m.buyer.charAt(0).toUpperCase();
+  var avatarStyle=getAvatarStyle(m.buyer);
+  document.getElementById('buyer-avatar').style.cssText=avatarStyle;
+  document.getElementById('buyer-avatar').textContent=initials;
+  document.getElementById('buyer-panel-name').textContent=m.buyer;
+  document.getElementById('buyer-panel-sub').textContent='';
+  var linksHtml='';
+  if(m.orderId) linksHtml+='<a class="buyer-link-chip" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">&#128279; Orderページを開く</a>';
+  if(m.itemId) linksHtml+='<a class="buyer-link-chip" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">&#128279; 商品ページを開く</a>';
+  document.getElementById('buyer-links').innerHTML=linksHtml;
+
+  // メモ
+  document.getElementById('memo-input').value=m.memo||'';
+
+  // チャット
   renderChatBubbles();
   updateReplyHistorySelect();
-  document.getElementById('d-reply-ja').textContent = '—';
-  if (m.reply) {
-    document.getElementById('d-reply').textContent = m.reply;
-    document.getElementById('d-reply').contentEditable = 'false';
+
+  // 返信案
+  document.getElementById('d-reply-ja').textContent='—';
+  if(m.reply){
+    document.getElementById('d-reply').textContent=m.reply;
+    document.getElementById('d-reply').contentEditable='false';
     document.getElementById('d-reply').classList.remove('editable');
-    var s = document.getElementById('d-status'); s.className = 'status-badge status-done'; s.textContent = '生成済み';
-    translateReply(i);
-  } else { generateReply(i); }
+    var s=document.getElementById('d-status');s.className='reply-status status-done';s.textContent='生成済み';
+    translateReply(currentIdx);
+  } else {
+    generateReply(currentIdx);
+  }
   closeCanned();
 }
 
-function renderChatBubbles() {
-  if (currentIdx === null) return;
-  var m = messages[currentIdx];
-  var cache = translationCache[m.id];
-  var el = document.getElementById('chat-area');
-  var html = '';
-  var allItems = (m.history||[]).map(function(h, idx) { return {from:h.from, text:h.text, time:h.time||'', isNew:false, hIdx:idx}; });
-  allItems.push({from:'buyer', text:m.msg, time:(m.date + ' ' + m.time), isNew:true, hIdx:allItems.length});
-  allItems.forEach(function(h) {
-    var side = h.from === 'me' ? 'mine' : 'theirs';
-    var who = h.from === 'me' ? 'Ken' : m.buyer;
-    var text = h.text;
-    if (globalLang === 'ja' && cache) {
-      text = h.isNew ? (cache.newMsg||h.text) : (cache.history&&cache.history[h.hIdx]||h.text);
-    }
-    if (h.isNew && (m.history||[]).length > 0) html += '<div class="new-badge">&#8595; 新着メッセージ</div>';
-    html += '<div class="chat-bubble-wrap ' + side + (h.isNew?' new-msg':'') + '">'
-      + '<div class="chat-bubble">' + esc(text) + '</div>'
-      + '<div class="chat-meta">' + esc(who) + ' &nbsp;·&nbsp; ' + h.time + '</div></div>';
+function updateStarBtn(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  var btn=document.getElementById('btn-star');
+  btn.textContent=m.starred?'★ フラグ解除':'☆ フラグ';
+  btn.classList.toggle('on',m.starred);
+}
+
+function renderChatBubbles(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  var el=document.getElementById('chat-area');
+  var html='';
+  var allItems=(m.history||[]).map(function(h,idx){return {from:h.from,text:h.text,time:h.time||'',isNew:false,hIdx:idx};});
+  allItems.push({from:'buyer',text:m.msg,time:(m.date+' '+m.time),isNew:true,hIdx:allItems.length});
+  allItems.forEach(function(h){
+    var side=h.from==='me'?'mine':'theirs';
+    var who=h.from==='me'?'Ken':m.buyer;
+    if(h.isNew&&(m.history||[]).length>0) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
+    html+='<div class="bbl-wrap '+side+'">'
+      +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
+      +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+h.time+'</div>'
+      +'</div>';
   });
-  el.innerHTML = html; el.scrollTop = el.scrollHeight;
+  el.innerHTML=html;
+  el.scrollTop=el.scrollHeight;
 }
 
-async function setGlobalLang(lang) {
-  globalLang = lang;
-  document.getElementById('g-btn-orig').classList.toggle('active', lang==='orig');
-  document.getElementById('g-btn-ja').classList.toggle('active', lang==='ja');
-  if (lang === 'orig') { renderChatBubbles(); return; }
-  if (currentIdx === null) return;
-  var m = messages[currentIdx];
-  if (translationCache[m.id]) { renderChatBubbles(); return; }
-  var jaBtn = document.getElementById('g-btn-ja');
-  jaBtn.classList.add('loading'); jaBtn.textContent = '翻訳中...';
-  await translateMsg(m);
-  jaBtn.classList.remove('loading'); jaBtn.textContent = '日本語';
-  if (globalLang === 'ja') renderChatBubbles();
+// ===== アクション =====
+function toggleStar(){
+  if(currentIdx===null) return;
+  messages[currentIdx].starred=!messages[currentIdx].starred;
+  saveState(messages[currentIdx]);
+  updateStarBtn();
+  renderList();
+}
+function markUnread(){
+  if(currentIdx===null) return;
+  messages[currentIdx].read=false;
+  saveState(messages[currentIdx]);
+  backToList();
+}
+function markReplied(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  m.replied=!m.replied;
+  saveState(m);
+  var btn=document.getElementById('btn-replied');
+  if(m.replied){btn.textContent='&#10003; 返信済み';btn.classList.add('done');}
+  else{btn.textContent='&#10003; 返信済みにする';btn.classList.remove('done');}
+}
+function saveMemo(){
+  if(currentIdx===null) return;
+  messages[currentIdx].memo=document.getElementById('memo-input').value.trim();
+  saveState(messages[currentIdx]);
+}
+function switchPanel(name,tab){
+  document.querySelectorAll('.panel-tab').forEach(function(t){t.classList.remove('on');});
+  tab.classList.add('on');
+  var panels=['product','buyer','memo'];
+  panels.forEach(function(p){
+    var el=document.getElementById('panel-'+p);
+    if(el) el.style.display=p===name?'flex':'none';
+  });
+}
+function copyText(text,el){
+  navigator.clipboard.writeText(text).then(function(){
+    el.classList.add('copied');
+    setTimeout(function(){el.classList.remove('copied');},1500);
+  });
+}
+function copyReply(){
+  navigator.clipboard.writeText(document.getElementById('d-reply').innerText).then(function(){
+    var m=messages[currentIdx];
+    if(m){m.replied=true;saveState(m);}
+    var btn=document.getElementById('btn-reply');
+    var copyBtn=document.getElementById('btn-copy-reply');
+    copyBtn.textContent='&#10003; コピー済み';copyBtn.classList.add('copied');
+    setTimeout(function(){copyBtn.textContent='返信文をコピー';copyBtn.classList.remove('copied');},1800);
+    var repliedBtn=document.getElementById('btn-replied');
+    repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');
+  });
 }
 
-async function translateMsg(m) {
-  var allTexts = (m.history||[]).map(function(h){return h.text;});
-  allTexts.push(m.msg);
-  try {
-    var res = await fetch('/api/claude', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:1500,
-        messages:[{role:'user', content:'以下のメッセージをすべて日本語に翻訳してください。各メッセージを「---」で区切って、翻訳文だけを出力してください。説明は不要です。\n\n' + allTexts.join('\n---\n')}]})
-    });
-    var data = await res.json();
-    var raw = (data.content && data.content[0] && data.content[0].text) || '';
-    var parts = raw.split(/\n?---\n?/);
-    var histLen = (m.history||[]).length;
-    translationCache[m.id] = {
-      history: parts.slice(0, histLen).map(function(s){return s.trim();}),
-      newMsg: (parts[histLen] || m.msg).trim()
-    };
-  } catch(e) { console.error('Translation error', e); }
+// ===== 定型文 =====
+function toggleCanned(){
+  cannedOpen=!cannedOpen;
+  var panel=document.getElementById('canned-panel');
+  var btn=document.getElementById('btn-canned');
+  if(cannedOpen){
+    panel.innerHTML=CANNED.map(function(c,i){
+      return '<div class="canned-item" onclick="insertCanned('+i+')">'
+        +'<strong>'+c.label+'</strong>'+esc(c.text.substring(0,55))+'...'
+        +'</div>';
+    }).join('');
+    panel.classList.add('open');btn.style.color='var(--orange)';
+  } else {closeCanned();}
+}
+function closeCanned(){cannedOpen=false;document.getElementById('canned-panel').classList.remove('open');document.getElementById('btn-canned').style.color='';}
+function insertCanned(i){
+  var m=messages[currentIdx];
+  var el=document.getElementById('d-reply');
+  el.textContent=CANNED[i].text;
+  el.contentEditable='false';el.classList.remove('editable');
+  if(m) m.reply=CANNED[i].text;
+  closeCanned();translateReply(currentIdx);
 }
 
-async function translateReply(i) {
-  var m = messages[i];
-  if (!m.reply) return;
-  var jaEl = document.getElementById('d-reply-ja');
-  var cacheKey = m.reply.substring(0, 40);
-  if (!replyJaCache[m.id]) replyJaCache[m.id] = {};
-  if (replyJaCache[m.id][cacheKey]) { jaEl.textContent = replyJaCache[m.id][cacheKey]; return; }
-  jaEl.textContent = '翻訳中...';
-  try {
-    var res = await fetch('/api/claude', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:600,
-        messages:[{role:'user', content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n' + m.reply}]})
-    });
-    var data = await res.json();
-    var text = ((data.content && data.content[0] && data.content[0].text) || '').trim();
-    replyJaCache[m.id][cacheKey] = text;
-    if (currentIdx === i) jaEl.textContent = text;
-  } catch(e) { if (currentIdx === i) jaEl.textContent = '（翻訳エラー）'; }
+// ===== 返信案生成 =====
+async function generateReply(i){
+  var m=messages[i];
+  var sEl=document.getElementById('d-status');
+  var rEl=document.getElementById('d-reply');
+  var jaEl=document.getElementById('d-reply-ja');
+  sEl.className='reply-status status-generating';sEl.textContent='生成中...';
+  rEl.textContent='返信案を生成中です...';jaEl.textContent='—';
+  rEl.contentEditable='false';rEl.classList.remove('editable');
+  var manual=localStorage.getItem('ebay_manual')||'';
+  var manualSection=manual?'\n\n【対応マニュアル（必ず厳守）】\n'+manual:'';
+  var histText=(m.history||[]).map(function(h){return (h.from==='me'?'Ken':m.buyer)+': '+h.text;}).join('\n');
+  var histSection=histText?'\n\n【過去のやり取り】\n'+histText:'';
+  var prompt='あなたはeBay輸出セラーのメッセージ返信アシスタントです。'+manualSection+histSection
+    +'\nバイヤー名: '+m.buyer+'\n商品: '+(m.item||'不明')+'\n購入状況: '+(m.sold?'購入済み (SOLD)':'問い合わせのみ（未購入）')
+    +'\n新着メッセージ: '+m.msg
+    +'\n【出力ルール】\n- 英語返信文のみ出力（説明・前置き・件名不要）\n- 約束できないことは約束しない\n- 確認が必要な事項は「確認してから回答する」旨を伝える\n- 過去のやり取りがある場合はその文脈を考慮する\n- 丁寧かつ簡潔に';
+  try{
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})});
+    var data=await res.json();
+    var text=(data.content&&data.content[0]&&data.content[0].text)||'エラーが発生しました。再生成してください。';
+    if(m.reply) m.replyHistory.push(m.reply);
+    m.reply=text;m.status='done';
+    if(currentIdx===i){
+      rEl.textContent=text;
+      sEl.className='reply-status status-done';sEl.textContent='生成済み';
+      updateReplyHistorySelect();translateReply(i);
+    }
+  }catch(e){
+    if(currentIdx===i){rEl.textContent='エラー。再生成してください。';sEl.className='reply-status status-error';sEl.textContent='エラー';}
+  }
+}
+function regenReply(){if(currentIdx===null) return;messages[currentIdx].status='pending';generateReply(currentIdx);}
+function makeEditable(){
+  var el=document.getElementById('d-reply');
+  el.contentEditable='true';el.classList.add('editable');el.focus();
+  var s=document.getElementById('d-status');s.className='reply-status';s.style.cssText='background:#fef3c7;color:var(--warn);';s.textContent='手動修正中';
 }
 
-function updateReplyHistorySelect() {
-  if (currentIdx === null) return;
-  var m = messages[currentIdx];
-  var sel = document.getElementById('reply-history-select');
-  if (!m.replyHistory || m.replyHistory.length === 0) { sel.style.display='none'; return; }
-  sel.style.display = 'inline';
-  sel.innerHTML = '<option value="-1">最新の返信案</option>'
-    + m.replyHistory.map(function(r,i){return '<option value="'+i+'">過去の案 '+(i+1)+'</option>';}).join('');
-  sel.value = '-1';
+// ===== 翻訳 =====
+async function translateReply(i){
+  var m=messages[i];
+  if(!m.reply) return;
+  var jaEl=document.getElementById('d-reply-ja');
+  var cacheKey=m.reply.substring(0,40);
+  if(!replyJaCache[m.id]) replyJaCache[m.id]={};
+  if(replyJaCache[m.id][cacheKey]){jaEl.textContent=replyJaCache[m.id][cacheKey];return;}
+  jaEl.textContent='翻訳中...';
+  try{
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply}]})});
+    var data=await res.json();
+    var text=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+    replyJaCache[m.id][cacheKey]=text;
+    if(currentIdx===i) jaEl.textContent=text;
+  }catch(e){if(currentIdx===i) jaEl.textContent='（翻訳エラー）';}
 }
 
-function loadReplyFromHistory() {
-  if (currentIdx === null) return;
-  var m = messages[currentIdx];
-  var sel = document.getElementById('reply-history-select');
-  var v = parseInt(sel.value);
-  var el = document.getElementById('d-reply');
-  if (v === -1) { el.textContent = m.reply || ''; }
-  else if (m.replyHistory && m.replyHistory[v]) { el.textContent = m.replyHistory[v]; }
-  el.contentEditable = 'false'; el.classList.remove('editable');
+function updateReplyHistorySelect(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  var sel=document.getElementById('reply-history-select');
+  if(!m.replyHistory||m.replyHistory.length===0){sel.style.display='none';return;}
+  sel.style.display='inline';
+  sel.innerHTML='<option value="-1">最新の返信案</option>'+m.replyHistory.map(function(r,i){return '<option value="'+i+'">過去の案 '+(i+1)+'</option>';}).join('');
+  sel.value='-1';
+}
+function loadReplyFromHistory(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  var sel=document.getElementById('reply-history-select');
+  var v=parseInt(sel.value);
+  var el=document.getElementById('d-reply');
+  if(v===-1){el.textContent=m.reply||'';}
+  else if(m.replyHistory&&m.replyHistory[v]){el.textContent=m.replyHistory[v];}
+  el.contentEditable='false';el.classList.remove('editable');
   translateReply(currentIdx);
 }
 
-function toggleStar() {
-  if (currentIdx === null) return;
-  toggleStarIdx(currentIdx);
-  var m = messages[currentIdx];
-  var sc = document.getElementById('chip-star');
-  sc.textContent = m.starred ? '★ フラグ解除' : '☆ 優先フラグ';
-  sc.classList.toggle('active-chip', m.starred);
-}
-function toggleStarIdx(i) {
-  messages[i].starred = !messages[i].starred;
-  saveState(messages[i]);
-  renderList();
-}
-function markUnread() {
-  if (currentIdx === null) return;
-  messages[currentIdx].read = false;
-  saveState(messages[currentIdx]);
-  renderList();
-}
-function saveMemo() {
-  if (currentIdx === null) return;
-  messages[currentIdx].memo = document.getElementById('memo-input').value.trim();
-  saveState(messages[currentIdx]);
-  renderList();
+// ===== マニュアル =====
+function saveManual(){
+  localStorage.setItem('ebay_manual',document.getElementById('manual-text').value);
+  var ok=document.getElementById('save-ok');ok.style.display='inline';
+  setTimeout(function(){ok.style.display='none';},2500);
 }
 
-function toggleCanned() {
-  cannedOpen = !cannedOpen;
-  var panel = document.getElementById('canned-panel');
-  var btn = document.getElementById('btn-canned');
-  if (cannedOpen) {
-    panel.innerHTML = CANNED.map(function(c, i) {
-      return '<div class="canned-item" onclick="insertCanned('+i+')">'
-        + '<strong>' + c.label + '</strong>' + esc(c.text.substring(0, 55)) + '...' + '</div>';
-    }).join('');
-    panel.classList.add('open'); btn.style.color = 'var(--accent)';
-  } else { closeCanned(); }
-}
-function closeCanned() { cannedOpen = false; document.getElementById('canned-panel').classList.remove('open'); document.getElementById('btn-canned').style.color = ''; }
-function insertCanned(i) {
-  var m = messages[currentIdx];
-  var el = document.getElementById('d-reply');
-  el.textContent = CANNED[i].text;
-  el.contentEditable = 'false'; el.classList.remove('editable');
-  if (m) m.reply = CANNED[i].text;
-  closeCanned(); translateReply(currentIdx);
+// ===== デモ =====
+function loadDemo(){
+  if(messages.length>0&&!confirm('現在のメッセージをクリアしてデモデータを読み込みますか？')) return;
+  messages=JSON.parse(JSON.stringify(DEMO_DATA));
+  currentIdx=null;translationCache={};replyJaCache={};
+  backToList();renderList();
 }
 
-async function generateReply(i) {
-  var m = messages[i];
-  var statusEl = document.getElementById('d-status');
-  var replyEl = document.getElementById('d-reply');
-  var jaEl = document.getElementById('d-reply-ja');
-  statusEl.className = 'status-badge status-generating'; statusEl.textContent = '生成中...';
-  replyEl.textContent = '返信案を生成中です...'; jaEl.textContent = '—';
-  replyEl.contentEditable = 'false'; replyEl.classList.remove('editable');
-  var manual = localStorage.getItem('ebay_manual') || '';
-  var manualSection = manual ? '\n\n【対応マニュアル（必ず厳守）】\n' + manual : '';
-  var historyText = (m.history||[]).map(function(h){return (h.from==='me'?'Ken':m.buyer)+': '+h.text;}).join('\n');
-  var historySection = historyText ? '\n\n【過去のやり取り】\n' + historyText : '';
-  var prompt = 'あなたはeBay輸出セラーのメッセージ返信アシスタントです。'
-    + manualSection + historySection
-    + '\nバイヤー名: ' + m.buyer
-    + '\n商品: ' + (m.item||'不明')
-    + '\n購入状況: ' + (m.sold ? '購入済み (SOLD)' : '問い合わせのみ（未購入）')
-    + '\n新着メッセージ: ' + m.msg
-    + '\n【出力ルール】\n- 英語返信文のみ出力（説明・前置き・件名不要）\n- 約束できないことは約束しない\n- 確認が必要な事項は「確認してから回答する」旨を伝える\n- 過去のやり取りがある場合はその文脈を考慮する\n- 丁寧かつ簡潔に';
-  try {
-    var res = await fetch('/api/claude', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({model:'claude-sonnet-4-20250514', max_tokens:600, messages:[{role:'user', content:prompt}]})
-    });
-    var data = await res.json();
-    var text = (data.content && data.content[0] && data.content[0].text) || 'エラーが発生しました。再生成してください。';
-    if (m.reply) m.replyHistory.push(m.reply);
-    m.reply = text; m.status = 'done';
-    if (currentIdx === i) {
-      replyEl.textContent = text;
-      statusEl.className = 'status-badge status-done'; statusEl.textContent = '生成済み';
-      updateReplyHistorySelect(); translateReply(i);
-    }
-  } catch(e) {
-    if (currentIdx === i) { replyEl.textContent = 'エラー。再生成してください。'; statusEl.className = 'status-badge status-error'; statusEl.textContent = 'エラー'; }
-  }
-}
-
-function regenReply() { if (currentIdx === null) return; messages[currentIdx].status = 'pending'; generateReply(currentIdx); }
-function makeEditable() {
-  var el = document.getElementById('d-reply');
-  el.contentEditable = 'true'; el.classList.add('editable'); el.focus();
-  var s = document.getElementById('d-status'); s.className = 'status-badge'; s.style.cssText = 'background:#fef3c7;color:var(--warn);'; s.textContent = '手動修正中';
-}
-function copyReply() {
-  navigator.clipboard.writeText(document.getElementById('d-reply').innerText).then(function() {
-    if (currentIdx !== null) {
-      messages[currentIdx].replied = true;
-      saveState(messages[currentIdx]);
-      renderList();
-      document.getElementById('d-replied-pill').style.display = 'inline';
-    }
-    var btn = document.getElementById('btn-copy-reply');
-    btn.textContent = '&#10003; コピー済み'; btn.classList.add('copied');
-    setTimeout(function(){ btn.textContent='返信文をコピー'; btn.classList.remove('copied'); }, 1800);
-  });
-}
-function copyChip(text, el) {
-  navigator.clipboard.writeText(text).then(function(){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); }, 1500); });
-}
-function showNav(name, btn) {
-  document.querySelectorAll('.main-pane').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
-  document.getElementById('pane-'+name).classList.add('active'); btn.classList.add('active');
-}
-function saveManual() {
-  localStorage.setItem('ebay_manual', document.getElementById('manual-text').value);
-  var msg = document.getElementById('save-msg'); msg.style.display = 'inline';
-  setTimeout(function(){ msg.style.display='none'; }, 2500);
-}
-function toggleAddForm() {
-  var f = document.getElementById('add-form'); var b = document.getElementById('add-form-btn');
-  if (f.style.display === 'none') { f.style.display='flex'; b.textContent='✕ 閉じる'; }
-  else { f.style.display='none'; b.textContent='＋ メッセージを手動追加'; }
-}
-function addMessage() {
-  var buyer = document.getElementById('f-buyer').value.trim();
-  var msg = document.getElementById('f-msg').value.trim();
-  if (!buyer || !msg) { alert('バイヤー名とメッセージは必須です'); return; }
-  var now = new Date();
-  messages.unshift({
-    id: Date.now(), buyer: buyer,
-    orderId: document.getElementById('f-order').value.trim(),
-    itemId: document.getElementById('f-itemid').value.trim(),
-    item: document.getElementById('f-item').value.trim(),
-    imgUrl: document.getElementById('f-img').value.trim(),
-    sold: document.getElementById('f-sold').value === 'true',
-    read: false, starred: false, replied: false, memo: '',
-    time: now.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}),
-    date: now.toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'}),
-    history: [], msg: msg, replyHistory: [], reply: '', status: 'pending'
-  });
-  ['f-buyer','f-order','f-itemid','f-item','f-img','f-msg'].forEach(function(id){document.getElementById(id).value='';});
-  document.getElementById('f-sold').value = 'false';
-  toggleAddForm(); renderList(); selectMsg(0);
-}
-function loadDemo() {
-  if (messages.length > 0 && !confirm('現在のメッセージをクリアしてデモデータを読み込みますか？')) return;
-  messages = JSON.parse(JSON.stringify(DEMO_DATA));
-  currentIdx = null; translationCache = {}; replyJaCache = {};
-  document.getElementById('empty-state').style.display = 'flex';
-  document.getElementById('detail-wrap').style.display = 'none';
-  renderList();
-}
-window.receiveFromZapier = function(data) {
-  var now = new Date();
-  messages.unshift({
-    id: Date.now(), buyer: data.buyer||'unknown', orderId: data.orderId||'',
-    itemId: data.itemId||'', item: data.item||'', imgUrl: data.imgUrl||'',
-    sold: !!data.sold, read: false, starred: false, replied: false, memo: '',
-    time: now.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'}),
-    date: now.toLocaleDateString('ja-JP',{timeZone:'Asia/Tokyo'}),
-    history: [], msg: data.message||'', replyHistory: [], reply: '', status: 'pending'
-  });
-  renderList(); selectMsg(0);
-};
-
-// ===== 状態をサーバーに保存（F5対策） =====
-function saveState(m) {
-  if (!m || !m.id) return;
-  fetch('/api/state', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({id: m.id, read: m.read, starred: m.starred, replied: m.replied, memo: m.memo || ''})
-  }).catch(function(){});
-}
-
-window.addEventListener('load', function() {
-  async function loadFromSheet() {
-    try {
-      var r = await fetch('/api/messages');
-      var d = await r.json();
-      if (d.messages && d.messages.length > 0) {
-        messages = d.messages.map(function(m) {
-          var jst = toJST(m.timestamp);
-          return {
-            id: m.id, buyer: m.buyer||'unknown',
-            orderId: m.orderId||'', itemId: m.itemId||'',
-            item: m.item||'', imgUrl: m.imgUrl||'',
-            sold: !!m.sold,
-            read: !!m.read,       // サーバーから状態を復元
-            starred: !!m.starred, // サーバーから状態を復元
-            replied: !!m.replied, // サーバーから状態を復元
-            memo: m.memo||'',     // サーバーから状態を復元
-            msg: m.msg||'', history: m.history||[],
-            replyHistory: [], reply: '', status: 'pending',
-            date: jst.date, time: jst.time
-          };
+// ===== 起動・ポーリング =====
+window.addEventListener('load',function(){
+  async function loadFromSheet(){
+    try{
+      var r=await fetch('/api/messages');
+      var d=await r.json();
+      if(d.messages&&d.messages.length>0){
+        messages=d.messages.map(function(m){
+          var jst=toJST(m.timestamp);
+          return {id:m.id,buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
         });
         renderList();
       }
-    } catch(e) { console.error('loadFromSheet error:', e); }
+    }catch(e){console.error('loadFromSheet error:',e);}
   }
   loadFromSheet();
-  setInterval(async function() {
-    try {
-      var r = await fetch('/latest');
-      var d = await r.json();
-      if (d.message) {
-        var exists = messages.filter(function(m){return m.id===d.message.id;}).length > 0;
-        if (!exists) {
-          var jst = toJST(d.message.timestamp);
-          d.message.date = jst.date; d.message.time = jst.time;
-          messages.unshift(d.message); renderList();
-        }
+  setInterval(async function(){
+    try{
+      var r=await fetch('/latest');
+      var d=await r.json();
+      if(d.message){
+        var exists=messages.find(function(m){return m.id===d.message.id;});
+        if(!exists){var jst=toJST(d.message.timestamp);d.message.date=jst.date;d.message.time=jst.time;messages.unshift(d.message);renderList();}
       }
-    } catch(e) {}
-  }, 30000);
-  var saved = localStorage.getItem('ebay_manual');
-  if (saved) document.getElementById('manual-text').value = saved;
+    }catch(e){}
+  },30000);
+  var saved=localStorage.getItem('ebay_manual');
+  if(saved) document.getElementById('manual-text').value=saved;
   renderList();
 });
 </script>
