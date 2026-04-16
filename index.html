@@ -172,14 +172,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .step-desc{font-size:11px;color:var(--text2);line-height:1.6;}
 
 #login-screen{position:fixed;top:0;left:0;width:100%;height:100%;background:#0f0f0f;display:flex;align-items:center;justify-content:center;z-index:9999;}
-.login-box{background:#181818;border:1px solid #2a2a2a;border-radius:12px;padding:40px;width:320px;text-align:center;}
+.login-box{background:#181818;border:1px solid #2a2a2a;border-radius:12px;padding:40px;width:340px;text-align:center;}
 .login-logo{font-family:'IBM Plex Mono',monospace;font-size:18px;color:#c8f064;margin-bottom:8px;}
-.login-sub{font-size:12px;color:#555;margin-bottom:28px;}
-.login-box input{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px 14px;color:#e8e8e8;font-size:14px;outline:none;margin-bottom:12px;text-align:center;letter-spacing:0.1em;}
-.login-box input:focus{border-color:#c8f064;}
-.login-btn{width:100%;background:#c8f064;color:#0f0f0f;border:none;border-radius:6px;padding:10px;font-size:14px;font-weight:500;cursor:pointer;}
+.login-sub{font-size:12px;color:#555;margin-bottom:24px;}
+.login-field{position:relative;margin-bottom:12px;}
+.login-field input{width:100%;background:#222;border:1px solid #333;border-radius:6px;padding:10px 40px 10px 14px;color:#e8e8e8;font-size:14px;outline:none;text-align:left;}
+.login-field input:focus{border-color:#c8f064;}
+.eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;}
+.eye-btn:hover{color:#c8f064;}
+.login-btn{width:100%;background:#c8f064;color:#0f0f0f;border:none;border-radius:6px;padding:11px;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.1s;margin-top:4px;}
 .login-btn:hover{background:#a8d044;}
-.login-error{color:#f06464;font-size:12px;margin-top:8px;display:none;}
+.login-btn:active{transform:scale(0.97);background:#8ab034;}
+.login-btn.loading{background:#888;cursor:not-allowed;}
+.login-error{color:#f06464;font-size:12px;margin-top:8px;display:none;padding:6px;background:#2a1010;border-radius:4px;}
 </style>
 </head>
 <body>
@@ -187,10 +192,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">eBay<span style="color:#888">Reply</span></div>
-    <div class="login-sub">パスワードを入力してください</div>
-    <input type="password" id="pw-input" placeholder="Password" onkeydown="if(event.key==='Enter')checkPw()">
-    <button class="login-btn" onclick="checkPw()">ログイン</button>
-    <div class="login-error" id="pw-error">パスワードが違います</div>
+    <div class="login-sub">IDとパスワードを入力してください</div>
+    <div class="login-field">
+      <input type="email" id="id-input" placeholder="メールアドレス（ID）" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
+    </div>
+    <div class="login-field">
+      <input type="password" id="pw-input" placeholder="パスワード" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="eye-btn" id="eye-btn" onclick="toggleEye()" type="button">👁</button>
+    </div>
+    <button class="login-btn" id="login-btn" onclick="doLogin()" type="button">ログイン</button>
+    <div class="login-error" id="pw-error">IDまたはパスワードが違います</div>
   </div>
 </div>
 <div class="layout">
@@ -761,22 +772,52 @@ function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").r
 
 
 (function(){
-  const PASS = 'ebayreply2026';
+  const VALID_ID = 'samuraisoul142@gmail.com';
+  const VALID_PW = 'ebayreply2026';
   const KEY = 'ebay_auth';
-  function checkPw(){
-    const v = document.getElementById('pw-input').value;
-    if(v === PASS){
-      sessionStorage.setItem(KEY,'1');
-      document.getElementById('login-screen').style.display='none';
+
+  function doLogin(){
+    const idVal = document.getElementById('id-input').value.trim();
+    const pwVal = document.getElementById('pw-input').value;
+    const btn = document.getElementById('login-btn');
+    const err = document.getElementById('pw-error');
+    
+    btn.textContent = '確認中...';
+    btn.classList.add('loading');
+    err.style.display = 'none';
+    
+    setTimeout(function(){
+      if(idVal === VALID_ID && pwVal === VALID_PW){
+        sessionStorage.setItem(KEY,'1');
+        document.getElementById('login-screen').style.display='none';
+      } else {
+        err.style.display = 'block';
+        document.getElementById('pw-input').value = '';
+      }
+      btn.textContent = 'ログイン';
+      btn.classList.remove('loading');
+    }, 300);
+  }
+
+  function toggleEye(){
+    const input = document.getElementById('pw-input');
+    const btn = document.getElementById('eye-btn');
+    if(input.type === 'password'){
+      input.type = 'text';
+      btn.style.color = '#c8f064';
     } else {
-      document.getElementById('pw-error').style.display='block';
-      document.getElementById('pw-input').value='';
+      input.type = 'password';
+      btn.style.color = '#555';
     }
   }
-  window.checkPw = checkPw;
+
+  window.doLogin = doLogin;
+  window.toggleEye = toggleEye;
+
   window.addEventListener('load',function(){
     if(sessionStorage.getItem(KEY)==='1'){
-      document.getElementById('login-screen').style.display='none';
+      var ls = document.getElementById('login-screen');
+      if(ls) ls.style.display='none';
     }
   });
 })();
