@@ -300,11 +300,12 @@ app.get('/api/messages', async (req, res) => {
         if (m.timestamp > thread.timestamp) {
           thread.timestamp = m.timestamp;
           thread.id = m.id;
+          // 最新メールの既読状態を使う（古いメールの未読で上書きしない）
+          thread.read = m.read;
         }
         if (m.orderId) thread.orderId = m.orderId;
         if (m.itemId) thread.itemId = m.itemId;
         if (m.item) thread.item = m.item;
-        if (!m.read) thread.read = false;
         if (m.starred) thread.starred = true;
         if (m.replied) thread.replied = true;
         if (m.memo) thread.memo = m.memo;
