@@ -854,26 +854,41 @@ window.addEventListener('load', function() {
       var d = await r.json();
       if (d.messages && d.messages.length > 0) {
         messages = d.messages.map(function(m) {
+          // server.js側でパース済み。timestampから日時を分解するだけ
+          var ts = m.timestamp || '';
+          var datePart = '';
+          var timePart = '';
+          if (ts) {
+            // ISO形式（2026-04-16T00:04:53.000Z）または「YYYY-MM-DD HH:MM」
+            var d2 = new Date(ts);
+            if (!isNaN(d2)) {
+              datePart = d2.toLocaleDateString('ja-JP');
+              timePart = d2.toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'});
+            } else {
+              var parts = ts.split(' ');
+              datePart = parts[0] || '';
+              timePart = parts[1] || '';
+            }
+          }
           return {
             id: m.id,
-            buyer: m.buyer,
-            orderId: m.orderId||'',
-            itemId: m.itemId||'',
-            item: m.item||'',
-            imgUrl: m.imgUrl||'',
+            buyer: m.buyer || 'unknown',
+            orderId: m.orderId || '',
+            itemId: m.itemId || '',
+            item: m.item || '',
+            imgUrl: m.imgUrl || '',
             sold: !!m.sold,
             read: false,
             starred: false,
             replied: false,
-            memo: m.memo||'',
-            msg: extractNewMessage(m.message||m.msg||''),
-            fullMsg: m.message||m.msg||'',
-            date: m.timestamp ? m.timestamp.split(' ')[0] : '',
-            time: m.timestamp ? (m.timestamp.split(' ')[1]||'') : '',
-            history: m.history||[],
-            replyHistory: m.replyHistory||[],
-            reply: m.reply||'',
-            status: m.status||'pending'
+            memo: m.memo || '',
+            msg: m.msg || '',          // server.js でパース済み
+            history: m.history || [], // server.js でパース済み
+            replyHistory: [],
+            reply: '',
+            status: 'pending',
+            date: datePart,
+            time: timePart
           };
         });
         renderList();
