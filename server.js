@@ -79,6 +79,10 @@ function parseEbayEmail(rawBody, fromName) {
     itemName = itemNameMatch[1].trim().split('\n')[0].trim();
   }
 
+  // 5. SOLD判定：メール本文に「Order status: Paid」があれば購入済み
+  const sold = /Order status:\s*(Paid|Shipped|Complete)/i.test(rawBody)
+    || /Order number:/i.test(rawBody);
+
   return {
     buyer,
     newMsg,
@@ -86,6 +90,7 @@ function parseEbayEmail(rawBody, fromName) {
     itemId: itemIdMatch ? itemIdMatch[1] : '',
     orderId: orderMatch ? orderMatch[1] : '',
     itemName,
+    sold,
   };
 }
 
@@ -146,7 +151,7 @@ app.post('/webhook', (req, res) => {
     orderId: parsed.orderId || data.orderId || '',
     itemId: parsed.itemId || data.itemId || '',
     imgUrl: data.imgUrl || '',
-    sold: !!data.sold,
+    sold: parsed.sold || !!data.sold,
     timestamp: new Date().toISOString(),
     read: false,
     starred: false,
@@ -161,15 +166,24 @@ app.post('/webhook', (req, res) => {
   res.json({ ok: true });
 });
 
-// 件名から商品名を抽出
+// 件名から商品名を抽出（多言語・多パターン対応）
 function extractItemFromSubject(subject) {
   if (!subject) return '';
-  // "Re: buyer sent a message about ITEM NAME #ITEMID" パターン
-  const m = subject.match(/about\s+(.+?)(?:\s+#\d+|$)/i);
+  // 英語①: "sent a message about ITEM NAME #ITEMID"
+  let m = subject.match(/(?:about|regarding)\s+(.+?)(?:\s+#\d+|\s+New$|$)/i);
   if (m) return m[1].trim();
-  // "Re: buyer ha inviato un messaggio relativo a ITEM #ID"
-  const m2 = subject.match(/relativo a\s+(.+?)(?:\s+n[°\s]*\d+|$)/i);
-  if (m2) return m2[1].trim();
+  // 英語②: "ending on DATE PDT - ITEM NAME"（質問系メール）
+  m = subject.match(/PDT\s+-\s+(.+)/i);
+  if (m) return m[1].trim();
+  // イタリア語: "relativo a ITEM n° ID" or "#ID"
+  m = subject.match(/relativo\s+a\s+(.+?)(?:\s+n[°o\s]*\d+|\s+#\d+|$)/i);
+  if (m) return m[1].trim();
+  // スペイン語: "sobre ITEM"
+  m = subject.match(/sobre\s+(.+?)(?:\s+#\d+|$)/i);
+  if (m) return m[1].trim();
+  // 日本語・その他フォールバック: 件名末尾の #数字 を除去して返す
+  m = subject.replace(/^Re:\s*/i, '').replace(/\s*#\d+\s*$/, '').trim();
+  if (m && m.length > 5 && !m.match(/^(samuraisoul|eBay)/i)) return m;
   return '';
 }
 
@@ -235,7 +249,7 @@ app.get('/api/messages', async (req, res) => {
         orderId: parsed.orderId || obj.orderId || '',
         itemId: parsed.itemId || obj.itemId || '',
         imgUrl: obj.imgUrl || '',
-        sold: obj.sold === 'true' || obj.sold === true,
+        sold: parsed.sold || obj.sold === 'true' || obj.sold === true,
         timestamp: obj.timestamp || '',
         read: savedState.read !== undefined ? savedState.read : (obj.read === 'true'),
         starred: savedState.starred !== undefined ? savedState.starred : (obj.starred === 'true'),
@@ -251,7 +265,7 @@ app.get('/api/messages', async (req, res) => {
     rawMessages.forEach(m => {
       const key = m.buyer.toLowerCase();
       if (!threadMap[key]) {
-        threadMap[key] = { ...m, threadMessages: [m] };
+        threadMap[key] = { ...m, threadMessages: [m], sold: m.sold };
       } else {
         // 既存スレッドに追加
         const thread = threadMap[key];
@@ -269,45 +283,72 @@ app.get('/api/messages', async (req, res) => {
         if (!m.read) thread.read = false;
         if (m.starred) thread.starred = true;
         if (m.replied) thread.replied = true;
-        if (m.memo) thread.memo = m.memo;
+        // soldは1つでもSOLDなら全体をSOLD扱い
+        if (m.sold) thread.sold = true;
       }
     });
 
     // スレッドを組み立て：全メッセージを時系列順に history + 最新msg にする
     const threads = Object.values(threadMap).map(thread => {
       const sorted = thread.threadMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-      // 最新メッセージを本文に、それ以前を全部履歴に
       const latest = sorted[sorted.length - 1];
+
+      // 全メッセージの履歴を時系列で収集
+      // 各メールには「過去のやり取り(history)」と「そのメールの最新メッセージ(msg)」がある
+      // 全部をフラットにして重複除去する
       const allHistory = [];
+
       sorted.forEach((m, idx) => {
-        // 各メールの履歴を追加
+        // そのメールに含まれる過去の会話履歴を追加
         if (m.history && m.history.length > 0) {
-          m.history.forEach(h => allHistory.push(h));
+          m.history.forEach(h => allHistory.push({
+            from: h.from,
+            text: h.text,
+            time: h.time || m.timestamp
+          }));
         }
-        // 最新以外のメッセージ本文も履歴に追加
+        // 最新メール以外は、そのメールのmsgも履歴に追加
+        // fromは「メールの送信者」= バイヤーからのメールなのでfrom:'buyer'が正しい
+        // ただし最新メールのmsgは別途 msg フィールドとして返す
         if (idx < sorted.length - 1 && m.msg) {
+          // このメールはZapierがバイヤーのメッセージを受信したもの → from:'buyer'
           allHistory.push({ from: 'buyer', text: m.msg, time: m.timestamp });
         }
       });
-      // 重複除去
+
+      // 重複除去（同じ内容が履歴とmsgに両方含まれることがあるため）
       const seenTexts = new Set();
       const dedupedHistory = allHistory.filter(h => {
+        if (!h.text) return false;
         const k = h.text.substring(0, 50);
         if (seenTexts.has(k)) return false;
         seenTexts.add(k);
         return true;
       });
+
+      // 最新メッセージの from を正しく判定
+      // Zapierに届くメールは「バイヤーから受信したもの」なので最新msgはfrom:'buyer'
+      // ただし latest.history の最後が自分の送信で終わっている場合はそれを表示
+      let finalMsg = latest.msg;
+      let finalFrom = 'buyer';
+
+      // latest.historyの最後の要素が'me'かつlatest.msgより新しい場合
+      // → 最後が自分の送信 = 自分が最後に返信済みの状態
+      // この場合でもlatest.msgはバイヤーの直近メッセージとして表示する
+      // （バイヤーからの最新問い合わせが常に表示されるべき）
+
       return {
         id: latest.id,
         buyer: thread.buyer,
         subject: latest.subject,
-        msg: latest.msg,
+        msg: finalMsg,
+        msgFrom: finalFrom,
         history: dedupedHistory,
         item: thread.item || latest.item,
         orderId: thread.orderId || latest.orderId,
         itemId: thread.itemId || latest.itemId,
         imgUrl: thread.imgUrl || latest.imgUrl,
-        sold: latest.sold,
+        sold: thread.sold || latest.sold,
         timestamp: latest.timestamp,
         read: thread.read,
         starred: thread.starred,
