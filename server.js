@@ -169,21 +169,24 @@ app.post('/webhook', (req, res) => {
 // 件名から商品名を抽出（多言語・多パターン対応）
 function extractItemFromSubject(subject) {
   if (!subject) return '';
-  // 英語①: "sent a message about ITEM NAME #ITEMID"
-  let m = subject.match(/(?:about|regarding)\s+(.+?)(?:\s+#\d+|\s+New$|$)/i);
+  // ★最優先：「ending on DATE PDT - ITEM NAME」パターン
+  // 例: "ending on May-11-26 19:24:36 PDT - Kyosho Original..."
+  let m = subject.match(/PDT\s+-\s+(.+)/i);
   if (m) return m[1].trim();
-  // 英語②: "ending on DATE PDT - ITEM NAME"（質問系メール）
-  m = subject.match(/PDT\s+-\s+(.+)/i);
-  if (m) return m[1].trim();
+  // 英語: "sent a message about ITEM NAME #ITEMID"
+  // ※ "about item #数字" の場合は除外（itemという単語だけの場合）
+  m = subject.match(/(?:about|regarding)\s+(.+?)(?:\s+#\d+|$)/i);
+  if (m) {
+    const candidate = m[1].trim();
+    // "item" という単語だけなら除外
+    if (candidate.toLowerCase() !== 'item') return candidate;
+  }
   // イタリア語: "relativo a ITEM n° ID" or "#ID"
   m = subject.match(/relativo\s+a\s+(.+?)(?:\s+n[°o\s]*\d+|\s+#\d+|$)/i);
   if (m) return m[1].trim();
   // スペイン語: "sobre ITEM"
   m = subject.match(/sobre\s+(.+?)(?:\s+#\d+|$)/i);
   if (m) return m[1].trim();
-  // 日本語・その他フォールバック: 件名末尾の #数字 を除去して返す
-  m = subject.replace(/^Re:\s*/i, '').replace(/\s*#\d+\s*$/, '').trim();
-  if (m && m.length > 5 && !m.match(/^(samuraisoul|eBay)/i)) return m;
   return '';
 }
 
