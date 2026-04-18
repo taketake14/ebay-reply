@@ -93,21 +93,33 @@ function parseEbayEmail(rawBody, fromName) {
     if (fallback) newMsg = fallback[1].trim();
   }
 
-  // 3. 会話履歴抽出
+  // 3. 会話履歴抽出（修正版）
+  // Dear samuraisoul142142, [TEXT] - buyer → from:'buyer'
+  // Dear buyer名, [TEXT] - samuraisoul142142 → from:'me'
   const SELLER = 'samuraisoul142142';
   const history = [];
   const seen = new Set();
   const blockRe = /Dear ([^,\n]+),\s*\n+([\s\S]*?)\n+- (\S+)(?:\n|$)/g;
-  let match;
-  while ((match = blockRe.exec(rawBody)) !== null) {
-    const text = match[2].trim();
-    const sender = match[3].trim();
-    const key = text.substring(0, 60);
+  let blockMatch;
+  const allBlocks = [];
+  while ((blockMatch = blockRe.exec(rawBody)) !== null) {
+    allBlocks.push({ recipient: blockMatch[1].trim(), text: blockMatch[2].trim(), sender: blockMatch[3].trim() });
+  }
+  const newMsgKey = newMsg ? newMsg.substring(0, 60) : '';
+  for (const block of allBlocks) {
+    const key = block.text.substring(0, 60);
     if (seen.has(key)) continue;
-    if (text === newMsg) continue;
+    if (newMsgKey && key === newMsgKey) continue;
     seen.add(key);
-    const from = sender.toLowerCase() === SELLER.toLowerCase() ? 'me' : 'buyer';
-    history.push({ from, text });
+    let from;
+    if (block.recipient.toLowerCase() === SELLER.toLowerCase()) {
+      from = 'buyer'; // Dear セラー → バイヤーから来たメッセージ
+    } else if (block.sender.toLowerCase() === SELLER.toLowerCase()) {
+      from = 'me'; // - セラー → セラーが送ったメッセージ
+    } else {
+      from = 'buyer'; // どちらでもなければバイヤー扱い
+    }
+    history.push({ from, text: block.text });
   }
   history.reverse();
 
