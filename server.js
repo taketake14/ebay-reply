@@ -191,7 +191,7 @@ let stateStore = {};
 let messages = [];
 
 // ===== Zapier Webhook受信 =====
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
   const data = req.body;
   const rawBody = data.message || '';
   const fromName = data.buyer || '';
@@ -214,8 +214,46 @@ app.post('/webhook', (req, res) => {
   };
   messages.unshift(msg);
   if (messages.length > 200) messages = messages.slice(0, 200);
+
+  // スプレッドシートにも書き込む（Renderスリープ対策）
+  appendToSheet(msg).catch(e => console.error('appendToSheet error:', e.message));
+
+  console.log(`Webhook received: buyer=${msg.buyer}, subject=${(data.subject||'').substring(0,50)}`);
   res.json({ ok: true });
 });
+
+// ===== Sheetsに新規行を追加 =====
+async function appendToSheet(msg) {
+  try {
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`;
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        values: [[
+          msg.timestamp,
+          msg.buyer,
+          msg.subject,
+          msg.message,
+          msg.item || '',
+          msg.orderId || '',
+          msg.itemId || '',
+          'false', // read
+          'false', // starred
+          'false', // replied
+          ''       // memo
+        ]]
+      }),
+    });
+    console.log(`Sheet append ok: ${msg.buyer}`);
+  } catch (e) {
+    console.error('appendToSheet error:', e.message);
+  }
+}
 
 // ===== 状態更新API（スプレッドシートに永続保存） =====
 app.post('/api/state', async (req, res) => {
