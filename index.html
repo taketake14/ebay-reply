@@ -59,24 +59,41 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-filter.on{background:var(--navy);color:#fff;border-color:var(--navy);}
 .s1-filter:hover:not(.on){background:var(--bg3);}
 
-.s1-table-header{display:grid;grid-template-columns:24px 2fr 1.4fr 120px 70px 80px 36px;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
+/* 列順：時刻 | 商品画像 | 商品名+ID | タグ | 状態 | バイヤー/メッセージ | ★ */
+.s1-table-header{display:grid;grid-template-columns:60px 50px 1.8fr 140px 90px 1.6fr 36px;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
 .s1-th{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;}
 .s1-body{flex:1;overflow-y:auto;}
 
-.s1-row{display:grid;grid-template-columns:24px 2fr 1.4fr 120px 70px 80px 36px;gap:0;padding:11px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
-.s1-row:hover{background:#f0f9ff;}
-.s1-row.unread{background:var(--bg2);}
+.s1-row{display:grid;grid-template-columns:60px 50px 1.8fr 140px 90px 1.6fr 36px;gap:0;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row:hover{background:#e0f2fe !important;}
+.s1-row.unread.s1-even{background:#ffffff;}
+.s1-row.unread.s1-odd{background:#f8faff;}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:var(--text);}
-.s1-row.read{background:var(--bg);}
+.s1-row.read.s1-even{background:#f8fafc;}
+.s1-row.read.s1-odd{background:#f1f5f9;}
 .s1-row.read .s1-buyer-name{font-weight:400;color:var(--text2);}
-.s1-unread-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);}
-.s1-read-dot{width:8px;height:8px;}
-.s1-buyer-cell{display:flex;align-items:center;gap:10px;min-width:0;}
-.s1-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;flex-shrink:0;}
-.s1-buyer-info{min-width:0;}
-.s1-buyer-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.s1-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.s1-item-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:10px;}
+/* 列表示切替ボタン */
+.col-toggle-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-weight:500;position:relative;}
+.col-toggle-btn:hover{background:var(--bg3);}
+.col-toggle-dropdown{position:absolute;top:110%;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;z-index:300;min-width:150px;box-shadow:0 4px 16px rgba(0,0,0,0.12);display:none;flex-direction:column;gap:3px;}
+.col-toggle-dropdown.open{display:flex;}
+.col-toggle-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:12px;color:var(--text2);}
+.col-toggle-item:hover{background:var(--bg3);}
+.col-toggle-item input[type=checkbox]{cursor:pointer;width:14px;height:14px;accent-color:var(--orange);}
+/* 時刻セル */
+.s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+.s1-time{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.s1-date{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.s1-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:1px;}
+.s1-read-dot{width:7px;height:7px;}
+/* 商品画像 */
+.s1-thumb{width:38px;height:38px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:16px;overflow:hidden;flex-shrink:0;}
+.s1-thumb img{width:100%;height:100%;object-fit:cover;}
+/* 商品情報 */
+.s1-item-cell{display:flex;flex-direction:column;gap:2px;min-width:0;padding-right:10px;}
+.s1-item-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.s1-item-ids{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
+/* タグ */
 .s1-tags{display:flex;gap:3px;flex-wrap:wrap;}
 .tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
 .tag-discount{background:#fee2e2;color:#b91c1c;}
@@ -87,9 +104,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tag-cancel{background:#fef3c7;color:#92400e;}
 .tag-urgent{background:#dc2626;color:#fff;font-weight:700;}
 .tag-other{background:#f1f5f9;color:var(--text2);}
-.s1-sold-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#d1fae5;color:#065f46;font-weight:700;}
-.s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:600;}
-.s1-time{font-size:11px;color:var(--text3);font-family:var(--mono);}
+/* 状態 */
+.s1-status-cell{display:flex;flex-direction:column;gap:3px;}
+.s1-sold-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#d1fae5;color:#065f46;font-weight:700;white-space:nowrap;display:inline-block;}
+.s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:600;white-space:nowrap;display:inline-block;}
+/* バイヤー */
+.s1-buyer-cell{display:flex;align-items:center;gap:8px;min-width:0;}
+.s1-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
+.s1-buyer-info{min-width:0;}
+.s1-buyer-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
 .s1-star-btn.on{color:#f59e0b;}
 .s1-star-btn:hover{color:#f59e0b;}
@@ -112,21 +136,29 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s2-main{flex:1;display:flex;overflow:hidden;}
 
-/* チャットカラム */
-.s2-chat-col{flex:1;display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border);}
-.chat-area{flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;background:var(--bg3);}
+/* チャットカラム（リサイズ対応） */
+.s2-chat-col{display:flex;flex-direction:column;min-width:200px;overflow:hidden;}
+/* 縦リサイザー（チャットエリア↕返信エリア） */
+.v-resizer{height:5px;background:var(--border);cursor:row-resize;flex-shrink:0;transition:background 0.1s;}
+.v-resizer:hover,.v-resizer.dragging{background:var(--orange);}
+/* 横リサイザー（チャットカラム↔右パネル） */
+.h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
+.h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
+
+.chat-area{padding:16px 20px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;background:var(--bg3);}
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
 .bbl{max-width:74%;padding:10px 14px;font-size:13px;line-height:1.7;word-break:break-word;}
-.bbl.mine{background:var(--navy);color:#e2e8f0;border-radius:16px 16px 4px 16px;}
+/* 自分の吹き出し：薄いブルー＋黒文字（ネイビーから変更） */
+.bbl.mine{background:#dbeafe;color:#1e3a5f;border-radius:16px 16px 4px 16px;border:1px solid #bfdbfe;}
 .bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
 .bbl.theirs.new-msg{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-light);}
 .bbl-meta{font-size:10px;color:var(--text3);padding:0 4px;font-family:var(--mono);}
 .new-badge{font-size:11px;font-weight:700;color:var(--orange);text-align:center;padding:5px 0;margin:4px 0;border-top:2px dashed var(--orange-border);border-bottom:2px dashed var(--orange-border);background:#fffbeb;border-radius:4px;}
 
 /* 返信エリア */
-.reply-area{flex-shrink:0;border-top:1px solid var(--border);background:var(--bg2);}
+.reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;}
 .reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;}
 .reply-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;}
 .reply-status{font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600;}
@@ -134,15 +166,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .status-done{background:#d1fae5;color:#065f46;}
 .status-error{background:#fee2e2;color:var(--danger);}
 .reply-history-select{font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;color:var(--text2);outline:none;margin-left:auto;cursor:pointer;}
-.reply-split{display:grid;grid-template-columns:1fr 1fr;padding:8px 18px;gap:12px;}
-.reply-col{display:flex;flex-direction:column;gap:5px;}
-.reply-col-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:5px;}
+.reply-split{display:grid;grid-template-columns:1fr 1fr;padding:8px 18px;gap:12px;flex:1;min-height:0;}
+.reply-col{display:flex;flex-direction:column;gap:5px;min-height:0;}
+.reply-col-label{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;display:flex;align-items:center;gap:5px;flex-shrink:0;}
 .reply-col-dot{width:7px;height:7px;border-radius:50%;}
-.reply-box{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.75;color:var(--text);min-height:72px;outline:none;white-space:pre-wrap;overflow-y:auto;}
+.reply-box{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.75;color:var(--text);outline:none;white-space:pre-wrap;overflow-y:auto;min-height:0;}
 .reply-box:focus{border-color:var(--accent);}
 .reply-box.editable{border-color:var(--warn);}
-.reply-box-ja{background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.75;color:var(--text2);min-height:72px;overflow-y:auto;white-space:pre-wrap;}
-.reply-actions{padding:6px 18px 12px;display:flex;gap:6px;align-items:center;position:relative;}
+.reply-box-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.75;color:var(--text2);overflow-y:auto;white-space:pre-wrap;min-height:0;}
+.reply-actions{padding:6px 18px 12px;display:flex;gap:6px;align-items:center;position:relative;flex-shrink:0;}
 .btn{padding:6px 14px;border-radius:7px;font-size:12px;cursor:pointer;border:1px solid var(--border2);font-family:var(--sans);font-weight:600;transition:all 0.12s;}
 .btn-primary{background:var(--orange);color:#fff;border-color:var(--orange);}
 .btn-primary:hover{background:var(--orange2);}
@@ -273,14 +305,25 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="s1-filter" onclick="setFilter('urgent',this)">要対応</button>
         <button class="s1-filter" onclick="setFilter('replied',this)">返信済み</button>
       </div>
+      <div style="position:relative;margin-left:8px;">
+        <button class="col-toggle-btn" onclick="toggleColDropdown(event)" id="col-toggle-btn">&#9776; 表示列</button>
+        <div class="col-toggle-dropdown" id="col-toggle-dropdown">
+          <div class="col-toggle-item"><input type="checkbox" id="col-time" checked onchange="updateColVisibility()"><label for="col-time" style="cursor:pointer;">時刻</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-thumb" checked onchange="updateColVisibility()"><label for="col-thumb" style="cursor:pointer;">商品画像</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-item" checked onchange="updateColVisibility()"><label for="col-item" style="cursor:pointer;">商品名</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-tags" checked onchange="updateColVisibility()"><label for="col-tags" style="cursor:pointer;">タグ</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-status" checked onchange="updateColVisibility()"><label for="col-status" style="cursor:pointer;">状態</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-buyer" checked onchange="updateColVisibility()"><label for="col-buyer" style="cursor:pointer;">バイヤー</label></div>
+        </div>
+      </div>
     </div>
-    <div class="s1-table-header">
-      <div class="s1-th"></div>
-      <div class="s1-th">バイヤー / メッセージ</div>
-      <div class="s1-th">商品名</div>
-      <div class="s1-th">タグ</div>
-      <div class="s1-th">状態</div>
-      <div class="s1-th">受信日時</div>
+    <div class="s1-table-header" id="s1-table-header-row">
+      <div class="s1-th s1-col-time">時刻</div>
+      <div class="s1-th s1-col-thumb">画像</div>
+      <div class="s1-th s1-col-item">商品名 / No.</div>
+      <div class="s1-th s1-col-tags">タグ</div>
+      <div class="s1-th s1-col-status">状態</div>
+      <div class="s1-th s1-col-buyer">バイヤー / メッセージ</div>
       <div class="s1-th">★</div>
     </div>
     <div class="s1-body" id="msg-list"></div>
@@ -328,10 +371,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
   <div class="s2-main">
     <!-- チャットカラム -->
-    <div class="s2-chat-col">
-      <div class="chat-area" id="chat-area"></div>
-
-      <div class="reply-area">
+    <div class="s2-chat-col" id="chat-col" style="flex:1;">
+      <div class="chat-area" id="chat-area" style="flex:1.8;"></div>
+      <div class="v-resizer" id="v-resizer"></div>
+      <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
         <div class="reply-top">
           <span class="reply-label">返信案</span>
           <span class="reply-status" id="d-status"></span>
@@ -359,8 +402,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       </div>
     </div>
 
+    <!-- 横リサイザー -->
+    <div class="h-resizer" id="h-resizer"></div>
+
     <!-- 右パネル -->
-    <div class="s2-right-panel">
+    <div class="s2-right-panel" id="right-panel" style="width:230px;">
       <div class="panel-tabs">
         <div class="panel-tab on" onclick="switchPanel('product',this)">商品</div>
         <div class="panel-tab" onclick="switchPanel('buyer',this)">バイヤー</div>
@@ -561,29 +607,56 @@ function renderList(){
   }
   if(!filtered.length){el.innerHTML='<div class="s1-empty">該当するメッセージがありません</div>';return;}
 
-  el.innerHTML=filtered.map(function(m){
+  el.innerHTML=filtered.map(function(m,rowIdx){
     var ri=messages.indexOf(m);
+    var isEven=rowIdx%2===0;
     var tags=getTags(m.msg);
     var tagsHtml=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
     var initials=m.buyer.charAt(0).toUpperCase();
     var avatarStyle=getAvatarStyle(m.buyer);
+    // 状態セル
     var statusHtml='';
-    if(m.sold) statusHtml+='<span class="s1-sold-badge">SOLD</span> ';
-    if(m.replied) statusHtml+='<span class="s1-replied-badge">&#10003; 返信済み</span>';
-    if(!m.sold&&!m.replied) statusHtml='—';
-    return '<div class="s1-row '+(m.read?'read':'unread')+'" onclick="selectMsg('+ri+')">'
-      +'<div>'+(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')+'</div>'
-      +'<div class="s1-buyer-cell">'
+    if(m.sold) statusHtml+='<span class="s1-sold-badge">SOLD</span>';
+    if(m.replied) statusHtml+='<span class="s1-replied-badge">&#10003;</span>';
+    if(!statusHtml) statusHtml='<span style="color:var(--text3);font-size:11px;">—</span>';
+    // 商品ID情報
+    var idsHtml='';
+    if(m.itemId) idsHtml+='Item: '+m.itemId;
+    if(m.sold&&m.orderId) idsHtml+=(idsHtml?' · ':'')+m.orderId;
+    // 商品サムネ
+    var thumbHtml='';
+    if(m.itemId){
+      thumbHtml='<div class="s1-thumb"><img src="https://i.ebayimg.com/images/g/'+m.itemId+'/s-l225.jpg" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>';
+    } else {
+      thumbHtml='<div class="s1-thumb">&#128230;</div>';
+    }
+    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" onclick="selectMsg('+ri+')">'
+      // 時刻＋未読ドット
+      +'<div class="s1-time-cell s1-col-time">'
+        +(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')
+        +'<span class="s1-time">'+(m.time||'')+'</span>'
+        +'<span class="s1-date">'+(m.date||'')+'</span>'
+      +'</div>'
+      // 商品画像
+      +'<div class="s1-col-thumb">'+thumbHtml+'</div>'
+      // 商品名＋ID
+      +'<div class="s1-item-cell s1-col-item">'
+        +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
+        +'<div class="s1-item-ids">'+esc(idsHtml)+'</div>'
+      +'</div>'
+      // タグ
+      +'<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>'
+      // 状態
+      +'<div class="s1-status-cell s1-col-status">'+statusHtml+'</div>'
+      // バイヤー＋メッセージ
+      +'<div class="s1-buyer-cell s1-col-buyer">'
         +'<div class="s1-avatar" style="'+avatarStyle+'">'+initials+'</div>'
         +'<div class="s1-buyer-info">'
           +'<div class="s1-buyer-name">'+esc(m.buyer)+'</div>'
           +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
         +'</div>'
       +'</div>'
-      +'<div class="s1-item-name">'+esc(m.item||'—')+'</div>'
-      +'<div class="s1-tags">'+tagsHtml+'</div>'
-      +'<div>'+statusHtml+'</div>'
-      +'<div class="s1-time">'+(m.time||m.date||'')+'</div>'
+      // ★
       +'<div><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>'
       +'</div>';
   }).join('');
@@ -860,7 +933,48 @@ function loadReplyFromHistory(){
   translateReply(currentIdx);
 }
 
-// ===== マニュアル =====
+// ===== 列表示切替 =====
+var colVisible={time:true,thumb:true,item:true,tags:true,status:true,buyer:true};
+function toggleColDropdown(e){
+  e.stopPropagation();
+  var dd=document.getElementById('col-toggle-dropdown');
+  dd.classList.toggle('open');
+}
+document.addEventListener('click',function(){
+  var dd=document.getElementById('col-toggle-dropdown');
+  if(dd) dd.classList.remove('open');
+});
+function updateColVisibility(){
+  colVisible={
+    time:document.getElementById('col-time').checked,
+    thumb:document.getElementById('col-thumb').checked,
+    item:document.getElementById('col-item').checked,
+    tags:document.getElementById('col-tags').checked,
+    status:document.getElementById('col-status').checked,
+    buyer:document.getElementById('col-buyer').checked,
+  };
+  // グリッドテンプレートを動的に更新
+  var cols=[];
+  if(colVisible.time) cols.push('60px');
+  if(colVisible.thumb) cols.push('50px');
+  if(colVisible.item) cols.push('1.8fr');
+  if(colVisible.tags) cols.push('140px');
+  if(colVisible.status) cols.push('90px');
+  if(colVisible.buyer) cols.push('1.6fr');
+  cols.push('36px'); // ★は常時
+  var tpl=cols.join(' ');
+  document.getElementById('s1-table-header-row').style.gridTemplateColumns=tpl;
+  document.querySelectorAll('.s1-row').forEach(function(r){r.style.gridTemplateColumns=tpl;});
+  // セルの表示切替
+  document.querySelectorAll('.s1-col-time').forEach(function(el){el.style.display=colVisible.time?'':'none';});
+  document.querySelectorAll('.s1-col-thumb').forEach(function(el){el.style.display=colVisible.thumb?'':'none';});
+  document.querySelectorAll('.s1-col-item').forEach(function(el){el.style.display=colVisible.item?'':'none';});
+  document.querySelectorAll('.s1-col-tags').forEach(function(el){el.style.display=colVisible.tags?'':'none';});
+  document.querySelectorAll('.s1-col-status').forEach(function(el){el.style.display=colVisible.status?'':'none';});
+  document.querySelectorAll('.s1-col-buyer').forEach(function(el){el.style.display=colVisible.buyer?'':'none';});
+}
+
+
 function saveManual(){
   localStorage.setItem('ebay_manual',document.getElementById('manual-text').value);
   var ok=document.getElementById('save-ok');ok.style.display='inline';
@@ -874,6 +988,66 @@ function loadDemo(){
   currentIdx=null;translationCache={};replyJaCache={};
   backToList();renderList();
 }
+
+// ===== リサイザー =====
+(function(){
+  // 縦リサイザー（チャット↕返信）
+  var vRes=document.getElementById('v-resizer');
+  var chatArea=document.getElementById('chat-area');
+  var replyArea=document.getElementById('reply-area');
+  var vDragging=false, vStartY=0, vStartChatH=0, vStartReplyH=0;
+  vRes.addEventListener('mousedown',function(e){
+    vDragging=true;
+    vStartY=e.clientY;
+    vStartChatH=chatArea.getBoundingClientRect().height;
+    vStartReplyH=replyArea.getBoundingClientRect().height;
+    vRes.classList.add('dragging');
+    document.body.style.cursor='row-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!vDragging) return;
+    var dy=e.clientY-vStartY;
+    var newChatH=Math.max(80, vStartChatH+dy);
+    var newReplyH=Math.max(100, vStartReplyH-dy);
+    chatArea.style.flex='none';
+    chatArea.style.height=newChatH+'px';
+    replyArea.style.flex='none';
+    replyArea.style.height=newReplyH+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(vDragging){vDragging=false;vRes.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';}
+  });
+
+  // 横リサイザー（チャットカラム↔右パネル）
+  var hRes=document.getElementById('h-resizer');
+  var chatCol=document.getElementById('chat-col');
+  var rightPanel=document.getElementById('right-panel');
+  var hDragging=false, hStartX=0, hStartCW=0, hStartRW=0;
+  hRes.addEventListener('mousedown',function(e){
+    hDragging=true;
+    hStartX=e.clientX;
+    hStartCW=chatCol.getBoundingClientRect().width;
+    hStartRW=rightPanel.getBoundingClientRect().width;
+    hRes.classList.add('dragging');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!hDragging) return;
+    var dx=e.clientX-hStartX;
+    var newCW=Math.max(300, hStartCW+dx);
+    var newRW=Math.max(160, hStartRW-dx);
+    chatCol.style.flex='none';
+    chatCol.style.width=newCW+'px';
+    rightPanel.style.width=newRW+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(hDragging){hDragging=false;hRes.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';}
+  });
+})();
 
 // ===== 起動・ポーリング =====
 window.addEventListener('load',function(){
