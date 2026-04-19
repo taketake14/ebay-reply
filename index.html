@@ -60,15 +60,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-filter:hover:not(.on){background:var(--bg3);}
 
 /* 列順：時刻 | 商品画像 | 商品名+ID | タグ | 状態 | バイヤー/メッセージ | ★ */
-.s1-table-header{display:grid;grid-template-columns:60px 50px 1.8fr 140px 90px 1.6fr 36px;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
+.s1-table-header{display:grid;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
 /* 列リサイザー */
-.s1-th{font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;position:relative;user-select:none;}
-.col-resizer{position:absolute;right:0;top:0;height:100%;width:5px;cursor:col-resize;background:transparent;z-index:10;}
+.s1-th{font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;position:relative;user-select:none;padding-right:6px;border-right:1px solid var(--border2);}
+.s1-th:last-child{border-right:none;}
+.col-resizer{position:absolute;right:-3px;top:0;height:100%;width:6px;cursor:col-resize;background:transparent;z-index:10;}
 .col-resizer:hover,.col-resizer.dragging{background:var(--orange);border-radius:2px;}
 
 .s1-body{flex:1;overflow-y:auto;}
 
-.s1-row{display:grid;grid-template-columns:60px 50px 1.8fr 140px 90px 1.6fr 36px;gap:0;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row{display:grid;gap:0;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#e0f2fe !important;}
 .s1-row.unread.s1-even{background:#ffffff;}
 .s1-row.unread.s1-odd{background:#f8faff;}
@@ -653,34 +654,31 @@ function renderList(){
     } else {
       thumbHtml='<div class="s1-thumb">&#128230;</div>';
     }
-    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" onclick="selectMsg('+ri+')">'
-      // 時刻＋未読ドット
-      +'<div class="s1-time-cell s1-col-time">'
+    // colOrderの順番に従ってセルを生成
+    var cellMap={
+      time: '<div class="s1-time-cell s1-col-time">'
         +(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')
         +'<span class="s1-time">'+(m.time||'')+'</span>'
         +'<span class="s1-date">'+(m.date||'')+'</span>'
-      +'</div>'
-      // 商品画像
-      +'<div class="s1-col-thumb">'+thumbHtml+'</div>'
-      // 商品名＋ID
-      +'<div class="s1-item-cell s1-col-item">'
+        +'</div>',
+      thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
+      item: '<div class="s1-item-cell s1-col-item">'
         +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
         +'<div class="s1-item-ids">'+esc(idsHtml)+'</div>'
-      +'</div>'
-      // タグ
-      +'<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>'
-      // 状態
-      +'<div class="s1-status-cell s1-col-status">'+statusHtml+'</div>'
-      // バイヤー＋メッセージ
-      +'<div class="s1-buyer-cell s1-col-buyer">'
+        +'</div>',
+      tags: '<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>',
+      status: '<div class="s1-status-cell s1-col-status">'+statusHtml+'</div>',
+      buyer: '<div class="s1-buyer-cell s1-col-buyer">'
         +'<div class="s1-avatar" style="'+avatarStyle+'">'+initials+'</div>'
         +'<div class="s1-buyer-info">'
           +'<div class="s1-buyer-name">'+esc(m.buyer)+'</div>'
           +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
-        +'</div>'
-      +'</div>'
-      // ★
-      +'<div><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>'
+        +'</div></div>',
+    };
+    var cells=colOrder.filter(function(k){return colVisible[k];}).map(function(k){return cellMap[k]||'';}).join('');
+    cells+='<div><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>';
+    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" style="grid-template-columns:'+getGridTemplate()+';" onclick="selectMsg('+ri+')">'
+      +cells
       +'</div>';
   }).join('');
 }
@@ -958,8 +956,51 @@ function loadReplyFromHistory(){
   translateReply(currentIdx);
 }
 
-// ===== 列表示切替 =====
-var colVisible={time:true,thumb:true,item:true,tags:true,status:true,buyer:true};
+// ===== 列管理（一本化版）=====
+// 列定義: key, デフォルト幅(px), frかpxか
+var COL_DEFS = [
+  {key:'time',  label:'時刻',     w:72,  fr:false},
+  {key:'thumb', label:'画像',     w:52,  fr:false},
+  {key:'item',  label:'商品名',   w:240, fr:false},
+  {key:'tags',  label:'タグ',     w:130, fr:false},
+  {key:'status',label:'状態',     w:90,  fr:false},
+  {key:'buyer', label:'バイヤー', w:260, fr:false},
+];
+var colOrder = COL_DEFS.map(function(c){return c.key;});
+var colWidths = {};
+COL_DEFS.forEach(function(c){colWidths[c.key]=c.w;});
+var colVisible = {};
+COL_DEFS.forEach(function(c){colVisible[c.key]=true;});
+
+function getGridTemplate(){
+  var tpl = colOrder.filter(function(k){return colVisible[k];}).map(function(k){return colWidths[k]+'px';});
+  tpl.push('36px'); // ★固定
+  return tpl.join(' ');
+}
+
+function applyGrid(){
+  var tpl = getGridTemplate();
+  var hdr = document.getElementById('s1-table-header-row');
+  if(hdr) hdr.style.gridTemplateColumns = tpl;
+  document.querySelectorAll('.s1-row').forEach(function(r){r.style.gridTemplateColumns=tpl;});
+}
+
+// ヘッダーDOMを列順に合わせて並び替え
+function reorderHeaderDOM(){
+  var hdr = document.getElementById('s1-table-header-row');
+  if(!hdr) return;
+  var star = hdr.querySelector('.s1-th:not([data-col])');
+  // colOrderの順にthを並べる
+  colOrder.forEach(function(key){
+    var th = hdr.querySelector('.s1-th[data-col="'+key+'"]');
+    if(th){
+      th.style.display = colVisible[key] ? '' : 'none';
+      hdr.appendChild(th);
+    }
+  });
+  if(star) hdr.appendChild(star);
+}
+
 function toggleColDropdown(e){
   e.stopPropagation();
   var dd=document.getElementById('col-toggle-dropdown');
@@ -970,33 +1011,12 @@ document.addEventListener('click',function(){
   if(dd) dd.classList.remove('open');
 });
 function updateColVisibility(){
-  colVisible={
-    time:document.getElementById('col-time').checked,
-    thumb:document.getElementById('col-thumb').checked,
-    item:document.getElementById('col-item').checked,
-    tags:document.getElementById('col-tags').checked,
-    status:document.getElementById('col-status').checked,
-    buyer:document.getElementById('col-buyer').checked,
-  };
-  // グリッドテンプレートを動的に更新
-  var cols=[];
-  if(colVisible.time) cols.push('60px');
-  if(colVisible.thumb) cols.push('50px');
-  if(colVisible.item) cols.push('1.8fr');
-  if(colVisible.tags) cols.push('140px');
-  if(colVisible.status) cols.push('90px');
-  if(colVisible.buyer) cols.push('1.6fr');
-  cols.push('36px'); // ★は常時
-  var tpl=cols.join(' ');
-  document.getElementById('s1-table-header-row').style.gridTemplateColumns=tpl;
-  document.querySelectorAll('.s1-row').forEach(function(r){r.style.gridTemplateColumns=tpl;});
-  // セルの表示切替
-  document.querySelectorAll('.s1-col-time').forEach(function(el){el.style.display=colVisible.time?'':'none';});
-  document.querySelectorAll('.s1-col-thumb').forEach(function(el){el.style.display=colVisible.thumb?'':'none';});
-  document.querySelectorAll('.s1-col-item').forEach(function(el){el.style.display=colVisible.item?'':'none';});
-  document.querySelectorAll('.s1-col-tags').forEach(function(el){el.style.display=colVisible.tags?'':'none';});
-  document.querySelectorAll('.s1-col-status').forEach(function(el){el.style.display=colVisible.status?'':'none';});
-  document.querySelectorAll('.s1-col-buyer').forEach(function(el){el.style.display=colVisible.buyer?'':'none';});
+  COL_DEFS.forEach(function(c){
+    var el=document.getElementById('col-'+c.key);
+    if(el) colVisible[c.key]=el.checked;
+  });
+  renderList();
+  applyGrid();
 }
 
 
@@ -1014,84 +1034,53 @@ function loadDemo(){
   backToList();renderList();
 }
 
-// ===== 列管理（幅調整・並べ替え統合版） =====
-var colOrder=['time','thumb','item','tags','status','buyer']; // 現在の列順
-var colWidths={time:60,thumb:50,item:220,tags:140,status:90,buyer:220};
-var colLabels={time:'時刻',thumb:'画像',item:'商品名',tags:'タグ',status:'状態',buyer:'バイヤー'};
-
-function applyColWidths(){
-  var cols=[];
-  colOrder.forEach(function(k){
-    if(colVisible[k]===false) return;
-    cols.push(colWidths[k]+'px');
-  });
-  cols.push('36px');
-  var tpl=cols.join(' ');
-  var hdr=document.getElementById('s1-table-header-row');
-  if(hdr) hdr.style.gridTemplateColumns=tpl;
-  document.querySelectorAll('.s1-row').forEach(function(r){r.style.gridTemplateColumns=tpl;});
-  // 列の表示順をDOMに反映
-  var hdrEl=document.getElementById('s1-table-header-row');
-  if(hdrEl){
-    var cells=hdrEl.querySelectorAll('.s1-th[data-col]');
-    cells.forEach(function(cell){
-      var col=cell.getAttribute('data-col');
-      var idx=colOrder.indexOf(col);
-      cell.style.order=idx;
-      cell.style.display=(colVisible[col]===false)?'none':'';
-    });
-  }
-  document.querySelectorAll('.s1-row').forEach(function(row){
-    colOrder.forEach(function(col,idx){
-      var cell=row.querySelector('.s1-col-'+col);
-      if(cell){cell.style.order=idx;cell.style.display=(colVisible[col]===false)?'none':'';}
-    });
-    var star=row.querySelector('.s1-star-btn');
-    if(star&&star.parentElement) star.parentElement.style.order=99;
-  });
-}
-window.applyColWidths=applyColWidths;
-
-// 列ヘッダードラッグによる並べ替え
+// ===== 列ヘッダードラッグ並べ替え =====
 (function(){
   var dragCol=null, dragOverCol=null;
   document.addEventListener('mousedown',function(e){
-    // 列リサイザーはスキップ
     if(e.target.classList.contains('col-resizer')) return;
-    var th=e.target.closest('.s1-th[data-col]');
+    var th=e.target.closest && e.target.closest('.s1-th[data-col]');
     if(!th) return;
     dragCol=th.getAttribute('data-col');
-    th.style.opacity='0.5';
-    th.style.cursor='grabbing';
+    th.style.opacity='0.6';
+    document.body.style.cursor='grabbing';
+    document.body.style.userSelect='none';
     e.preventDefault();
   });
   document.addEventListener('mouseover',function(e){
     if(!dragCol) return;
-    var th=e.target.closest('.s1-th[data-col]');
-    if(th&&th.getAttribute('data-col')!==dragCol){
-      dragOverCol=th.getAttribute('data-col');
+    var th=e.target.closest && e.target.closest('.s1-th[data-col]');
+    if(!th) return;
+    var over=th.getAttribute('data-col');
+    if(over!==dragCol){
+      dragOverCol=over;
       document.querySelectorAll('.s1-th[data-col]').forEach(function(el){
-        el.style.borderLeft=el.getAttribute('data-col')===dragOverCol?'3px solid var(--orange)':'';
+        el.style.borderRight=el.getAttribute('data-col')===dragOverCol?'3px solid var(--orange)':'1px solid var(--border)';
       });
     }
   });
-  document.addEventListener('mouseup',function(e){
-    if(!dragCol) return;
+  document.addEventListener('mouseup',function(){
+    if(!dragCol){return;}
     if(dragOverCol&&dragOverCol!==dragCol){
-      var fromIdx=colOrder.indexOf(dragCol);
-      var toIdx=colOrder.indexOf(dragOverCol);
-      colOrder.splice(fromIdx,1);
-      colOrder.splice(toIdx,0,dragCol);
-      applyColWidths();
+      var fi=colOrder.indexOf(dragCol);
+      var ti=colOrder.indexOf(dragOverCol);
+      colOrder.splice(fi,1);
+      colOrder.splice(ti,0,dragCol);
+      reorderHeaderDOM();
+      renderList();
+      applyGrid();
     }
     document.querySelectorAll('.s1-th[data-col]').forEach(function(el){
-      el.style.opacity='';el.style.cursor='';el.style.borderLeft='';
+      el.style.opacity='';
+      el.style.borderRight='1px solid var(--border)';
     });
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
     dragCol=null;dragOverCol=null;
   });
 })();
 
-// 列幅ドラッグ
+// ===== 列幅ドラッグ =====
 document.addEventListener('mousedown',function(e){
   if(!e.target.classList.contains('col-resizer')) return;
   var col=e.target.getAttribute('data-col');
@@ -1101,13 +1090,16 @@ document.addEventListener('mousedown',function(e){
   var startX=e.clientX;
   var startW=colWidths[col];
   e.target.classList.add('dragging');
+  document.body.style.cursor='col-resize';
+  document.body.style.userSelect='none';
   function onMove(e2){
-    var dx=e2.clientX-startX;
-    colWidths[col]=Math.max(40,startW+dx);
-    applyColWidths();
+    colWidths[col]=Math.max(40, startW+(e2.clientX-startX));
+    applyGrid();
   }
   function onUp(){
     e.target.classList.remove('dragging');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
     document.removeEventListener('mousemove',onMove);
     document.removeEventListener('mouseup',onUp);
   }
@@ -1205,7 +1197,9 @@ window.addEventListener('load',function(){
   },30000);
   var saved=localStorage.getItem('ebay_manual');
   if(saved) document.getElementById('manual-text').value=saved;
+  reorderHeaderDOM();
   renderList();
+  applyGrid();
 });
 </script>
 </body>
