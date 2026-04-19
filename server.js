@@ -167,7 +167,12 @@ function extractItemFromSubject(subject) {
   return '';
 }
 
-// ===== Claude API プロキシ =====
+// ===== ヘルスチェック（スリープ防止用） =====
+app.get('/ping', (req, res) => {
+  res.send('OK');
+});
+
+
 app.post('/api/claude', async (req, res) => {
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
