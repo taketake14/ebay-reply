@@ -87,7 +87,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .col-toggle-item input[type=checkbox]{cursor:pointer;width:14px;height:14px;accent-color:var(--orange);}
 /* 時刻セル */
 .s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
-.s1-time{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.s1-time{font-size:13px;color:var(--text);font-weight:600;font-family:var(--mono);}
 .s1-date{font-size:9px;color:var(--text3);font-family:var(--mono);}
 .s1-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:1px;}
 .s1-read-dot{width:7px;height:7px;}
@@ -96,8 +96,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-thumb img{width:100%;height:100%;object-fit:cover;}
 /* 商品情報 */
 .s1-item-cell{display:flex;flex-direction:column;gap:2px;min-width:0;padding-right:10px;}
-.s1-item-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
-.s1-item-ids{font-size:10px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
+.s1-item-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.s1-item-ids{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
 /* タグ */
 .s1-tags{display:flex;gap:3px;flex-wrap:wrap;}
 .tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
@@ -118,7 +118,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
 .s1-buyer-info{min-width:0;}
 .s1-buyer-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.s1-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-preview{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
 .s1-star-btn.on{color:#f59e0b;}
 .s1-star-btn:hover{color:#f59e0b;}
@@ -323,8 +323,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <div class="col-toggle-item"><input type="checkbox" id="col-thumb" checked onchange="updateColVisibility()"><label for="col-thumb" style="cursor:pointer;">商品画像</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-item" checked onchange="updateColVisibility()"><label for="col-item" style="cursor:pointer;">商品名</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-tags" checked onchange="updateColVisibility()"><label for="col-tags" style="cursor:pointer;">タグ</label></div>
-          <div class="col-toggle-item"><input type="checkbox" id="col-status" checked onchange="updateColVisibility()"><label for="col-status" style="cursor:pointer;">状態</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-buyer" checked onchange="updateColVisibility()"><label for="col-buyer" style="cursor:pointer;">バイヤー</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-flag" checked onchange="updateColVisibility()"><label for="col-flag" style="cursor:pointer;">フラグ</label></div>
         </div>
       </div>
     </div>
@@ -333,9 +333,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="s1-th s1-col-thumb" data-col="thumb" title="ドラッグで列を移動" style="cursor:grab;">画像<div class="col-resizer" data-col="thumb"></div></div>
       <div class="s1-th s1-col-item" data-col="item" title="ドラッグで列を移動" style="cursor:grab;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
       <div class="s1-th s1-col-tags" data-col="tags" title="ドラッグで列を移動" style="cursor:grab;">タグ<div class="col-resizer" data-col="tags"></div></div>
-      <div class="s1-th s1-col-status" data-col="status" title="ドラッグで列を移動" style="cursor:grab;">状態<div class="col-resizer" data-col="status"></div></div>
       <div class="s1-th s1-col-buyer" data-col="buyer" title="ドラッグで列を移動" style="cursor:grab;">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
-      <div class="s1-th">★</div>
+      <div class="s1-th s1-col-flag" data-col="flag" title="ドラッグで列を移動" style="cursor:grab;">フラグ<div class="col-resizer" data-col="flag"></div></div>
     </div>
     <div class="s1-body" id="msg-list"></div>
   </div>
@@ -374,6 +373,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="s2-buyer-name" id="d-name">—</div>
     <div class="s2-header-tags" id="d-header-tags"></div>
     <div class="s2-header-actions">
+      <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="メッセージを日本語訳表示">🇯🇵 日本語訳</button>
       <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグ</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
       <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()">&#10003; 返信済みにする</button>
@@ -655,10 +655,11 @@ function renderList(){
       thumbHtml='<div class="s1-thumb">&#128230;</div>';
     }
     // colOrderの順番に従ってセルを生成
+    var soldTag=m.sold?'<span class="s1-sold-badge" style="margin-left:5px;">SOLD</span>':'';
     var cellMap={
       time: '<div class="s1-time-cell s1-col-time">'
         +(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')
-        +'<span class="s1-time">'+(m.time||'')+'</span>'
+        +'<span class="s1-time" style="color:var(--text);font-weight:600;">'+(m.time||'')+'</span>'
         +'<span class="s1-date">'+(m.date||'')+'</span>'
         +'</div>',
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
@@ -667,16 +668,15 @@ function renderList(){
         +'<div class="s1-item-ids">'+esc(idsHtml)+'</div>'
         +'</div>',
       tags: '<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>',
-      status: '<div class="s1-status-cell s1-col-status">'+statusHtml+'</div>',
       buyer: '<div class="s1-buyer-cell s1-col-buyer">'
         +'<div class="s1-avatar" style="'+avatarStyle+'">'+initials+'</div>'
         +'<div class="s1-buyer-info">'
-          +'<div class="s1-buyer-name">'+esc(m.buyer)+'</div>'
+          +'<div class="s1-buyer-name">'+esc(m.buyer)+soldTag+(m.replied?'<span class="s1-replied-badge" style="margin-left:5px;">&#10003; 返信済み</span>':'')+'</div>'
           +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
         +'</div></div>',
+      flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
     };
     var cells=colOrder.filter(function(k){return colVisible[k];}).map(function(k){return cellMap[k]||'';}).join('');
-    cells+='<div><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>';
     return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" style="grid-template-columns:'+getGridTemplate()+';" onclick="selectMsg('+ri+')">'
       +cells
       +'</div>';
@@ -776,25 +776,71 @@ function updateStarBtn(){
   btn.classList.toggle('on',m.starred);
 }
 
+var chatTranslateMode = false;
+var chatTranslateCache = {}; // {msgKey: ja}
+
+function toggleChatTranslate(){
+  chatTranslateMode = !chatTranslateMode;
+  var btn = document.getElementById('btn-translate');
+  if(chatTranslateMode){
+    btn.style.background='var(--navy)';btn.style.color='#fff';btn.style.borderColor='var(--navy)';
+    renderChatBubbles();
+    translateAllBubbles();
+  } else {
+    btn.style.background='';btn.style.color='';btn.style.borderColor='';
+    renderChatBubbles();
+  }
+}
+
+async function translateAllBubbles(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  var allItems=(m.history||[]).concat([{from:'buyer',text:m.msg}]);
+  for(var i=0;i<allItems.length;i++){
+    var h=allItems[i];
+    if(!h.text||h.text.length<3) continue;
+    var key=h.text.substring(0,40);
+    if(chatTranslateCache[key]) continue;
+    try{
+      var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,
+          messages:[{role:'user',content:'以下を日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+h.text}]})});
+      var data=await res.json();
+      var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+      chatTranslateCache[key]=ja;
+      // 現在表示中のバブルを更新
+      if(chatTranslateMode){
+        var els=document.querySelectorAll('.bbl-ja[data-key="'+key.replace(/"/g,'&quot;')+'"]');
+        els.forEach(function(el){el.textContent=ja;el.style.color='var(--text2)';});
+      }
+    }catch(e){}
+  }
+}
+
 function renderChatBubbles(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
   var el=document.getElementById('chat-area');
   var html='';
-  var allItems=(m.history||[]).map(function(h,idx){return {from:h.from,text:h.text,time:h.time||'',isNew:false,hIdx:idx};});
-  allItems.push({from:'buyer',text:m.msg,time:(m.date+' '+m.time),isNew:true,hIdx:allItems.length});
+  var allItems=(m.history||[]).map(function(h,idx){return {from:h.from,text:h.text,time:h.time||'',isNew:false};});
+  allItems.push({from:'buyer',text:m.msg,time:(m.date+' '+m.time),isNew:true});
   allItems.forEach(function(h){
     var side=h.from==='me'?'mine':'theirs';
     var who=h.from==='me'?'Ken':m.buyer;
     if(h.isNew&&(m.history||[]).length>0) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
+    var key=h.text?h.text.substring(0,40):'';
+    var jaText=chatTranslateMode?(chatTranslateCache[key]||'翻訳中...'):'';
+    var jaHtml=chatTranslateMode?'<div class="bbl-ja" data-key="'+esc(key)+'" style="font-size:11px;color:var(--text3);margin-top:3px;font-style:italic;max-width:74%;'+(side==='mine'?'text-align:right;':'')+'">'+esc(jaText)+'</div>':'';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
+      +jaHtml
       +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+h.time+'</div>'
       +'</div>';
   });
   el.innerHTML=html;
   el.scrollTop=el.scrollHeight;
 }
+
 
 // ===== アクション =====
 function toggleStar(){
@@ -959,12 +1005,12 @@ function loadReplyFromHistory(){
 // ===== 列管理（一本化版）=====
 // 列定義: key, デフォルト幅(px), frかpxか
 var COL_DEFS = [
-  {key:'time',  label:'時刻',     w:72,  fr:false},
+  {key:'time',  label:'時刻',     w:80,  fr:false},
   {key:'thumb', label:'画像',     w:52,  fr:false},
-  {key:'item',  label:'商品名',   w:240, fr:false},
+  {key:'item',  label:'商品名',   w:260, fr:false},
   {key:'tags',  label:'タグ',     w:130, fr:false},
-  {key:'status',label:'状態',     w:90,  fr:false},
-  {key:'buyer', label:'バイヤー', w:260, fr:false},
+  {key:'buyer', label:'バイヤー', w:300, fr:false},
+  {key:'flag',  label:'フラグ',   w:52,  fr:false},
 ];
 var colOrder = COL_DEFS.map(function(c){return c.key;});
 var colWidths = {};
