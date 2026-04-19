@@ -69,20 +69,23 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s1-body{flex:1;overflow-y:auto;}
 
-.s1-row{display:grid;gap:0;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.12s;border-left:4px solid transparent;}
-.s1-row:hover{background:#f0f7ff !important;border-left-color:#93c5fd !important;}
-/* 未読：白背景＋オレンジ左ライン */
-.s1-row.unread{background:#ffffff;border-left:4px solid var(--orange);}
-.s1-row.unread .s1-buyer-name{font-weight:700;color:var(--text);}
-.s1-row.unread .s1-item-name{font-weight:600;color:var(--text);}
-/* 既読：薄グレー背景、文字も薄く */
-.s1-row.read{background:#f5f7fa;border-left:4px solid transparent;}
-.s1-row.read .s1-buyer-name{font-weight:500;color:var(--text);}
-.s1-row.read .s1-preview{color:var(--text3);}
-.s1-row.read .s1-item-name{font-weight:400;color:var(--text2);}
-/* even/oddは廃止（シンプルに2パターンのみ） */
-.s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#ffffff;border-left:4px solid var(--orange);}
-.s1-row.read.s1-even,.s1-row.read.s1-odd{background:#f5f7fa;border-left:4px solid transparent;}
+.s1-row{display:grid;gap:0;padding:12px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row:hover{background:#f0f7ff !important;}
+/* ===== 未読：白背景・全文字濃く太く ===== */
+.s1-row.unread{background:#ffffff;}
+.s1-row.unread .s1-buyer-name{font-weight:800;color:#0f172a;}
+.s1-row.unread .s1-item-name{font-weight:700;color:#0f172a;}
+.s1-row.unread .s1-preview{color:#334155;font-weight:500;}
+.s1-row.unread .s1-time{color:#0f172a;font-weight:800;}
+/* ===== 既読：全体的に薄く・細く（一目で区別できる） ===== */
+.s1-row.read{background:#f8f9fb;}
+.s1-row.read .s1-buyer-name{font-weight:400;color:#94a3b8;}
+.s1-row.read .s1-item-name{font-weight:400;color:#94a3b8;}
+.s1-row.read .s1-preview{color:#94a3b8;}
+.s1-row.read .s1-time{color:#94a3b8;}
+/* even/odd廃止 */
+.s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#ffffff;}
+.s1-row.read.s1-even,.s1-row.read.s1-odd{background:#f8f9fb;}
 /* 列表示切替ボタン */
 .col-toggle-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-weight:500;position:relative;}
 .col-toggle-btn:hover{background:var(--bg3);}
@@ -390,8 +393,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="s2-header-tags" id="d-header-tags"></div>
     <div class="s2-header-actions">
       <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="メッセージを日本語訳表示">🇯🇵 日本語訳</button>
-      <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグ</button>
+      <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグを付ける</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
+      <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()" style="display:none;"></button>
 
     </div>
   </div>
@@ -793,8 +797,10 @@ function renderChatDetail(){
   document.getElementById('d-header-tags').innerHTML=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
   updateStarBtn();
   var repliedBtn=document.getElementById('btn-replied');
-  if(m.replied){repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');}
-  else{repliedBtn.textContent='&#10003; 返信済みにする';repliedBtn.classList.remove('done');}
+  if(repliedBtn){
+    if(m.replied){repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');}
+    else{repliedBtn.textContent='&#10003; 返信済みにする';repliedBtn.classList.remove('done');}
+  }
 
   // 右パネル：商品
   var imgWrap=document.getElementById('prod-img-wrap');
@@ -970,8 +976,10 @@ function markReplied(){
   m.replied=!m.replied;
   saveState(m);
   var btn=document.getElementById('btn-replied');
-  if(m.replied){btn.textContent='&#10003; 返信済み';btn.classList.add('done');}
-  else{btn.textContent='&#10003; 返信済みにする';btn.classList.remove('done');}
+  if(btn){
+    if(m.replied){btn.textContent='&#10003; 返信済み';btn.classList.add('done');}
+    else{btn.textContent='&#10003; 返信済みにする';btn.classList.remove('done');}
+  }
 }
 function saveMemo(){
   if(currentIdx===null) return;
@@ -1004,7 +1012,7 @@ function copyReply(){
     copyBtn.textContent='&#10003; コピー済み';copyBtn.classList.add('copied');
     setTimeout(function(){copyBtn.textContent='返信文をコピー';copyBtn.classList.remove('copied');},1800);
     var repliedBtn=document.getElementById('btn-replied');
-    repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');
+    if(repliedBtn){repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');}
   });
 }
 
