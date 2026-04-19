@@ -74,11 +74,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 未読：白背景＋オレンジ左ライン */
 .s1-row.unread{background:#ffffff;border-left:4px solid var(--orange);}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:var(--text);}
+.s1-row.unread .s1-item-name{font-weight:600;color:var(--text);}
 /* 既読：薄グレー背景、文字も薄く */
 .s1-row.read{background:#f5f7fa;border-left:4px solid transparent;}
-.s1-row.read .s1-buyer-name{font-weight:400;color:var(--text3);}
+.s1-row.read .s1-buyer-name{font-weight:500;color:var(--text);}
 .s1-row.read .s1-preview{color:var(--text3);}
-.s1-row.read .s1-item-name{color:var(--text3);}
+.s1-row.read .s1-item-name{font-weight:400;color:var(--text2);}
 /* even/oddは廃止（シンプルに2パターンのみ） */
 .s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#ffffff;border-left:4px solid var(--orange);}
 .s1-row.read.s1-even,.s1-row.read.s1-odd{background:#f5f7fa;border-left:4px solid transparent;}
@@ -165,7 +166,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
 .bbl.theirs.new-msg{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-light);}
 .bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);}
-.new-badge{font-size:11px;font-weight:700;color:var(--orange);text-align:center;padding:5px 0;margin:4px 0;border-top:2px dashed var(--orange-border);border-bottom:2px dashed var(--orange-border);background:#fffbeb;border-radius:4px;}
+.new-badge{font-size:11px;font-weight:700;color:#1d4ed8;text-align:center;padding:5px 0;margin:4px 0;border-top:2px dashed #93c5fd;border-bottom:2px dashed #93c5fd;background:#eff6ff;border-radius:4px;}
 
 /* 返信エリア */
 .reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;}
@@ -343,7 +344,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="s1-filter" style="font-size:12px;margin-left:auto;" onclick="clearAllChecks()">× 選択解除</button>
     </div>
     <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
-      <div class="s1-th" style="width:36px;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
+      <div class="s1-th" style="width:36px;font-size:11px;color:var(--text2);">選択<br><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--orange);margin-top:2px;"></div>
       <div class="s1-th s1-col-time" data-col="time" title="ドラッグで列を移動" style="cursor:grab;">時刻<div class="col-resizer" data-col="time"></div></div>
       <div class="s1-th s1-col-thumb" data-col="thumb" title="ドラッグで列を移動" style="cursor:grab;">画像<div class="col-resizer" data-col="thumb"></div></div>
       <div class="s1-th s1-col-item" data-col="item" title="ドラッグで列を移動" style="cursor:grab;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
@@ -391,7 +392,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="メッセージを日本語訳表示">🇯🇵 日本語訳</button>
       <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグ</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
-      <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()">&#10003; 返信済みにする</button>
+
     </div>
   </div>
 
@@ -806,11 +807,9 @@ function renderChatDetail(){
   document.getElementById('prod-name').textContent=m.item||'（商品名なし）';
   var kvHtml='';
   if(m.orderId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">注文番号</span><a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">'+esc(m.orderId)+'</a></div>';
-  // Sales record no.（注文番号の数字部分から生成 例: "25-14437-97175" → "14437-97175" の末尾部分）
-  if(m.orderId){
-    var srMatch=m.orderId.match(/\d+-(\d+-\d+)$/);
-    var srNo=srMatch?srMatch[1]:m.orderId;
-    kvHtml+='<div class="prod-kv-row"><span class="kv-k">Sales Record No.</span><span class="kv-v" style="font-family:var(--mono);font-size:12px;">'+esc(srNo)+'</span></div>';
+  // Sales Record No.（eBay API取得予定）
+  if(m.sold){
+    kvHtml+='<div class="prod-kv-row"><span class="kv-k">Sales Record No.</span><span class="kv-v" style="color:var(--text3);font-size:12px;">API取得予定</span></div>';
   }
   if(m.itemId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">Item ID</span><a class="kv-v link" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">'+esc(m.itemId)+'</a></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
@@ -881,7 +880,7 @@ function updateStarBtn(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
   var btn=document.getElementById('btn-star');
-  btn.textContent=m.starred?'★ フラグ解除':'☆ フラグ';
+  btn.textContent=m.starred?'★ フラグ解除':'☆ フラグを付ける';
   btn.classList.toggle('on',m.starred);
 }
 
