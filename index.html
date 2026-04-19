@@ -154,8 +154,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
 .bbl{max-width:74%;padding:10px 14px;font-size:13px;line-height:1.7;word-break:break-word;}
-/* 自分の吹き出し：極薄グレーブルー＋濃いめテキスト */
-.bbl.mine{background:#eef4ff;color:#334155;border-radius:16px 16px 4px 16px;border:1px solid #dde8ff;}
+/* 自分の吹き出し：極薄白ベース＋アクセントの濃い枠線 */
+.bbl.mine{background:#f5f8ff;color:#334155;border-radius:16px 16px 4px 16px;border:2px solid #93c5fd;}
 .bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
 .bbl.theirs.new-msg{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-light);}
 .bbl-meta{font-size:10px;color:var(--text3);padding:0 4px;font-family:var(--mono);}
@@ -327,13 +327,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         </div>
       </div>
     </div>
-    <div class="s1-table-header" id="s1-table-header-row">
-      <div class="s1-th s1-col-time">時刻<div class="col-resizer" data-col="time"></div></div>
-      <div class="s1-th s1-col-thumb">画像<div class="col-resizer" data-col="thumb"></div></div>
-      <div class="s1-th s1-col-item">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
-      <div class="s1-th s1-col-tags">タグ<div class="col-resizer" data-col="tags"></div></div>
-      <div class="s1-th s1-col-status">状態<div class="col-resizer" data-col="status"></div></div>
-      <div class="s1-th s1-col-buyer">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
+    <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
+      <div class="s1-th s1-col-time" data-col="time" title="ドラッグで列を移動" style="cursor:grab;">時刻<div class="col-resizer" data-col="time"></div></div>
+      <div class="s1-th s1-col-thumb" data-col="thumb" title="ドラッグで列を移動" style="cursor:grab;">画像<div class="col-resizer" data-col="thumb"></div></div>
+      <div class="s1-th s1-col-item" data-col="item" title="ドラッグで列を移動" style="cursor:grab;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
+      <div class="s1-th s1-col-tags" data-col="tags" title="ドラッグで列を移動" style="cursor:grab;">タグ<div class="col-resizer" data-col="tags"></div></div>
+      <div class="s1-th s1-col-status" data-col="status" title="ドラッグで列を移動" style="cursor:grab;">状態<div class="col-resizer" data-col="status"></div></div>
+      <div class="s1-th s1-col-buyer" data-col="buyer" title="ドラッグで列を移動" style="cursor:grab;">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
       <div class="s1-th">★</div>
     </div>
     <div class="s1-body" id="msg-list"></div>
@@ -1014,46 +1014,108 @@ function loadDemo(){
   backToList();renderList();
 }
 
-// ===== 列幅ドラッグ =====
-(function(){
-  var colWidths={time:60,thumb:50,item:220,tags:140,status:90,buyer:220};
-  function applyColWidths(){
-    var cols=[];
-    var keys=['time','thumb','item','tags','status','buyer'];
-    keys.forEach(function(k){
-      if(colVisible&&colVisible[k]===false) return;
-      cols.push(colWidths[k]+'px');
-    });
-    cols.push('36px');
-    var tpl=cols.join(' ');
-    var hdr=document.getElementById('s1-table-header-row');
-    if(hdr) hdr.style.gridTemplateColumns=tpl;
-    document.querySelectorAll('.s1-row').forEach(function(r){r.style.gridTemplateColumns=tpl;});
-  }
-  window.applyColWidths=applyColWidths;
+// ===== 列管理（幅調整・並べ替え統合版） =====
+var colOrder=['time','thumb','item','tags','status','buyer']; // 現在の列順
+var colWidths={time:60,thumb:50,item:220,tags:140,status:90,buyer:220};
+var colLabels={time:'時刻',thumb:'画像',item:'商品名',tags:'タグ',status:'状態',buyer:'バイヤー'};
 
+function applyColWidths(){
+  var cols=[];
+  colOrder.forEach(function(k){
+    if(colVisible[k]===false) return;
+    cols.push(colWidths[k]+'px');
+  });
+  cols.push('36px');
+  var tpl=cols.join(' ');
+  var hdr=document.getElementById('s1-table-header-row');
+  if(hdr) hdr.style.gridTemplateColumns=tpl;
+  document.querySelectorAll('.s1-row').forEach(function(r){r.style.gridTemplateColumns=tpl;});
+  // 列の表示順をDOMに反映
+  var hdrEl=document.getElementById('s1-table-header-row');
+  if(hdrEl){
+    var cells=hdrEl.querySelectorAll('.s1-th[data-col]');
+    cells.forEach(function(cell){
+      var col=cell.getAttribute('data-col');
+      var idx=colOrder.indexOf(col);
+      cell.style.order=idx;
+      cell.style.display=(colVisible[col]===false)?'none':'';
+    });
+  }
+  document.querySelectorAll('.s1-row').forEach(function(row){
+    colOrder.forEach(function(col,idx){
+      var cell=row.querySelector('.s1-col-'+col);
+      if(cell){cell.style.order=idx;cell.style.display=(colVisible[col]===false)?'none':'';}
+    });
+    var star=row.querySelector('.s1-star-btn');
+    if(star&&star.parentElement) star.parentElement.style.order=99;
+  });
+}
+window.applyColWidths=applyColWidths;
+
+// 列ヘッダードラッグによる並べ替え
+(function(){
+  var dragCol=null, dragOverCol=null;
   document.addEventListener('mousedown',function(e){
-    if(!e.target.classList.contains('col-resizer')) return;
-    var col=e.target.getAttribute('data-col');
-    if(!col) return;
+    // 列リサイザーはスキップ
+    if(e.target.classList.contains('col-resizer')) return;
+    var th=e.target.closest('.s1-th[data-col]');
+    if(!th) return;
+    dragCol=th.getAttribute('data-col');
+    th.style.opacity='0.5';
+    th.style.cursor='grabbing';
     e.preventDefault();
-    var startX=e.clientX;
-    var startW=colWidths[col];
-    e.target.classList.add('dragging');
-    function onMove(e2){
-      var dx=e2.clientX-startX;
-      colWidths[col]=Math.max(40,startW+dx);
+  });
+  document.addEventListener('mouseover',function(e){
+    if(!dragCol) return;
+    var th=e.target.closest('.s1-th[data-col]');
+    if(th&&th.getAttribute('data-col')!==dragCol){
+      dragOverCol=th.getAttribute('data-col');
+      document.querySelectorAll('.s1-th[data-col]').forEach(function(el){
+        el.style.borderLeft=el.getAttribute('data-col')===dragOverCol?'3px solid var(--orange)':'';
+      });
+    }
+  });
+  document.addEventListener('mouseup',function(e){
+    if(!dragCol) return;
+    if(dragOverCol&&dragOverCol!==dragCol){
+      var fromIdx=colOrder.indexOf(dragCol);
+      var toIdx=colOrder.indexOf(dragOverCol);
+      colOrder.splice(fromIdx,1);
+      colOrder.splice(toIdx,0,dragCol);
       applyColWidths();
     }
-    function onUp(){
-      e.target.classList.remove('dragging');
-      document.removeEventListener('mousemove',onMove);
-      document.removeEventListener('mouseup',onUp);
-    }
-    document.addEventListener('mousemove',onMove);
-    document.addEventListener('mouseup',onUp);
+    document.querySelectorAll('.s1-th[data-col]').forEach(function(el){
+      el.style.opacity='';el.style.cursor='';el.style.borderLeft='';
+    });
+    dragCol=null;dragOverCol=null;
   });
 })();
+
+// 列幅ドラッグ
+document.addEventListener('mousedown',function(e){
+  if(!e.target.classList.contains('col-resizer')) return;
+  var col=e.target.getAttribute('data-col');
+  if(!col) return;
+  e.preventDefault();
+  e.stopPropagation();
+  var startX=e.clientX;
+  var startW=colWidths[col];
+  e.target.classList.add('dragging');
+  function onMove(e2){
+    var dx=e2.clientX-startX;
+    colWidths[col]=Math.max(40,startW+dx);
+    applyColWidths();
+  }
+  function onUp(){
+    e.target.classList.remove('dragging');
+    document.removeEventListener('mousemove',onMove);
+    document.removeEventListener('mouseup',onUp);
+  }
+  document.addEventListener('mousemove',onMove);
+  document.addEventListener('mouseup',onUp);
+});
+
+
 
 
 (function(){
