@@ -62,14 +62,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 列順：時刻 | 商品画像 | 商品名+ID | タグ | 状態 | バイヤー/メッセージ | ★ */
 .s1-table-header{display:grid;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
 /* 列リサイザー */
-.s1-th{font-size:11px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;position:relative;user-select:none;padding-right:6px;border-right:1px solid var(--border2);}
+.s1-th{font-size:13px;color:var(--text);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;position:relative;user-select:none;padding-right:6px;border-right:1px solid var(--border2);}
 .s1-th:last-child{border-right:none;}
 .col-resizer{position:absolute;right:-3px;top:0;height:100%;width:6px;cursor:col-resize;background:transparent;z-index:10;}
 .col-resizer:hover,.col-resizer.dragging{background:var(--orange);border-radius:2px;}
 
 .s1-body{flex:1;overflow-y:auto;}
 
-.s1-row{display:grid;gap:0;padding:10px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row{display:grid;gap:0;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#e0f2fe !important;}
 .s1-row.unread.s1-even{background:#ffffff;}
 .s1-row.unread.s1-odd{background:#f8faff;}
@@ -87,7 +87,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .col-toggle-item input[type=checkbox]{cursor:pointer;width:14px;height:14px;accent-color:var(--orange);}
 /* 時刻セル */
 .s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
-.s1-time{font-size:13px;color:var(--text);font-weight:600;font-family:var(--mono);}
+.s1-time{font-size:14px;color:var(--text);font-weight:700;font-family:var(--mono);}
 .s1-date{font-size:9px;color:var(--text3);font-family:var(--mono);}
 .s1-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:1px;}
 .s1-read-dot{width:7px;height:7px;}
@@ -96,11 +96,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-thumb img{width:100%;height:100%;object-fit:cover;}
 /* 商品情報 */
 .s1-item-cell{display:flex;flex-direction:column;gap:2px;min-width:0;padding-right:10px;}
-.s1-item-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
-.s1-item-ids{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
+.s1-item-name{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.s1-item-ids{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
 /* タグ */
 .s1-tags{display:flex;gap:3px;flex-wrap:wrap;}
-.tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:600;white-space:nowrap;}
+.tag{font-size:12px;padding:3px 8px;border-radius:4px;font-weight:600;white-space:nowrap;}
 .tag-discount{background:#fee2e2;color:#b91c1c;}
 .tag-stock{background:#dbeafe;color:#1d4ed8;}
 .tag-ship{background:#e0f2fe;color:#0369a1;}
@@ -111,14 +111,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tag-other{background:#f1f5f9;color:var(--text2);}
 /* 状態 */
 .s1-status-cell{display:flex;flex-direction:column;gap:3px;}
-.s1-sold-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#d1fae5;color:#065f46;font-weight:700;white-space:nowrap;display:inline-block;}
+.s1-sold-badge{font-size:11px;padding:3px 8px;border-radius:4px;background:#dc2626;color:#fff;font-weight:700;white-space:nowrap;display:inline-block;}
 .s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:600;white-space:nowrap;display:inline-block;}
 /* バイヤー */
 .s1-buyer-cell{display:flex;align-items:center;gap:8px;min-width:0;}
 .s1-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
 .s1-buyer-info{min-width:0;}
-.s1-buyer-name{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.s1-preview{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-buyer-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
 .s1-star-btn.on{color:#f59e0b;}
 .s1-star-btn:hover{color:#f59e0b;}
@@ -156,7 +156,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-wrap.theirs{align-items:flex-start;}
 .bbl{max-width:74%;padding:10px 14px;font-size:14px;line-height:1.7;word-break:break-word;}
 /* 自分の吹き出し：極薄白ベース＋アクセントの濃い枠線 */
-.bbl.mine{background:#f5f8ff;color:#334155;border-radius:16px 16px 4px 16px;border:2px solid #93c5fd;}
+.bbl.mine{background:#ffffff;color:#1e293b;border-radius:16px 16px 4px 16px;border:2px solid #93c5fd;}
 .bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
 .bbl.theirs.new-msg{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-light);}
 .bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);}
@@ -583,6 +583,7 @@ function backToList(){
 function showChat(){
   document.getElementById('screen-list').style.display='none';
   document.getElementById('screen-chat').style.display='flex';
+  setTimeout(function(){if(window.restoreResize) window.restoreResize();},50);
 }
 function showMainTab(name, btn){
   document.querySelectorAll('.nav-tab-btn').forEach(function(b){b.classList.remove('on');});
@@ -1188,6 +1189,37 @@ document.addEventListener('mousedown',function(e){
 
 
 (function(){
+  // ===== リサイザーのサイズ復元 =====
+  function restoreResize(){
+    try{
+      var s=JSON.parse(localStorage.getItem('ebay_resize')||'{}');
+      var chatArea=document.getElementById('chat-area');
+      var replyArea=document.getElementById('reply-area');
+      var chatCol=document.getElementById('chat-col');
+      var rightPanel=document.getElementById('right-panel');
+      if(s.chatH&&chatArea){chatArea.style.flex='none';chatArea.style.height=s.chatH+'px';}
+      if(s.replyH&&replyArea){replyArea.style.flex='none';replyArea.style.height=s.replyH+'px';}
+      if(s.chatW&&chatCol){chatCol.style.flex='none';chatCol.style.width=s.chatW+'px';}
+      if(s.rightW&&rightPanel){rightPanel.style.width=s.rightW+'px';}
+    }catch(e){}
+  }
+  function saveResize(){
+    try{
+      var chatArea=document.getElementById('chat-area');
+      var replyArea=document.getElementById('reply-area');
+      var chatCol=document.getElementById('chat-col');
+      var rightPanel=document.getElementById('right-panel');
+      localStorage.setItem('ebay_resize',JSON.stringify({
+        chatH:chatArea?chatArea.getBoundingClientRect().height:null,
+        replyH:replyArea?replyArea.getBoundingClientRect().height:null,
+        chatW:chatCol?chatCol.getBoundingClientRect().width:null,
+        rightW:rightPanel?rightPanel.getBoundingClientRect().width:null,
+      }));
+    }catch(e){}
+  }
+  // チャット画面を開くたびに復元
+  window.restoreResize=restoreResize;
+
   // 縦リサイザー（チャット↕返信）
   var vRes=document.getElementById('v-resizer');
   var chatArea=document.getElementById('chat-area');
@@ -1214,7 +1246,11 @@ document.addEventListener('mousedown',function(e){
     replyArea.style.height=newReplyH+'px';
   });
   document.addEventListener('mouseup',function(){
-    if(vDragging){vDragging=false;vRes.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';}
+    if(vDragging){
+      vDragging=false;vRes.classList.remove('dragging');
+      document.body.style.cursor='';document.body.style.userSelect='';
+      saveResize();
+    }
   });
 
   // 横リサイザー（チャットカラム↔右パネル）
@@ -1242,7 +1278,11 @@ document.addEventListener('mousedown',function(e){
     rightPanel.style.width=newRW+'px';
   });
   document.addEventListener('mouseup',function(){
-    if(hDragging){hDragging=false;hRes.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';}
+    if(hDragging){
+      hDragging=false;hRes.classList.remove('dragging');
+      document.body.style.cursor='';document.body.style.userSelect='';
+      saveResize();
+    }
   });
 })();
 
