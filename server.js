@@ -352,7 +352,7 @@ app.get('/api/messages', async (req, res) => {
       } else {
         const thread = threadMap[key];
         thread.threadMessages.push(m);
-        if (m.timestamp > thread.timestamp) {
+        if (new Date(m.timestamp) > new Date(thread.timestamp)) {
           thread.timestamp = m.timestamp;
           thread.id = m.id;
           // 最新メールの既読状態を使う（古いメールの未読で上書きしない）
@@ -369,7 +369,7 @@ app.get('/api/messages', async (req, res) => {
     });
 
     const threads = Object.values(threadMap).map(thread => {
-      const sorted = thread.threadMessages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+      const sorted = thread.threadMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
       const latest = sorted[sorted.length - 1];
       const allHistory = [];
       sorted.forEach((m, idx) => {
@@ -408,7 +408,7 @@ app.get('/api/messages', async (req, res) => {
       };
     });
 
-    threads.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+    threads.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     res.json({ messages: threads });
   } catch (e) {
     console.error('Error:', e.message);
