@@ -347,7 +347,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="s1-filter" style="font-size:12px;margin-left:auto;" onclick="clearAllChecks()">× 選択解除</button>
     </div>
     <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
-      <div class="s1-th" style="width:36px;font-size:11px;color:var(--text2);">選択<br><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:14px;height:14px;accent-color:var(--orange);margin-top:2px;"></div>
+      <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
       <div class="s1-th s1-col-time" data-col="time" title="ドラッグで列を移動" style="cursor:grab;">時刻<div class="col-resizer" data-col="time"></div></div>
       <div class="s1-th s1-col-thumb" data-col="thumb" title="ドラッグで列を移動" style="cursor:grab;">画像<div class="col-resizer" data-col="thumb"></div></div>
       <div class="s1-th s1-col-item" data-col="item" title="ドラッグで列を移動" style="cursor:grab;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
@@ -764,7 +764,7 @@ function renderList(){
       +'<input type="checkbox" '+cbChecked+' style="width:15px;height:15px;cursor:pointer;accent-color:var(--orange);" '
       +'onchange="(function(e){if(e.target.checked)checkedIds.add('+m.id+');else checkedIds.delete('+m.id+');updateBulkBar();})(event)">'
       +'</div>';
-    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" style="grid-template-columns:36px '+getGridTemplate()+';" onclick="selectMsg('+ri+')">'
+    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" style="grid-template-columns:'+getGridTemplate()+';" onclick="selectMsg('+ri+')">'
       +checkCell+cells
       +'</div>';
   }).join('');
@@ -1163,8 +1163,11 @@ function saveColSettings(){
 }
 
 function getGridTemplate(){
-  var tpl = colOrder.filter(function(k){return colVisible[k];}).map(function(k){return colWidths[k]+'px';});
-  tpl.push('36px'); // ★固定
+  // 先頭に選択列(36px)固定、その後colOrder、最後にフラグ列は含めない（colOrder内にflagが入っている）
+  var tpl = ['36px']; // チェックボックス固定列
+  colOrder.filter(function(k){return colVisible[k];}).forEach(function(k){
+    tpl.push(colWidths[k]+'px');
+  });
   return tpl.join(' ');
 }
 
@@ -1179,8 +1182,10 @@ function applyGrid(){
 function reorderHeaderDOM(){
   var hdr = document.getElementById('s1-table-header-row');
   if(!hdr) return;
-  var star = hdr.querySelector('.s1-th:not([data-col])');
-  // colOrderの順にthを並べる
+  // チェックボックス列（data-colなし）を先頭に固定
+  var checkCell = hdr.querySelector('.s1-th:not([data-col])');
+  if(checkCell) hdr.insertBefore(checkCell, hdr.firstChild);
+  // colOrderの順にdata-col付きthを並べる
   colOrder.forEach(function(key){
     var th = hdr.querySelector('.s1-th[data-col="'+key+'"]');
     if(th){
@@ -1188,7 +1193,6 @@ function reorderHeaderDOM(){
       hdr.appendChild(th);
     }
   });
-  if(star) hdr.appendChild(star);
 }
 
 function toggleColDropdown(e){
