@@ -69,14 +69,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s1-body{flex:1;overflow-y:auto;}
 
-.s1-row{display:grid;gap:0;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
-.s1-row:hover{background:#e0f2fe !important;}
-.s1-row.unread.s1-even{background:#ffffff;border-left:4px solid var(--orange) !important;}
-.s1-row.unread.s1-odd{background:#fff8f3;border-left:4px solid var(--orange) !important;}
+.s1-row{display:grid;gap:0;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.12s;border-left:4px solid transparent;}
+.s1-row:hover{background:#f0f7ff !important;border-left-color:#93c5fd !important;}
+/* 未読：白背景＋オレンジ左ライン */
+.s1-row.unread{background:#ffffff;border-left:4px solid var(--orange);}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:var(--text);}
-.s1-row.read.s1-even{background:#f8fafc;border-left:4px solid transparent;}
-.s1-row.read.s1-odd{background:#f1f5f9;border-left:4px solid transparent;}
-.s1-row.read .s1-buyer-name{font-weight:400;color:var(--text2);}
+/* 既読：薄グレー背景、文字も薄く */
+.s1-row.read{background:#f5f7fa;border-left:4px solid transparent;}
+.s1-row.read .s1-buyer-name{font-weight:400;color:var(--text3);}
+.s1-row.read .s1-preview{color:var(--text3);}
+.s1-row.read .s1-item-name{color:var(--text3);}
+/* even/oddは廃止（シンプルに2パターンのみ） */
+.s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#ffffff;border-left:4px solid var(--orange);}
+.s1-row.read.s1-even,.s1-row.read.s1-odd{background:#f5f7fa;border-left:4px solid transparent;}
 /* 列表示切替ボタン */
 .col-toggle-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-weight:500;position:relative;}
 .col-toggle-btn:hover{background:var(--bg3);}
@@ -311,7 +316,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="s1-filters">
         <button class="s1-filter on" onclick="setFilter('all',this)">すべて</button>
         <button class="s1-filter" onclick="setFilter('unread',this)">未読</button>
-        <button class="s1-filter" onclick="setFilter('starred',this)">★</button>
+        <button class="s1-filter" onclick="setFilter('starred',this)">フラグ</button>
         <button class="s1-filter" onclick="setFilter('sold',this)">SOLD</button>
         <button class="s1-filter" onclick="setFilter('urgent',this)">要対応</button>
         <button class="s1-filter" onclick="setFilter('replied',this)">返信済み</button>
@@ -328,7 +333,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         </div>
       </div>
     </div>
+    <!-- 一括操作バー（チェックした時に表示） -->
+    <div id="bulk-bar" style="display:none;padding:7px 18px;background:#fff8ed;border-bottom:1px solid #fed7aa;display:none;align-items:center;gap:10px;flex-shrink:0;">
+      <span id="bulk-count" style="font-size:13px;font-weight:600;color:var(--text2);">0件選択</span>
+      <button class="s1-filter" style="font-size:12px;" onclick="bulkMarkRead(true)">✓ 既読にする</button>
+      <button class="s1-filter" style="font-size:12px;" onclick="bulkMarkRead(false)">○ 未読にする</button>
+      <button class="s1-filter" style="font-size:12px;" onclick="bulkSetFlag(true)">★ フラグをつける</button>
+      <button class="s1-filter" style="font-size:12px;" onclick="bulkSetFlag(false)">☆ フラグを外す</button>
+      <button class="s1-filter" style="font-size:12px;margin-left:auto;" onclick="clearAllChecks()">× 選択解除</button>
+    </div>
     <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
+      <div class="s1-th" style="width:36px;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
       <div class="s1-th s1-col-time" data-col="time" title="ドラッグで列を移動" style="cursor:grab;">時刻<div class="col-resizer" data-col="time"></div></div>
       <div class="s1-th s1-col-thumb" data-col="thumb" title="ドラッグで列を移動" style="cursor:grab;">画像<div class="col-resizer" data-col="thumb"></div></div>
       <div class="s1-th s1-col-item" data-col="item" title="ドラッグで列を移動" style="cursor:grab;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
@@ -512,6 +527,67 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 var messages = [];
 var currentIdx = null;
 var currentFilter = 'all';
+var checkedIds = new Set(); // 一括操作用チェック済みID
+
+// ===== 一括操作 =====
+function updateBulkBar(){
+  var bar=document.getElementById('bulk-bar');
+  var cnt=document.getElementById('bulk-count');
+  if(!bar||!cnt) return;
+  if(checkedIds.size>0){
+    bar.style.display='flex';
+    cnt.textContent=checkedIds.size+'件選択中';
+  } else {
+    bar.style.display='none';
+  }
+}
+function toggleCheck(id, el){
+  el.stopPropagation();
+  var cb=el.target||el;
+  if(cb.checked) checkedIds.add(id);
+  else checkedIds.delete(id);
+  updateBulkBar();
+}
+function toggleCheckAll(cb){
+  var filtered=getFiltered();
+  filtered.forEach(function(m){ if(cb.checked) checkedIds.add(m.id); else checkedIds.delete(m.id); });
+  updateBulkBar();
+  renderList();
+}
+function clearAllChecks(){
+  checkedIds.clear();
+  var ca=document.getElementById('check-all');
+  if(ca) ca.checked=false;
+  updateBulkBar();
+  renderList();
+}
+function bulkMarkRead(readVal){
+  checkedIds.forEach(function(id){
+    var m=messages.find(function(x){return x.id==id;});
+    if(m){m.read=readVal;saveState(m);}
+  });
+  clearAllChecks();
+  renderList();
+}
+function bulkSetFlag(flagVal){
+  checkedIds.forEach(function(id){
+    var m=messages.find(function(x){return x.id==id;});
+    if(m){m.starred=flagVal;saveState(m);}
+  });
+  clearAllChecks();
+  renderList();
+}
+function getFiltered(){
+  var filtered=messages.filter(function(m){
+    if(currentFilter==='unread') return !m.read;
+    if(currentFilter==='starred') return m.starred;
+    if(currentFilter==='sold') return m.sold;
+    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
+    if(currentFilter==='replied') return m.replied;
+    return true;
+  });
+  return filtered;
+}
 var searchQuery = '';
 var translationCache = {};
 var replyJaCache = {};
@@ -678,8 +754,13 @@ function renderList(){
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
     };
     var cells=colOrder.filter(function(k){return colVisible[k];}).map(function(k){return cellMap[k]||'';}).join('');
-    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" style="grid-template-columns:'+getGridTemplate()+';" onclick="selectMsg('+ri+')">'
-      +cells
+    var cbChecked=checkedIds.has(m.id)?'checked':'';
+    var checkCell='<div onclick="event.stopPropagation()" style="display:flex;align-items:center;justify-content:center;">'
+      +'<input type="checkbox" '+cbChecked+' style="width:15px;height:15px;cursor:pointer;accent-color:var(--orange);" '
+      +'onchange="(function(e){if(e.target.checked)checkedIds.add('+m.id+');else checkedIds.delete('+m.id+');updateBulkBar();})(event)">'
+      +'</div>';
+    return '<div class="s1-row '+(m.read?'read':'unread')+(isEven?' s1-even':' s1-odd')+'" style="grid-template-columns:36px '+getGridTemplate()+';" onclick="selectMsg('+ri+')">'
+      +checkCell+cells
       +'</div>';
   }).join('');
 }
@@ -725,6 +806,12 @@ function renderChatDetail(){
   document.getElementById('prod-name').textContent=m.item||'（商品名なし）';
   var kvHtml='';
   if(m.orderId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">注文番号</span><a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">'+esc(m.orderId)+'</a></div>';
+  // Sales record no.（注文番号の数字部分から生成 例: "25-14437-97175" → "14437-97175" の末尾部分）
+  if(m.orderId){
+    var srMatch=m.orderId.match(/\d+-(\d+-\d+)$/);
+    var srNo=srMatch?srMatch[1]:m.orderId;
+    kvHtml+='<div class="prod-kv-row"><span class="kv-k">Sales Record No.</span><span class="kv-v" style="font-family:var(--mono);font-size:12px;">'+esc(srNo)+'</span></div>';
+  }
   if(m.itemId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">Item ID</span><a class="kv-v link" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">'+esc(m.itemId)+'</a></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
     +(m.sold
@@ -754,9 +841,8 @@ function renderChatDetail(){
   document.getElementById('buyer-panel-name').innerHTML=esc(m.buyer)+soldBadge;
   document.getElementById('buyer-panel-sub').textContent=m.sold?'購入済み':'未購入';
 
-  // バイヤーリンク（Orderページのみ・商品ページは商品タブにあるので削除）
+  // バイヤーリンク（商品パネルに注文番号があるので削除）
   var linksHtml='';
-  if(m.orderId) linksHtml+='<a class="buyer-link-chip" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">&#128279; Orderページを開く</a>';
 
   // バイヤー情報プレースホルダー（eBay API未接続のため）
   linksHtml+='<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">'
