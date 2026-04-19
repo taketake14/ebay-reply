@@ -71,11 +71,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s1-row{display:grid;gap:0;padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#e0f2fe !important;}
-.s1-row.unread.s1-even{background:#ffffff;}
-.s1-row.unread.s1-odd{background:#f8faff;}
+.s1-row.unread.s1-even{background:#ffffff;border-left:4px solid var(--orange) !important;}
+.s1-row.unread.s1-odd{background:#fff8f3;border-left:4px solid var(--orange) !important;}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:var(--text);}
-.s1-row.read.s1-even{background:#f8fafc;}
-.s1-row.read.s1-odd{background:#f1f5f9;}
+.s1-row.read.s1-even{background:#f8fafc;border-left:4px solid transparent;}
+.s1-row.read.s1-odd{background:#f1f5f9;border-left:4px solid transparent;}
 .s1-row.read .s1-buyer-name{font-weight:400;color:var(--text2);}
 /* 列表示切替ボタン */
 .col-toggle-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-weight:500;position:relative;}
@@ -726,7 +726,11 @@ function renderChatDetail(){
   var kvHtml='';
   if(m.orderId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">注文番号</span><a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">'+esc(m.orderId)+'</a></div>';
   if(m.itemId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">Item ID</span><a class="kv-v link" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">'+esc(m.itemId)+'</a></div>';
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">SOLD</span><span class="kv-v">'+(m.sold?'<span class="s1-sold-badge">SOLD</span>':'—')+'</span></div>';
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
+    +(m.sold
+      ? '<span class="kv-v" style="display:flex;align-items:center;gap:6px;"><span style="background:#dc2626;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;letter-spacing:0.05em;">✓ SOLD</span></span>'
+      : '<span class="kv-v" style="color:var(--text2);">未購入</span>'
+    )+'</div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
 
   // コピーチップ
@@ -739,13 +743,31 @@ function renderChatDetail(){
   // バイヤーパネル
   var initials=m.buyer.charAt(0).toUpperCase();
   var avatarStyle=getAvatarStyle(m.buyer);
-  document.getElementById('buyer-avatar').style.cssText=avatarStyle;
-  document.getElementById('buyer-avatar').textContent=initials;
-  document.getElementById('buyer-panel-name').textContent=m.buyer;
-  document.getElementById('buyer-panel-sub').textContent='';
+  var avatarEl=document.getElementById('buyer-avatar');
+  avatarEl.style.cssText=avatarStyle+'width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;';
+  avatarEl.textContent=initials;
+
+  // バイヤー名＋SOLDバッジ
+  var soldBadge=m.sold
+    ? ' <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;vertical-align:middle;">SOLD</span>'
+    : '';
+  document.getElementById('buyer-panel-name').innerHTML=esc(m.buyer)+soldBadge;
+  document.getElementById('buyer-panel-sub').textContent=m.sold?'購入済み':'未購入';
+
+  // バイヤーリンク（Orderページのみ・商品ページは商品タブにあるので削除）
   var linksHtml='';
   if(m.orderId) linksHtml+='<a class="buyer-link-chip" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">&#128279; Orderページを開く</a>';
-  if(m.itemId) linksHtml+='<a class="buyer-link-chip" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">&#128279; 商品ページを開く</a>';
+
+  // バイヤー情報プレースホルダー（eBay API未接続のため）
+  linksHtml+='<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">'
+    +'<div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600;">バイヤー詳細情報</div>'
+    +'<div style="font-size:12px;color:var(--text2);line-height:1.8;">'
+    +(m.sold
+      ? '発送先・フィードバック数・登録日は<br>eBay APIで取得予定'
+      : '国名・フィードバック数・登録日は<br>eBay APIで取得予定'
+    )
+    +'</div></div>';
+
   document.getElementById('buyer-links').innerHTML=linksHtml;
 
   // メモ
