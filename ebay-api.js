@@ -448,6 +448,55 @@ async function getSellerSku(itemId) {
   }
 }
 
+// ===== Trading API GetUser でバイヤー公開情報を取得 =====
+const userInfoCache = {};
+async function getUserInfo(username) {
+  if (!username) return null;
+  const key = String(username).toLowerCase();
+  if (userInfoCache[key] !== undefined) return userInfoCache[key];
+  try {
+    const token = await getAccessToken();
+    const xml = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<GetUserRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+      + '<UserID>' + username + '</UserID>'
+      + '<DetailLevel>ReturnAll</DetailLevel>'
+      + '</GetUserRequest>';
+    const res = await fetch('https://api.ebay.com/ws/api.dll', {
+      method: 'POST',
+      headers: {
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+        'X-EBAY-API-CALL-NAME': 'GetUser',
+        'X-EBAY-API-IAF-TOKEN': token,
+        'Content-Type': 'text/xml',
+      },
+      body: xml,
+    });
+    const t = await res.text();
+    const pick = (tag) => {
+      const m = t.match(new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>'));
+      return m ? m[1].trim() : '';
+    };
+    const info = {
+      feedbackScore: pick('FeedbackScore') || '',
+      positivePercent: pick('PositiveFeedbackPercent') || '',
+      country: pick('Country') || '',
+      registrationDate: pick('RegistrationDate') || '',
+      photoUrl: pick('PhotoDisplayURL') || '',
+      status: pick('Status') || '',
+    };
+    if (!info.feedbackScore && !info.country) {
+      console.log('[getUserInfo] 空 user=' + username + ' resp=' + t.substring(0, 250));
+    }
+    userInfoCache[key] = info;
+    return info;
+  } catch (e) {
+    console.error('getUserInfo error:', e.message);
+    userInfoCache[key] = null;
+    return null;
+  }
+}
+
 // ===== Fulfillment API: バイヤーの注文情報（住所など）を取得 =====
 const orderCache = {};
 let lastOrderDebug = null;
@@ -544,6 +593,7 @@ module.exports = {
   getSellerSku: getSellerSku,
   getBuyerOrderInfo: getBuyerOrderInfo,
   getBuyerPublicInfo: getBuyerPublicInfo,
+  getUserInfo: getUserInfo,
   countryName: countryName,
   getLastOrderDebug: getLastOrderDebug,
   getAuthUrl: getAuthUrl,
