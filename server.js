@@ -236,7 +236,7 @@ app.get('/api/sheet/dedupe', async (req, res) => {
     }
     const token = await getGoogleAccessToken();
     const sheetName = encodeURIComponent('シート1');
-    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:M`;
+    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`;
     const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await r.json();
     const rows = data.values || [];
@@ -261,7 +261,7 @@ app.get('/api/sheet/dedupe', async (req, res) => {
     if (removed === 0) return res.json({ ok: true, removed: 0, total: keep.length });
 
     // 全消去して書き直す
-    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2:M10000:clear`;
+    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2:N10000:clear`;
     await fetch(clearUrl, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
 
     const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2?valueInputOption=RAW`;
@@ -478,7 +478,7 @@ async function refreshRowInSheet(em) {
   const token = await getGoogleAccessToken();
   const sheetName = encodeURIComponent('シート1');
 
-  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:M`;
+  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`;
   const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
   const data = await r.json();
   const rows = data.values || [];
@@ -513,9 +513,10 @@ async function refreshRowInSheet(em) {
     get('memo'),
     em.conversationId,
     JSON.stringify(em.history || []),
+    em.msgFrom || 'buyer',
   ]];
 
-  const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A${rowNum}:M${rowNum}?valueInputOption=RAW`;
+  const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A${rowNum}:N${rowNum}?valueInputOption=RAW`;
   await fetch(putUrl, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -531,7 +532,7 @@ async function updateHistoryInSheet(conversationId, entry) {
   const sheetName = encodeURIComponent('シート1');
 
   // 全行取得して該当行を探す
-  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:M`;
+  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`;
   const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
   const data = await r.json();
   const rows = data.values || [];
@@ -721,7 +722,8 @@ async function appendToSheet(msg) {
           'false',                        // replied
           '',                             // memo
           msg.conversationId || '',       // L列: conversationId
-          JSON.stringify(msg.history || []) // M列: history(JSON)
+          JSON.stringify(msg.history || []), // M列: history(JSON)
+          msg.msgFrom || 'buyer'          // N列: msgFrom
         ]]
       }),
     });
@@ -815,6 +817,7 @@ app.get('/api/messages', async (req, res) => {
       return {
         id,
         conversationId: convId,
+        msgFrom: obj.msgFrom || 'buyer',
         buyer: parsed.buyer || 'unknown',
         subject: obj.subject || '',
         message: rawBody,
@@ -868,6 +871,7 @@ app.get('/api/messages', async (req, res) => {
         if (m.orderId) thread.orderId = m.orderId;
         if (m.itemId) thread.itemId = m.itemId;
         if (m.conversationId) thread.conversationId = m.conversationId;
+        if (m.msgFrom) thread.msgFrom = m.msgFrom;
         if (m.item) thread.item = m.item;
         if (m.starred) thread.starred = true;
         if (m.replied) thread.replied = true;
@@ -919,7 +923,7 @@ app.get('/api/messages', async (req, res) => {
         buyer: thread.buyer,
         subject: latest.subject,
         msg: latest.msg,
-        msgFrom: 'buyer',
+        msgFrom: latest.msgFrom || 'buyer',
         history: dedupedHistory,
         item: thread.item || latest.item,
         orderId: thread.orderId || latest.orderId,
