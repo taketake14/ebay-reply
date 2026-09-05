@@ -38,20 +38,20 @@ async function getAccessToken() {
   }
 
   const basic = Buffer.from(c.appId + ':' + c.certId).toString('base64');
-  const scopes = 'https://api.ebay.com/oauth/api_scope/commerce.message';
 
+  // scope を指定せずにリフレッシュ（トークン発行時のスコープをそのまま継承）
   const res = await fetch(EBAY_OAUTH_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Authorization': 'Basic ' + basic,
     },
-    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(c.refreshToken) + '&scope=' + encodeURIComponent(scopes),
+    body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(c.refreshToken),
   });
 
   const data = await res.json();
   if (!res.ok || !data.access_token) {
-    throw new Error('トークン取得失敗 (' + res.status + '): ' + JSON.stringify(data).substring(0, 300));
+    throw new Error('トークン取得失敗 (' + res.status + '): appIdLen=' + (c.appId||'').length + ' certIdLen=' + (c.certId||'').length + ' resp=' + JSON.stringify(data).substring(0, 300));
   }
 
   cachedToken = data.access_token;
