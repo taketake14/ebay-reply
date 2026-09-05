@@ -277,6 +277,38 @@ app.get('/api/sheet/dedupe', async (req, res) => {
   }
 });
 
+// ===== 特定バイヤーの会話を生データで確認（デバッグ用） =====
+app.get('/api/ebay/conv/:buyer', async (req, res) => {
+  try {
+    const target = String(req.params.buyer).toLowerCase();
+    const convs = await ebayApi.getConversations(30, 50);
+    const list = (convs && convs.conversations) || [];
+    const hit = list.find(c => {
+      const lm = c.latestMessage || {};
+      return String(lm.senderUsername || '').toLowerCase() === target
+          || String(lm.recipientUsername || '').toLowerCase() === target;
+    });
+    if (!hit) return res.json({ ok: false, error: 'その会話が見つかりません', checked: list.length });
+
+    const detail = await ebayApi.getConversation(hit.conversationId);
+    const msgs = (detail && detail.messages) || [];
+    res.json({
+      ok: true,
+      conversationId: hit.conversationId,
+      SELF: process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142',
+      latestMessageSender: (hit.latestMessage || {}).senderUsername,
+      messages: msgs.map(m => ({
+        sender: m.senderUsername,
+        recipient: m.recipientUsername,
+        date: m.createdDate,
+        body: (m.messageBody || '').substring(0, 60),
+      })),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 商品情報を取得 =====
 app.get('/api/ebay/item/:itemId', async (req, res) => {
   try {
