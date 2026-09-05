@@ -277,6 +277,103 @@ app.get('/api/sheet/dedupe', async (req, res) => {
   }
 });
 
+// ===== 購入者一覧をキャッシュ（SOLD判定用） =====
+let buyerOrderSet = new Set();
+let buyerSetUpdatedAt = 0;
+async function refreshBuyerSet() {
+  if (Date.now() - buyerSetUpdatedAt < 10 * 60 * 1000) return buyerOrderSet;
+  try {
+    const at = await ebayApi.getAccessToken();
+    const from = new Date(Date.now() - 180 * 86400000).toISOString();
+    const f = encodeURIComponent('creationdate:[' + from + '..]');
+    const or = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + f + '&limit=200',
+      { headers: { 'Authorization': 'Bearer ' + at, 'Accept': 'application/json' } });
+    if (or.ok) {
+      const od = await or.json();
+      const s = new Set();
+      (od.orders || []).forEach(o => {
+        const u = (o.buyer && o.buyer.username) || '';
+        if (u) s.add(u.toLowerCase());
+      });
+      buyerOrderSet = s;
+      buyerSetUpdatedAt = Date.now();
+      console.log('[buyerSet] ' + s.size + '人の購入者を取得');
+    } else {
+      console.error('[buyerSet] ' + or.status);
+    }
+  } catch (e) { console.error('[buyerSet]', e.message); }
+  return buyerOrderSet;
+}
+
+// ===== 既存データに商品情報とSOLD状態を一括反映 =====
+app.get('/api/ebay/enrich', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 60;
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId) return res.json({ ok: false, error: 'SHEET_ID未設定' });
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`,
+      { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await r.json();
+    const rows = data.values || [];
+    if (rows.length <= 1) return res.json({ ok: true, updated: 0 });
+
+    const h = rows[0];
+    const iItem = h.indexOf('item'), iItemId = h.indexOf('itemId'), iBuyer = h.indexOf('buyer');
+    if (iItem < 0 || iItemId < 0) return res.json({ ok: false, error: 'item/itemId列なし' });
+
+    // 購入者一覧を取得（SOLD判定用）
+    let buyerSet = new Set();
+    try {
+      const at = await ebayApi.getAccessToken();
+      const from = new Date(Date.now() - 180 * 86400000).toISOString();
+      const f = encodeURIComponent('creationdate:[' + from + '..]');
+      const or = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + f + '&limit=200',
+        { headers: { 'Authorization': 'Bearer ' + at, 'Accept': 'application/json' } });
+      if (or.ok) {
+        const od = await or.json();
+        (od.orders || []).forEach(o => {
+          const u = (o.buyer && o.buyer.username) || '';
+          if (u) buyerSet.add(u.toLowerCase());
+        });
+      }
+    } catch (e) { console.error('order fetch:', e.message); }
+
+    const updates = [];
+    let done = 0;
+    for (let i = rows.length - 1; i >= 1 && done < limit; i--) {
+      const row = rows[i];
+      const itemId = row[iItemId] || '';
+      const curItem = row[iItem] || '';
+      const buyer = (row[iBuyer] || '').toLowerCase();
+      const rowNum = i + 1;
+
+      // 商品名が空でitemIdがある行だけ処理
+      if (itemId && (!curItem || curItem === '')) {
+        const info = await ebayApi.getItemInfo(itemId);
+        if (info && info.title) {
+          const col = String.fromCharCode(65 + iItem);
+          updates.push({ range: `シート1!${col}${rowNum}`, values: [[info.title]] });
+          done++;
+        }
+      }
+    }
+
+    if (updates.length > 0) {
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valueInputOption: 'RAW', data: updates }),
+      });
+    }
+    res.json({ ok: true, updated: updates.length, buyersFound: buyerSet.size });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 特定バイヤーの会話を生データで確認（デバッグ用） =====
 app.get('/api/ebay/conv/:buyer', async (req, res) => {
   try {
@@ -763,6 +860,7 @@ app.get('/api/state', (req, res) => {
 // ===== Googleスプレッドシートからメッセージ取得 =====
 app.get('/api/messages', async (req, res) => {
   try {
+    refreshBuyerSet().catch(() => {});
     const sheetId = process.env.SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!sheetId || !apiKey) return res.json({ messages });
@@ -929,7 +1027,7 @@ app.get('/api/messages', async (req, res) => {
         orderId: thread.orderId || latest.orderId,
         itemId: thread.itemId || latest.itemId,
         imgUrl: thread.imgUrl || latest.imgUrl,
-        sold: thread.sold || latest.sold,
+        sold: thread.sold || latest.sold || buyerOrderSet.has(String(thread.buyer||'').toLowerCase()),
         timestamp: latest.timestamp,
         read: thread.read,
         starred: thread.starred,
