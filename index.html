@@ -1110,11 +1110,24 @@ async function translateToEnglish(){
 async function sendReplyToEbay(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
+  if(!m){ alert('送信対象が見つかりません。もう一度メッセージを開いてください。'); return; }
+  // 送信対象を固定（配列がずれても影響を受けないようにスナップショットを取る）
+  var targetConvId=m.conversationId||'';
+  var targetBuyer=m.buyer;
+  var targetItemId=m.itemId||'';
+  var targetTs=m.timestamp||'';
   var raw=document.getElementById('d-reply').value || '';
   // 連続改行を1つにまとめる（eBay側で間延びするのを防ぐ）
   var text=raw.replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
   if(!text){ alert('返信文が空です'); return; }
   if(!m.conversationId && !m.buyer){ alert('送信先が特定できません'); return; }
+
+  // 安全確認：画面に表示中のバイヤー名と送信先が一致するか
+  var shownName=(document.getElementById('d-name')||{}).textContent||'';
+  if(shownName && targetBuyer && shownName.indexOf(targetBuyer)<0){
+    alert('送信先が画面と一致しません。\n画面: '+shownName+'\n送信先: '+targetBuyer+'\n\n安全のため中止しました。もう一度開き直してください。');
+    return;
+  }
 
   var btn=document.getElementById('btn-send-reply');
   var orig=btn.innerHTML;
@@ -1126,24 +1139,30 @@ async function sendReplyToEbay(){
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        conversationId: m.conversationId||'',
-        buyer: m.buyer,
+        conversationId: targetConvId,
+        buyer: targetBuyer,
         messageText: text,
-        itemId: m.itemId||''
+        itemId: targetItemId
       })
     });
     var d=await r.json();
     if(d.ok){
       btn.innerHTML='&#10003; 送信完了';
-      m.replied=true;
-      // チャット画面に自分の返信を追加
-      if(!m.history) m.history=[];
+      // 送信対象を conversationId で再解決（ポーリングで配列がずれていても正しい相手に反映）
+      var tm=null;
+      if(targetConvId) tm=messages.find(function(x){return x.conversationId===targetConvId;});
+      if(!tm) tm=messages.find(function(x){return x.buyer===targetBuyer;});
+      if(!tm) tm=m;
+      tm.replied=true;
+      if(!tm.history) tm.history=[];
       var nowTs=new Date();
-      var msgTs=new Date(m.timestamp||0);
-      // バイヤーの最新より必ず後になる時刻にする
+      var msgTs=new Date(targetTs||0);
       if(!isNaN(msgTs.getTime()) && nowTs<=msgTs) nowTs=new Date(msgTs.getTime()+1000);
-      m.history.push({from:'me', text:text, time:nowTs.toISOString()});
-      saveState(m);
+      tm.history.push({from:'me', text:text, time:nowTs.toISOString()});
+      saveState(tm);
+      // 表示中の会話を送信対象に合わせ直す
+      var ti=messages.indexOf(tm);
+      if(ti>=0) currentIdx=ti;
       // 入力欄をクリア
       document.getElementById('d-input-ja').value='';
       document.getElementById('d-reply').value='';
@@ -1610,7 +1629,20 @@ window.addEventListener('load',function(){
       var d=await r.json();
       if(d.message){
         var exists=messages.find(function(m){return m.id===d.message.id;});
-        if(!exists){var jst=toJST(d.message.timestamp);d.message.date=jst.date;d.message.time=jst.time;messages.unshift(d.message);renderList();}
+        if(!exists){
+          var jst=toJST(d.message.timestamp);d.message.date=jst.date;d.message.time=jst.time;
+          // 開いている会話を記憶してから挿入し、位置ズレを防ぐ
+          var openConv=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].conversationId:null;
+          var openId=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].id:null;
+          messages.unshift(d.message);
+          if(currentIdx!==null){
+            var ni=messages.findIndex(function(x){
+              return (openConv&&x.conversationId===openConv)||(!openConv&&x.id===openId);
+            });
+            currentIdx=(ni>=0)?ni:currentIdx+1;
+          }
+          renderList();
+        }
       }
     }catch(e){}
   },30000);
