@@ -187,28 +187,27 @@ app.get('/api/ebay/test', async (req, res) => {
 app.get('/api/ebay/sync', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 7;
-    const ebayMsgs = await ebayApi.getMemberMessages(days);
+    const ebayMsgs = await ebayApi.getMessagesForApp(days);
     let added = 0;
     for (const em of ebayMsgs) {
-      // 既存チェック（messageIdで重複防止）
-      const exists = messages.find(m => m.ebayMessageId === em.messageId);
+      const exists = messages.find(m => m.conversationId === em.conversationId);
       if (exists) continue;
 
       const msg = {
         id: Date.now() + added,
-        ebayMessageId: em.messageId,
+        conversationId: em.conversationId,
         buyer: em.buyer || 'unknown',
         subject: em.subject || '',
         message: em.body || '',
         msg: em.body || '',
-        history: [],
+        history: em.history || [],
         item: extractItemFromSubject(em.subject || ''),
         orderId: '',
         itemId: em.itemId || '',
         imgUrl: '',
         sold: false,
         timestamp: em.timestamp || new Date().toISOString(),
-        read: false, starred: false, replied: false, memo: '',
+        read: em.read || false, starred: false, replied: false, memo: '',
         replyHistory: [], reply: '', status: 'pending'
       };
       messages.unshift(msg);
@@ -219,6 +218,21 @@ app.get('/api/ebay/sync', async (req, res) => {
     res.json({ ok: true, fetched: ebayMsgs.length, added });
   } catch (e) {
     console.error('eBay sync error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===== eBay API: 返信を送信 =====
+app.post('/api/ebay/reply', async (req, res) => {
+  try {
+    const { conversationId, messageText, itemId, buyer } = req.body;
+    if (!messageText) return res.json({ ok: false, error: 'messageText が必要です' });
+    const result = await ebayApi.sendMessage({
+      conversationId, otherPartyUsername: buyer, messageText, itemId
+    });
+    res.json({ ok: true, result });
+  } catch (e) {
+    console.error('eBay reply error:', e.message);
     res.json({ ok: false, error: e.message });
   }
 });
@@ -238,18 +252,18 @@ app.post('/api/ebay/notification', async (req, res) => {
   // 通知を受信 → メッセージを同期
   console.log('eBay notification received:', JSON.stringify(req.body).substring(0, 200));
   try {
-    const ebayMsgs = await ebayApi.getMemberMessages(1);
+    const ebayMsgs = await ebayApi.getMessagesForApp(1);
     for (const em of ebayMsgs) {
-      const exists = messages.find(m => m.ebayMessageId === em.messageId);
+      const exists = messages.find(m => m.conversationId === em.conversationId);
       if (exists) continue;
       const msg = {
         id: Date.now(),
-        ebayMessageId: em.messageId,
+        conversationId: em.conversationId,
         buyer: em.buyer || 'unknown',
         subject: em.subject || '',
         message: em.body || '',
         msg: em.body || '',
-        history: [],
+        history: em.history || [],
         item: extractItemFromSubject(em.subject || ''),
         orderId: '', itemId: em.itemId || '', imgUrl: '',
         sold: false,
