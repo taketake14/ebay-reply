@@ -995,11 +995,12 @@ function renderChatBubbles(){
     if(!a.ts||!b.ts) return 0;
     return a.ts-b.ts;
   });
-  var newIdx=allItems.findIndex(function(x){return x.isNew;});
+  var lastIdx=allItems.length-1;
   allItems.forEach(function(h,idx){
     var side=h.from==='me'?'mine':'theirs';
     var who=h.from==='me'?'Ken':m.buyer;
-    if(h.isNew&&idx>0) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
+    // 新着バッジは「未返信 かつ 最後のメッセージがバイヤーから」の場合だけ
+    if(h.isNew && idx===lastIdx && idx>0 && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
       +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+h.time+'</div>'
@@ -1076,7 +1077,7 @@ async function translateToEnglish(){
       +(manual?'\n【対応方針・注意点】\n'+manual+'\n':'')
       +'\n【翻訳する日本語】\n'+ja;
     var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var en=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
     en=en.replace(/\n{3,}/g,'\n\n');
@@ -1195,7 +1196,7 @@ async function generateReply(i){
     +'\n新着メッセージ: '+m.msg
     +'\n【出力ルール】\n- 英語返信文のみ出力（説明・前置き・件名不要）\n- 約束できないことは約束しない\n- 確認が必要な事項は「確認してから回答する」旨を伝える\n- 過去のやり取りがある場合はその文脈を考慮する\n- 丁寧かつ簡潔に';
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:prompt}]})});
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:600,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var text=(data.content&&data.content[0]&&data.content[0].text)||'エラーが発生しました。再生成してください。';
     if(m.reply) m.replyHistory.push(m.reply);
@@ -1224,7 +1225,7 @@ async function translateReply(i){
   if(replyJaCache[m.id][cacheKey]){jaEl.textContent=replyJaCache[m.id][cacheKey];return;}
   jaEl.textContent='翻訳中...';
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply}]})});
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:600,messages:[{role:'user',content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply}]})});
     var data=await res.json();
     var text=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
     replyJaCache[m.id][cacheKey]=text;
