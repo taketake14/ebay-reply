@@ -1596,7 +1596,7 @@ window.addEventListener('load',function(){
       if(d.messages&&d.messages.length>0){
         messages=d.messages.map(function(m){
           var jst=toJST(m.timestamp);
-          return {id:m.id,buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+          return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
         });
         renderList();
       }
