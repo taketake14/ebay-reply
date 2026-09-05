@@ -187,6 +187,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .reply-box{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.75;color:var(--text);outline:none;white-space:pre-wrap;overflow-y:auto;min-height:0;}
 .reply-box:focus{border-color:var(--accent);}
 .reply-box.editable{border-color:var(--warn);}
+.reply-input-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
+.reply-input-ja:focus{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,0.15);}
+.reply-input-en{flex:1;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
+.reply-input-en:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,0.12);}
+.btn-trans{background:#7c3aed;color:#fff;border:1px solid #6d28d9;font-weight:700;}
+.btn-trans:hover{background:#6d28d9;}
+.btn-trans:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
 .reply-box-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.75;color:var(--text2);overflow-y:auto;white-space:pre-wrap;min-height:0;}
 .reply-actions{padding:6px 18px 12px;display:flex;gap:6px;align-items:center;position:relative;flex-shrink:0;}
 .btn-send{background:#059669;color:#fff;border:1px solid #047857;font-weight:700;}
@@ -473,20 +480,20 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         </div>
         <div class="reply-split">
           <div class="reply-col">
-            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--accent);"></span>英語（返信文）</div>
-            <div class="reply-box" id="d-reply" contenteditable="false"></div>
+            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--success);"></span>日本語で入力 <span style="font-weight:400;color:var(--text3);font-size:11px;">（ここに書いて「英訳」を押す）</span></div>
+            <textarea class="reply-input-ja" id="d-input-ja" placeholder="返信したい内容を日本語で入力してください..."></textarea>
           </div>
           <div class="reply-col">
-            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--success);"></span>日本語訳</div>
-            <div class="reply-box-ja" id="d-reply-ja">&#8212;</div>
+            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--accent);"></span>英語（送信される文）<span style="font-weight:400;color:var(--text3);font-size:11px;">（編集可）</span></div>
+            <textarea class="reply-input-en" id="d-reply"></textarea>
           </div>
         </div>
         <div class="reply-actions">
           <div class="canned-panel" id="canned-panel"></div>
+          <button class="btn btn-trans" id="btn-translate-en" onclick="translateToEnglish()">→ 英訳</button>
           <button class="btn btn-send" id="btn-send-reply" onclick="sendReplyToEbay()">&#9993; eBayに送信</button>
+          <button class="btn btn-ghost" onclick="regenReply()">AI返信案</button>
           <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">コピー</button>
-          <button class="btn btn-ghost" onclick="regenReply()">再生成</button>
-          <button class="btn btn-warn" onclick="makeEditable()">手動修正</button>
           <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
         </div>
       </div>
@@ -885,16 +892,14 @@ function renderChatDetail(){
   renderChatBubbles();
   updateReplyHistorySelect();
 
-  // 返信案
-  document.getElementById('d-reply-ja').textContent='—';
+  // 返信エリアをクリア
+  document.getElementById('d-input-ja').value='';
   if(m.reply){
-    document.getElementById('d-reply').textContent=m.reply;
-    document.getElementById('d-reply').contentEditable='false';
-    document.getElementById('d-reply').classList.remove('editable');
+    document.getElementById('d-reply').value=m.reply;
     var s=document.getElementById('d-status');s.className='reply-status status-done';s.textContent='生成済み';
-    translateReply(currentIdx);
   } else {
-    generateReply(currentIdx);
+    document.getElementById('d-reply').value='';
+    var s2=document.getElementById('d-status');s2.className='reply-status';s2.textContent='';
   }
   closeCanned();
 }
@@ -979,12 +984,22 @@ function renderChatBubbles(){
   var m=messages[currentIdx];
   var el=document.getElementById('chat-area');
   var html='';
-  var allItems=(m.history||[]).map(function(h,idx){return {from:h.from,text:h.text,time:h.time||'',isNew:false};});
-  allItems.push({from:'buyer',text:m.msg,time:(m.date+' '+m.time),isNew:true});
-  allItems.forEach(function(h){
+  var allItems=(m.history||[]).map(function(h){
+    return {from:h.from, text:h.text, time:h.time||'', isNew:false, ts:new Date(h.time||0).getTime()||0};
+  });
+  // 最新メッセージ（バイヤーからの新着）
+  var newTs=new Date(m.timestamp||0).getTime()||Date.now();
+  allItems.push({from:'buyer', text:m.msg, time:(m.date+' '+m.time), isNew:true, ts:newTs});
+  // 時系列順に並べ替え（ts=0のものは元の順序を維持）
+  allItems.sort(function(a,b){
+    if(!a.ts||!b.ts) return 0;
+    return a.ts-b.ts;
+  });
+  var newIdx=allItems.findIndex(function(x){return x.isNew;});
+  allItems.forEach(function(h,idx){
     var side=h.from==='me'?'mine':'theirs';
     var who=h.from==='me'?'Ken':m.buyer;
-    if(h.isNew&&(m.history||[]).length>0) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
+    if(h.isNew&&idx>0) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
       +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+h.time+'</div>'
@@ -1046,15 +1061,44 @@ function copyText(text,el){
     setTimeout(function(){el.classList.remove('copied');},1500);
   });
 }
+// ===== 日本語→英語 翻訳 =====
+async function translateToEnglish(){
+  var ja=document.getElementById('d-input-ja').value.trim();
+  if(!ja){ alert('日本語の入力が空です'); return; }
+  var btn=document.getElementById('btn-translate-en');
+  var orig=btn.innerHTML;
+  btn.innerHTML='翻訳中...';
+  btn.disabled=true;
+  try{
+    var manual=localStorage.getItem('ebay_manual')||'';
+    var prompt='あなたはeBay輸出セラーの英語アシスタントです。以下の日本語を、海外バイヤー向けの丁寧で自然なビジネス英語に翻訳してください。\n\n'
+      +'ルール:\n- 翻訳文だけを出力（説明・前置き不要）\n- 段落間は1行の空行のみ（空行を2行以上入れない）\n- 過度に堅苦しくせず、丁寧で読みやすく\n'
+      +(manual?'\n【対応方針・注意点】\n'+manual+'\n':'')
+      +'\n【翻訳する日本語】\n'+ja;
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    var data=await res.json();
+    var en=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+    en=en.replace(/\n{3,}/g,'\n\n');
+    document.getElementById('d-reply').value=en;
+    btn.innerHTML='✓ 完了';
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1500);
+  }catch(e){
+    btn.innerHTML='✗ 失敗';
+    alert('翻訳エラー: '+e.message);
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
+  }
+}
+
 // ===== eBayに直接送信 =====
 async function sendReplyToEbay(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
-  var text=document.getElementById('d-reply').innerText.trim();
+  var raw=document.getElementById('d-reply').value || '';
+  // 連続改行を1つにまとめる（eBay側で間延びするのを防ぐ）
+  var text=raw.replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
   if(!text){ alert('返信文が空です'); return; }
   if(!m.conversationId && !m.buyer){ alert('送信先が特定できません'); return; }
-
-  if(!confirm('以下の内容を '+m.buyer+' さんに送信します。よろしいですか？\n\n'+text.substring(0,200)+(text.length>200?'...':''))) return;
 
   var btn=document.getElementById('btn-send-reply');
   var orig=btn.innerHTML;
@@ -1078,8 +1122,11 @@ async function sendReplyToEbay(){
       m.replied=true;
       // チャット画面に自分の返信を追加
       if(!m.history) m.history=[];
-      m.history.push({from:'me', text:text, time:new Date().toLocaleString('ja-JP')});
+      m.history.push({from:'me', text:text, time:new Date().toISOString()});
       saveState(m);
+      // 入力欄をクリア
+      document.getElementById('d-input-ja').value='';
+      document.getElementById('d-reply').value='';
       renderChatBubbles();
       renderList();
       setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
@@ -1096,7 +1143,7 @@ async function sendReplyToEbay(){
 }
 
 function copyReply(){
-  navigator.clipboard.writeText(document.getElementById('d-reply').innerText).then(function(){
+  navigator.clipboard.writeText(document.getElementById('d-reply').value).then(function(){
     var m=messages[currentIdx];
     if(m){m.replied=true;saveState(m);}
     var btn=document.getElementById('btn-reply');
@@ -1126,10 +1173,9 @@ function closeCanned(){cannedOpen=false;document.getElementById('canned-panel').
 function insertCanned(i){
   var m=messages[currentIdx];
   var el=document.getElementById('d-reply');
-  el.textContent=CANNED[i].text;
-  el.contentEditable='false';el.classList.remove('editable');
+  el.value=CANNED[i].text;
   if(m) m.reply=CANNED[i].text;
-  closeCanned();translateReply(currentIdx);
+  closeCanned();
 }
 
 // ===== 返信案生成 =====
@@ -1139,8 +1185,7 @@ async function generateReply(i){
   var rEl=document.getElementById('d-reply');
   var jaEl=document.getElementById('d-reply-ja');
   sEl.className='reply-status status-generating';sEl.textContent='生成中...';
-  rEl.textContent='返信案を生成中です...';jaEl.textContent='—';
-  rEl.contentEditable='false';rEl.classList.remove('editable');
+  rEl.value='返信案を生成中です...';
   var manual=localStorage.getItem('ebay_manual')||'';
   var manualSection=manual?'\n\n【対応マニュアル（必ず厳守）】\n'+manual:'';
   var histText=(m.history||[]).map(function(h){return (h.from==='me'?'Ken':m.buyer)+': '+h.text;}).join('\n');
@@ -1156,19 +1201,17 @@ async function generateReply(i){
     if(m.reply) m.replyHistory.push(m.reply);
     m.reply=text;m.status='done';
     if(currentIdx===i){
-      rEl.textContent=text;
+      rEl.value=text.replace(/\n{3,}/g,'\n\n');
       sEl.className='reply-status status-done';sEl.textContent='生成済み';
-      updateReplyHistorySelect();translateReply(i);
+      updateReplyHistorySelect();
     }
   }catch(e){
-    if(currentIdx===i){rEl.textContent='エラー。再生成してください。';sEl.className='reply-status status-error';sEl.textContent='エラー';}
+    if(currentIdx===i){rEl.value='エラー。再生成してください。';sEl.className='reply-status status-error';sEl.textContent='エラー';}
   }
 }
 function regenReply(){if(currentIdx===null) return;messages[currentIdx].status='pending';generateReply(currentIdx);}
 function makeEditable(){
-  var el=document.getElementById('d-reply');
-  el.contentEditable='true';el.classList.add('editable');el.focus();
-  var s=document.getElementById('d-status');s.className='reply-status';s.style.cssText='background:#fef3c7;color:var(--warn);';s.textContent='手動修正中';
+  document.getElementById('d-reply').focus();
 }
 
 // ===== 翻訳 =====
