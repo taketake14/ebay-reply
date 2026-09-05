@@ -140,7 +140,8 @@ async function getMessagesForApp(daysBack) {
   const convs = await getConversations(daysBack, 50);
   const list = (convs && convs.conversations) || [];
   const out = [];
-  const SELF = process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142';
+  const SELF = String(process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142').toLowerCase();
+  const isSelf = (u) => String(u || '').toLowerCase() === SELF;
 
   for (let i = 0; i < list.length; i++) {
     const c = list[i];
@@ -149,8 +150,15 @@ async function getMessagesForApp(daysBack) {
 
     // 相手のユーザー名を判定
     let buyer = lm.senderUsername;
-    if (!buyer || buyer === SELF) buyer = lm.recipientUsername;
-    if (!buyer || buyer === SELF) buyer = 'unknown';
+    if (!buyer || isSelf(buyer)) buyer = lm.recipientUsername;
+    if (!buyer || isSelf(buyer)) buyer = 'unknown';
+    const isBuyer = (u) => {
+      const s = String(u || '').toLowerCase();
+      if (!s) return false;
+      if (s === SELF) return false;
+      // 会話相手と一致すればバイヤー
+      return s === String(buyer || '').toLowerCase() || !isSelf(u);
+    };
 
     let detail = null;
     try {
@@ -175,7 +183,7 @@ async function getMessagesForApp(daysBack) {
         // 「新着メッセージ」= 相手(buyer)からの最後のメッセージ
         let lastBuyerIdx = -1;
         for (let k = sorted.length - 1; k >= 0; k--) {
-          if (sorted[k].senderUsername !== SELF) { lastBuyerIdx = k; break; }
+          if (!isSelf(sorted[k].senderUsername)) { lastBuyerIdx = k; break; }
         }
         if (lastBuyerIdx >= 0) {
           body = sorted[lastBuyerIdx].messageBody || body;
@@ -183,7 +191,7 @@ async function getMessagesForApp(daysBack) {
           // それ以外すべて（自分の返信を含む）を history に。自分の返信が後にあってもここに残る
           history = sorted.filter(function(_, k) { return k !== lastBuyerIdx; }).map(function(mm) {
             return {
-              from: (mm.senderUsername === SELF) ? 'me' : 'buyer',
+              from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
               text: mm.messageBody || '',
               time: mm.createdDate || '',
             };
@@ -196,7 +204,7 @@ async function getMessagesForApp(daysBack) {
           msgFrom = 'me';
           history = sorted.slice(0, -1).map(function(mm) {
             return {
-              from: (mm.senderUsername === SELF) ? 'me' : 'buyer',
+              from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
               text: mm.messageBody || '',
               time: mm.createdDate || '',
             };
@@ -333,14 +341,17 @@ async function getItemInfo(legacyItemId) {
 
 // ===== Fulfillment API: バイヤーの注文情報（住所など）を取得 =====
 const orderCache = {};
-async function getBuyerOrderInfo(buyerUsername, daysBack) {
+let lastOrderDebug = null;
+function getLastOrderDebug() { return lastOrderDebug; }
+
+async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
   if (!buyerUsername) return null;
   const key = String(buyerUsername).toLowerCase();
-  if (orderCache[key] !== undefined) return orderCache[key];
+  if (!debug && orderCache[key] !== undefined) return orderCache[key];
 
   try {
     const token = await getAccessToken();
-    const days = daysBack || 90;
+    const days = daysBack || 120;
     const from = new Date(Date.now() - days * 86400000).toISOString();
     const filter = encodeURIComponent('creationdate:[' + from + '..]');
     const url = 'https://api.ebay.com/sell/fulfillment/v1/order?filter=' + filter + '&limit=200';
@@ -349,12 +360,19 @@ async function getBuyerOrderInfo(buyerUsername, daysBack) {
     });
     if (!res.ok) {
       const t = await res.text();
-      console.error('getBuyerOrderInfo ' + res.status + ':', t.substring(0, 150));
+      lastOrderDebug = { status: res.status, body: t.substring(0, 400), url: url };
+      console.error('getBuyerOrderInfo ' + res.status + ':', t.substring(0, 200));
       orderCache[key] = null;
       return null;
     }
     const d = await res.json();
     const orders = d.orders || [];
+    lastOrderDebug = {
+      status: 200,
+      totalOrders: orders.length,
+      sampleBuyers: orders.slice(0, 10).map(o => (o.buyer && o.buyer.username) || '(none)'),
+      lookingFor: key,
+    };
     const mine = orders.filter(o => (o.buyer && o.buyer.username || '').toLowerCase() === key);
     if (mine.length === 0) { orderCache[key] = null; return null; }
 
@@ -396,6 +414,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack) {
 module.exports = {
   getItemInfo: getItemInfo,
   getBuyerOrderInfo: getBuyerOrderInfo,
+  getLastOrderDebug: getLastOrderDebug,
   getAuthUrl: getAuthUrl,
   exchangeCodeForTokens: exchangeCodeForTokens,
   getConversations: getConversations,
