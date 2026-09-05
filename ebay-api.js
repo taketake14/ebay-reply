@@ -2,7 +2,7 @@
 const fetch = require('node-fetch');
 
 const EBAY_OAUTH_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
-const EBAY_MSG_BASE = 'https://api.ebay.com/sell/message/v1';
+const EBAY_MSG_BASE = 'https://api.ebay.com/commerce/message/v1';
 
 let lastHttp = null;
 function getLastHttp() { return lastHttp; }
