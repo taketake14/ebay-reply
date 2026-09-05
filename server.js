@@ -358,15 +358,16 @@ app.get('/api/ebay/enrich', async (req, res) => {
 
       const iImg = h.indexOf('imgUrl');
       const curImg = iImg >= 0 ? (row[iImg] || '') : '';
-      // 商品名または画像が空でitemIdがある行を処理
-      if (itemId && (!curItem || (iImg >= 0 && !curImg))) {
+      const forceAll = req.query.force === '1';
+      // 商品名または画像が空の行を処理（force=1なら既存も上書き）
+      if (itemId && (forceAll || !curItem || (iImg >= 0 && !curImg))) {
         const info = await ebayApi.getItemInfo(itemId);
         if (info) {
-          if (info.title && !curItem) {
+          if (info.title && (forceAll || !curItem)) {
             const col = String.fromCharCode(65 + iItem);
             updates.push({ range: `シート1!${col}${rowNum}`, values: [[info.title]] });
           }
-          if (info.imageUrl && iImg >= 0 && !curImg) {
+          if (info.imageUrl && iImg >= 0 && (forceAll || !curImg)) {
             const icol = String.fromCharCode(65 + iImg);
             updates.push({ range: `シート1!${icol}${rowNum}`, values: [[info.imageUrl]] });
           }
