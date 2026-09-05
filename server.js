@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
+const ebayApi = require('./ebay-api');
 const app = express();
 app.use(express.json());
 
@@ -170,6 +171,112 @@ function extractItemFromSubject(subject) {
 // ===== ヘルスチェック（スリープ防止用） =====
 app.get('/ping', (req, res) => {
   res.send('OK');
+});
+
+// ===== eBay API: 接続テスト =====
+app.get('/api/ebay/test', async (req, res) => {
+  try {
+    const result = await ebayApi.testConnection();
+    res.json(result);
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===== eBay API: メッセージ同期 =====
+app.get('/api/ebay/sync', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 7;
+    const ebayMsgs = await ebayApi.getMemberMessages(days);
+    let added = 0;
+    for (const em of ebayMsgs) {
+      // 既存チェック（messageIdで重複防止）
+      const exists = messages.find(m => m.ebayMessageId === em.messageId);
+      if (exists) continue;
+
+      const msg = {
+        id: Date.now() + added,
+        ebayMessageId: em.messageId,
+        buyer: em.buyer || 'unknown',
+        subject: em.subject || '',
+        message: em.body || '',
+        msg: em.body || '',
+        history: [],
+        item: extractItemFromSubject(em.subject || ''),
+        orderId: '',
+        itemId: em.itemId || '',
+        imgUrl: '',
+        sold: false,
+        timestamp: em.timestamp || new Date().toISOString(),
+        read: false, starred: false, replied: false, memo: '',
+        replyHistory: [], reply: '', status: 'pending'
+      };
+      messages.unshift(msg);
+      added++;
+      appendToSheet(msg).catch(e => console.error('appendToSheet error:', e.message));
+    }
+    if (messages.length > 300) messages = messages.slice(0, 300);
+    res.json({ ok: true, fetched: ebayMsgs.length, added });
+  } catch (e) {
+    console.error('eBay sync error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===== eBay Notification: リアルタイム通知受信 =====
+app.post('/api/ebay/notification', async (req, res) => {
+  // eBayのチャレンジコード検証（初回登録時）
+  if (req.query.challenge_code) {
+    const crypto = require('crypto');
+    const token = process.env.EBAY_VERIFICATION_TOKEN || '';
+    const endpoint = process.env.EBAY_NOTIFICATION_ENDPOINT || '';
+    const hash = crypto.createHash('sha256');
+    hash.update(req.query.challenge_code + token + endpoint);
+    return res.json({ challengeResponse: hash.digest('hex') });
+  }
+
+  // 通知を受信 → メッセージを同期
+  console.log('eBay notification received:', JSON.stringify(req.body).substring(0, 200));
+  try {
+    const ebayMsgs = await ebayApi.getMemberMessages(1);
+    for (const em of ebayMsgs) {
+      const exists = messages.find(m => m.ebayMessageId === em.messageId);
+      if (exists) continue;
+      const msg = {
+        id: Date.now(),
+        ebayMessageId: em.messageId,
+        buyer: em.buyer || 'unknown',
+        subject: em.subject || '',
+        message: em.body || '',
+        msg: em.body || '',
+        history: [],
+        item: extractItemFromSubject(em.subject || ''),
+        orderId: '', itemId: em.itemId || '', imgUrl: '',
+        sold: false,
+        timestamp: em.timestamp || new Date().toISOString(),
+        read: false, starred: false, replied: false, memo: '',
+        replyHistory: [], reply: '', status: 'pending'
+      };
+      messages.unshift(msg);
+      appendToSheet(msg).catch(e => console.error(e.message));
+    }
+  } catch (e) {
+    console.error('notification sync error:', e.message);
+  }
+  res.sendStatus(200);
+});
+
+// eBay Notification GET（チャレンジ検証用）
+app.get('/api/ebay/notification', (req, res) => {
+  if (req.query.challenge_code) {
+    const crypto = require('crypto');
+    const token = process.env.EBAY_VERIFICATION_TOKEN || '';
+    const endpoint = process.env.EBAY_NOTIFICATION_ENDPOINT || '';
+    const hash = crypto.createHash('sha256');
+    hash.update(req.query.challenge_code + token + endpoint);
+    return res.json({ challengeResponse: hash.digest('hex') });
+  }
+  res.sendStatus(200);
 });
 
 
