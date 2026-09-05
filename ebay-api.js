@@ -44,8 +44,13 @@ async function callTradingAPI(callName, xmlBody) {
     },
     body: xml,
   });
-  return await res.text();
+  const text = await res.text();
+  lastHttp = { status: res.status, statusText: res.statusText, bodyLen: text.length };
+  return text;
 }
+
+let lastHttp = null;
+function getLastHttp() { return lastHttp; }
 
 // XMLから値を抜き出す簡易パーサ
 function xmlVal(xml, tag) {
@@ -145,7 +150,8 @@ async function testConnection() {
       ack: ack || '(no Ack)',
       error: xmlVal(xml, 'LongMessage') || xmlVal(xml, 'ShortMessage') || '(no error message)',
       errorCode: xmlVal(xml, 'ErrorCode'),
-      raw: xml.substring(0, 800),
+      raw: xml ? xml.substring(0, 1000) : '(empty response)',
+      http: getLastHttp(),
       diag
     };
   } catch (e) {
@@ -153,4 +159,4 @@ async function testConnection() {
   }
 }
 
-module.exports = { getMemberMessages, getMyMessages, testConnection, callTradingAPI };
+module.exports = { getMemberMessages, getMyMessages, testConnection, callTradingAPI, getLastHttp };
