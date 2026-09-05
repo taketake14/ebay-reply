@@ -290,10 +290,11 @@ app.get('/api/ebay/item/:itemId', async (req, res) => {
 // ===== バイヤー情報を取得 =====
 app.get('/api/ebay/buyer/:username', async (req, res) => {
   try {
-    const info = await ebayApi.getBuyerOrderInfo(req.params.username);
-    res.json({ ok: !!info, buyer: info });
+    const debug = req.query.debug === '1';
+    const info = await ebayApi.getBuyerOrderInfo(req.params.username, 120, debug);
+    res.json({ ok: !!info, buyer: info, debug: debug ? ebayApi.getLastOrderDebug() : undefined });
   } catch (e) {
-    res.json({ ok: false, error: e.message });
+    res.json({ ok: false, error: e.message, stack: e.stack ? e.stack.substring(0,300) : '' });
   }
 });
 
