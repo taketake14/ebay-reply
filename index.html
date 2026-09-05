@@ -189,6 +189,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .reply-box.editable{border-color:var(--warn);}
 .reply-box-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.75;color:var(--text2);overflow-y:auto;white-space:pre-wrap;min-height:0;}
 .reply-actions{padding:6px 18px 12px;display:flex;gap:6px;align-items:center;position:relative;flex-shrink:0;}
+.btn-send{background:#059669;color:#fff;border:1px solid #047857;font-weight:700;}
+.btn-send:hover{background:#047857;}
+.btn-send:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
 .btn{padding:7px 14px;border-radius:7px;font-size:13px;cursor:pointer;border:1px solid var(--border2);font-family:var(--sans);font-weight:600;transition:all 0.12s;}
 .btn-primary{background:var(--orange);color:#fff;border-color:var(--orange);}
 .btn-primary:hover{background:var(--orange2);}
@@ -480,7 +483,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         </div>
         <div class="reply-actions">
           <div class="canned-panel" id="canned-panel"></div>
-          <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">返信文をコピー</button>
+          <button class="btn btn-send" id="btn-send-reply" onclick="sendReplyToEbay()">&#9993; eBayに送信</button>
+          <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">コピー</button>
           <button class="btn btn-ghost" onclick="regenReply()">再生成</button>
           <button class="btn btn-warn" onclick="makeEditable()">手動修正</button>
           <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
@@ -1042,6 +1046,55 @@ function copyText(text,el){
     setTimeout(function(){el.classList.remove('copied');},1500);
   });
 }
+// ===== eBayに直接送信 =====
+async function sendReplyToEbay(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  var text=document.getElementById('d-reply').innerText.trim();
+  if(!text){ alert('返信文が空です'); return; }
+  if(!m.conversationId && !m.buyer){ alert('送信先が特定できません'); return; }
+
+  if(!confirm('以下の内容を '+m.buyer+' さんに送信します。よろしいですか？\n\n'+text.substring(0,200)+(text.length>200?'...':''))) return;
+
+  var btn=document.getElementById('btn-send-reply');
+  var orig=btn.innerHTML;
+  btn.innerHTML='送信中...';
+  btn.disabled=true;
+
+  try{
+    var r=await fetch('/api/ebay/reply',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        conversationId: m.conversationId||'',
+        buyer: m.buyer,
+        messageText: text,
+        itemId: m.itemId||''
+      })
+    });
+    var d=await r.json();
+    if(d.ok){
+      btn.innerHTML='&#10003; 送信完了';
+      m.replied=true;
+      // チャット画面に自分の返信を追加
+      if(!m.history) m.history=[];
+      m.history.push({from:'me', text:text, time:new Date().toLocaleString('ja-JP')});
+      saveState(m);
+      renderChatBubbles();
+      renderList();
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    } else {
+      btn.innerHTML='&#10007; 失敗';
+      alert('送信エラー:\n'+(d.error||'不明なエラー'));
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    }
+  }catch(e){
+    btn.innerHTML='&#10007; 失敗';
+    alert('通信エラー: '+e.message);
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+  }
+}
+
 function copyReply(){
   navigator.clipboard.writeText(document.getElementById('d-reply').innerText).then(function(){
     var m=messages[currentIdx];
