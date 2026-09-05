@@ -325,6 +325,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="s1-filter" onclick="setFilter('urgent',this)">要対応</button>
         <button class="s1-filter" onclick="setFilter('replied',this)">返信済み</button>
       </div>
+      <button class="col-toggle-btn" onclick="syncFromEbay()" id="btn-ebay-sync" style="margin-left:8px;">&#8635; eBayから取得</button>
       <div style="position:relative;margin-left:8px;">
         <button class="col-toggle-btn" onclick="toggleColDropdown(event)" id="col-toggle-btn">&#9776; 表示列</button>
         <div class="col-toggle-dropdown" id="col-toggle-dropdown">
@@ -401,43 +402,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   </div>
 
   <div class="s2-main">
-    <!-- チャットカラム -->
-    <div class="s2-chat-col" id="chat-col" style="flex:1;">
-      <div class="chat-area" id="chat-area" style="flex:1.8;"></div>
-      <div class="v-resizer" id="v-resizer"></div>
-      <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
-        <div class="reply-top">
-          <span class="reply-label">返信案</span>
-          <span class="reply-status" id="d-status"></span>
-          <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
-            <option value="-1">最新の返信案</option>
-          </select>
-        </div>
-        <div class="reply-split">
-          <div class="reply-col">
-            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--accent);"></span>英語（返信文）</div>
-            <div class="reply-box" id="d-reply" contenteditable="false"></div>
-          </div>
-          <div class="reply-col">
-            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--success);"></span>日本語訳</div>
-            <div class="reply-box-ja" id="d-reply-ja">&#8212;</div>
-          </div>
-        </div>
-        <div class="reply-actions">
-          <div class="canned-panel" id="canned-panel"></div>
-          <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">返信文をコピー</button>
-          <button class="btn btn-ghost" onclick="regenReply()">再生成</button>
-          <button class="btn btn-warn" onclick="makeEditable()">手動修正</button>
-          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 横リサイザー -->
-    <div class="h-resizer" id="h-resizer"></div>
-
-    <!-- 右パネル：全セクション常時表示 -->
-    <div class="s2-right-panel" id="right-panel" style="width:230px;">
+    <!-- 左パネル：商品・バイヤー・メモ情報 -->
+    <div class="s2-right-panel" id="right-panel" style="width:260px;">
       <div class="panel-body" style="gap:0;padding:0;overflow-y:auto;">
 
         <!-- 商品セクション -->
@@ -486,6 +452,41 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
       </div>
     </div>
+
+    <!-- 横リサイザー -->
+    <div class="h-resizer" id="h-resizer"></div>
+
+    <!-- 右カラム：チャット＋返信 -->
+    <div class="s2-chat-col" id="chat-col" style="flex:1;">
+      <div class="chat-area" id="chat-area" style="flex:1.8;"></div>
+      <div class="v-resizer" id="v-resizer"></div>
+      <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
+        <div class="reply-top">
+          <span class="reply-label">返信案</span>
+          <span class="reply-status" id="d-status"></span>
+          <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
+            <option value="-1">最新の返信案</option>
+          </select>
+        </div>
+        <div class="reply-split">
+          <div class="reply-col">
+            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--accent);"></span>英語（返信文）</div>
+            <div class="reply-box" id="d-reply" contenteditable="false"></div>
+          </div>
+          <div class="reply-col">
+            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--success);"></span>日本語訳</div>
+            <div class="reply-box-ja" id="d-reply-ja">&#8212;</div>
+          </div>
+        </div>
+        <div class="reply-actions">
+          <div class="canned-panel" id="canned-panel"></div>
+          <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">返信文をコピー</button>
+          <button class="btn btn-ghost" onclick="regenReply()">再生成</button>
+          <button class="btn btn-warn" onclick="makeEditable()">手動修正</button>
+          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -505,6 +506,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       if (id === VALID_ID && pw === VALID_PW) {
         sessionStorage.setItem(KEY, '1');
         document.getElementById('login-screen').style.display = 'none';
+        // ログイン後にメッセージを読み込む
+        if (typeof loadFromSheet === 'function') loadFromSheet();
       } else {
         err.style.display = 'block';
         document.getElementById('pw-input').value = '';
@@ -523,6 +526,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     if (sessionStorage.getItem(KEY) === '1') {
       var ls = document.getElementById('login-screen');
       if (ls) ls.style.display = 'none';
+      // ログイン済みならメッセージを読み込む
+      if (typeof loadFromSheet === 'function') loadFromSheet();
     }
   };
   document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', check) : check();
@@ -899,44 +904,70 @@ function updateStarBtn(){
 }
 
 var chatTranslateMode = false;
-var chatTranslateCache = {}; // {msgKey: ja}
+// 元のテキストを保存する Map
+var originalTexts = new Map();
 
 function toggleChatTranslate(){
   chatTranslateMode = !chatTranslateMode;
   var btn = document.getElementById('btn-translate');
+  var chatArea = document.getElementById('chat-area');
   if(chatTranslateMode){
     btn.style.background='var(--navy)';btn.style.color='#fff';btn.style.borderColor='var(--navy)';
-    renderChatBubbles();
-    translateAllBubbles();
+    btn.textContent='🇯🇵 翻訳中...';
+    translateBubblesWithGoogle(chatArea, function(){
+      btn.textContent='🇯🇵 日本語表示中（クリックで戻す）';
+    });
   } else {
     btn.style.background='';btn.style.color='';btn.style.borderColor='';
-    renderChatBubbles();
+    btn.textContent='🇯🇵 日本語訳';
+    restoreOriginalTexts(chatArea);
   }
 }
 
-async function translateAllBubbles(){
-  if(currentIdx===null) return;
-  var m=messages[currentIdx];
-  var allItems=(m.history||[]).concat([{from:'buyer',text:m.msg}]);
-  for(var i=0;i<allItems.length;i++){
-    var h=allItems[i];
-    if(!h.text||h.text.length<3) continue;
-    var key=h.text.substring(0,40);
-    if(chatTranslateCache[key]) continue;
-    try{
-      var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,
-          messages:[{role:'user',content:'以下を日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+h.text}]})});
-      var data=await res.json();
-      var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
-      chatTranslateCache[key]=ja;
-      // 現在表示中のバブルを更新
-      if(chatTranslateMode){
-        var els=document.querySelectorAll('.bbl-ja[data-key="'+key.replace(/"/g,'&quot;')+'"]');
-        els.forEach(function(el){el.textContent=ja;el.style.color='var(--text2)';});
+// Google翻訳のURLを使ったテキスト置換翻訳
+function translateBubblesWithGoogle(container, callback){
+  // バブル内の英文テキストノードを収集
+  var bubbles = container.querySelectorAll('.bbl');
+  var texts = [];
+  bubbles.forEach(function(bbl, i){
+    var orig = bbl.textContent;
+    originalTexts.set(i, {el: bbl, text: orig});
+    texts.push(orig);
+  });
+  if(texts.length === 0){ if(callback) callback(); return; }
+
+  // Google翻訳の非公式APIで一括翻訳
+  var combined = texts.join('\n|||SPLIT|||\n');
+  var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ja&dt=t&q=' + encodeURIComponent(combined);
+
+  fetch(url)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      // レスポンスからテキストを結合
+      var translated = '';
+      if(data && data[0]){
+        data[0].forEach(function(part){ if(part && part[0]) translated += part[0]; });
       }
-    }catch(e){}
-  }
+      var parts = translated.split('|||SPLIT|||');
+      originalTexts.forEach(function(val, i){
+        if(parts[i] !== undefined){
+          val.el.textContent = parts[i].trim();
+        }
+      });
+      if(callback) callback();
+    })
+    .catch(function(e){
+      // エラー時はそのまま
+      console.warn('翻訳エラー:', e);
+      if(callback) callback();
+    });
+}
+
+function restoreOriginalTexts(container){
+  originalTexts.forEach(function(val){
+    val.el.textContent = val.text;
+  });
+  originalTexts.clear();
 }
 
 function renderChatBubbles(){
@@ -950,12 +981,8 @@ function renderChatBubbles(){
     var side=h.from==='me'?'mine':'theirs';
     var who=h.from==='me'?'Ken':m.buyer;
     if(h.isNew&&(m.history||[]).length>0) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
-    var key=h.text?h.text.substring(0,40):'';
-    var jaText=chatTranslateMode?(chatTranslateCache[key]||'翻訳中...'):'';
-    var jaHtml=chatTranslateMode?'<div class="bbl-ja" data-key="'+esc(key)+'" style="font-size:13px;color:var(--text2);margin-top:4px;padding:6px 10px;background:#fffbeb;border-left:3px solid #fbbf24;border-radius:4px;max-width:74%;line-height:1.6;">🇯🇵 '+esc(jaText)+'</div>':'';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
-      +jaHtml
       +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+h.time+'</div>'
       +'</div>';
   });
@@ -1128,6 +1155,31 @@ function loadReplyFromHistory(){
   else if(m.replyHistory&&m.replyHistory[v]){el.textContent=m.replyHistory[v];}
   el.contentEditable='false';el.classList.remove('editable');
   translateReply(currentIdx);
+}
+
+// ===== eBay API同期 =====
+async function syncFromEbay(){
+  var btn=document.getElementById('btn-ebay-sync');
+  var orig=btn.innerHTML;
+  btn.innerHTML='取得中...';
+  btn.disabled=true;
+  try{
+    var r=await fetch('/api/ebay/sync?days=7');
+    var d=await r.json();
+    if(d.ok){
+      btn.innerHTML='✓ '+d.added+'件追加';
+      if(d.added>0 && window.loadFromSheet) await window.loadFromSheet();
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    } else {
+      btn.innerHTML='✗ エラー';
+      alert('eBay取得エラー:\n'+(d.error||'不明'));
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    }
+  }catch(e){
+    btn.innerHTML='✗ エラー';
+    alert('通信エラー: '+e.message);
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+  }
 }
 
 // ===== 列管理（一本化版）=====
@@ -1432,6 +1484,7 @@ window.addEventListener('load',function(){
       }
     }catch(e){console.error('loadFromSheet error:',e);}
   }
+  window.loadFromSheet = loadFromSheet; // グローバルに公開
   loadFromSheet();
   setInterval(async function(){
     try{
