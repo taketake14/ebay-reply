@@ -305,8 +305,14 @@ app.get('/api/ebay/sync', async (req, res) => {
     const force = req.query.force === '1';   // 既存行も上書き更新する
     const ebayMsgs = await ebayApi.getMessagesForApp(days);
     let added = 0, updated = 0;
+
+    // シート上の既存conversationIdを取得（メモリだけだと再起動後に重複する）
+    const sheetConvIds = await getSheetConversationIds();
+
     for (const em of ebayMsgs) {
-      const exists = messages.find(m => m.conversationId === em.conversationId);
+      const inMemory = messages.find(m => m.conversationId === em.conversationId);
+      const inSheet = sheetConvIds.has(String(em.conversationId));
+      const exists = inMemory || inSheet;
       if (exists) {
         if (force) {
           // シート上の既存行を最新内容で更新
@@ -380,6 +386,32 @@ app.post('/api/ebay/reply', async (req, res) => {
     res.json({ ok: false, error: e.message });
   }
 });
+
+// ===== シート上の既存conversationId一覧を取得 =====
+async function getSheetConversationIds() {
+  const ids = new Set();
+  try {
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return ids;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A1:M1`;
+    const hr = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    const hd = await hr.json();
+    const headers = (hd.values && hd.values[0]) || [];
+    const convIdx = headers.indexOf('conversationId');
+    if (convIdx < 0) return ids;
+
+    const col = String.fromCharCode(65 + convIdx);
+    const cUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${col}2:${col}10000`;
+    const cr = await fetch(cUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+    const cd = await cr.json();
+    (cd.values || []).forEach(row => { if (row[0]) ids.add(String(row[0])); });
+  } catch (e) {
+    console.error('getSheetConversationIds error:', e.message);
+  }
+  return ids;
+}
 
 // ===== シートの既存行を最新のeBayデータで更新 =====
 async function refreshRowInSheet(em) {
