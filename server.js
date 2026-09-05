@@ -295,12 +295,75 @@ app.post('/api/ebay/reply', async (req, res) => {
     const result = await ebayApi.sendMessage({
       conversationId, otherPartyUsername: buyer, messageText, itemId
     });
+
+    // 送信した返信をシートのhistoryに追記して永続化
+    if (conversationId) {
+      updateHistoryInSheet(conversationId, {
+        from: 'me',
+        text: messageText,
+        time: new Date().toISOString(),
+      }).catch(e => console.error('updateHistoryInSheet error:', e.message));
+    }
+
     res.json({ ok: true, result });
   } catch (e) {
     console.error('eBay reply error:', e.message);
     res.json({ ok: false, error: e.message });
   }
 });
+
+// ===== シートのhistory列に返信を追記 =====
+async function updateHistoryInSheet(conversationId, entry) {
+  const sheetId = process.env.SHEET_ID;
+  if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
+  const token = await getGoogleAccessToken();
+  const sheetName = encodeURIComponent('シート1');
+
+  // 全行取得して該当行を探す
+  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:M`;
+  const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+  const data = await r.json();
+  const rows = data.values || [];
+  if (rows.length <= 1) return;
+
+  const headers = rows[0];
+  const convIdx = headers.indexOf('conversationId');
+  const histIdx = headers.indexOf('history');
+  const repIdx = headers.indexOf('replied');
+  if (convIdx < 0 || histIdx < 0) return;
+
+  // 該当行（最新のもの）を探す
+  let targetRow = -1;
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if ((rows[i][convIdx] || '') === String(conversationId)) { targetRow = i; break; }
+  }
+  if (targetRow < 0) return;
+
+  let hist = [];
+  try { hist = JSON.parse(rows[targetRow][histIdx] || '[]'); } catch (e) { hist = []; }
+  hist.push(entry);
+
+  const rowNum = targetRow + 1;
+  const histCol = String.fromCharCode(65 + histIdx);
+  const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${histCol}${rowNum}?valueInputOption=RAW`;
+  await fetch(putUrl, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values: [[JSON.stringify(hist)]] }),
+  });
+
+  // replied も true に
+  if (repIdx >= 0) {
+    const repCol = String.fromCharCode(65 + repIdx);
+    const repUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${repCol}${rowNum}?valueInputOption=RAW`;
+    await fetch(repUrl, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: [['true']] }),
+    });
+  }
+  console.log('history updated in sheet:', conversationId);
+}
 
 // ===== eBay Notification: リアルタイム通知受信 =====
 app.post('/api/ebay/notification', async (req, res) => {
