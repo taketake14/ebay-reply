@@ -747,8 +747,10 @@ function renderList(){
     if(m.sold&&m.orderId) idsHtml+=(idsHtml?' · ':'')+m.orderId;
     // 商品サムネ
     var thumbHtml='';
-    if(m.itemId){
-      thumbHtml='<div class="s1-thumb"><img src="https://i.ebayimg.com/images/g/'+m.itemId+'/s-l225.jpg" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>';
+    if(m.imgUrl){
+      thumbHtml='<div class="s1-thumb"><img src="'+esc(m.imgUrl)+'" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>';
+    } else if(m.itemId){
+      thumbHtml='<div class="s1-thumb" data-item="'+esc(m.itemId)+'">&#128230;</div>';
     } else {
       thumbHtml='<div class="s1-thumb">&#128230;</div>';
     }
@@ -1138,23 +1140,35 @@ async function loadBuyerDetail(buyer, idx){
     if(currentIdx!==idx) return;  // 別の会話に移動していたら描画しない
     if(!info){
       el2.innerHTML='<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:3px;">バイヤー詳細</div>'
-        +'<div style="font-size:12px;color:var(--text3);">購入履歴なし（未購入バイヤー）</div>';
+        +'<div style="font-size:12px;color:var(--text3);">情報を取得できませんでした</div>';
       return;
     }
     var rows='';
-    function row(k,v){ if(!v) return ''; return '<div style="display:flex;gap:6px;padding:2px 0;font-size:12px;"><span style="color:var(--text3);min-width:64px;flex-shrink:0;">'+k+'</span><span style="color:var(--text);word-break:break-all;">'+esc(v)+'</span></div>'; }
-    rows+=row('氏名', info.name);
-    var addr=[info.addressLine1, info.addressLine2].filter(Boolean).join(' ');
-    rows+=row('住所', addr);
-    var cityLine=[info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' ');
-    rows+=row('市区/州', cityLine);
-    rows+=row('国', info.country);
-    rows+=row('電話', info.phone);
-    rows+=row('メール', info.email);
-    rows+=row('注文日', info.orderDate?new Date(info.orderDate).toLocaleDateString('ja-JP'):'');
-    rows+=row('発送期限', info.shipByDate?new Date(info.shipByDate).toLocaleDateString('ja-JP'):'');
-    rows+=row('注文金額', info.total);
-    rows+=row('注文回数', info.orderCount?info.orderCount+'件':'');
+    function row(k,v){ if(!v&&v!==0) return ''; return '<div style="display:flex;gap:6px;padding:2px 0;font-size:12px;"><span style="color:var(--text3);min-width:68px;flex-shrink:0;">'+k+'</span><span style="color:var(--text);word-break:break-all;">'+esc(String(v))+'</span></div>'; }
+
+    // フィードバック（購入・未購入どちらでも表示）
+    if(info.feedbackScore!==null&&info.feedbackScore!==undefined){
+      var fb=info.feedbackScore;
+      if(info.positivePercent) fb+='（好評価 '+info.positivePercent+'%）';
+      rows+=row('評価数', fb);
+    }
+
+    if(info.purchased){
+      rows+=row('氏名', info.name);
+      var addr=[info.addressLine1, info.addressLine2].filter(Boolean).join(' ');
+      rows+=row('住所', addr);
+      var cityLine=[info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' ');
+      rows+=row('市区/州', cityLine);
+      rows+=row('国', info.countryLabel||info.country);
+      rows+=row('電話', info.phone);
+      rows+=row('メール', info.email);
+      rows+=row('注文日', info.orderDate?new Date(info.orderDate).toLocaleDateString('ja-JP'):'');
+      rows+=row('発送期限', info.shipByDate?new Date(info.shipByDate).toLocaleDateString('ja-JP'):'');
+      rows+=row('注文金額', info.total);
+      rows+=row('注文回数', info.orderCount?info.orderCount+'件':'');
+    } else {
+      rows+='<div style="font-size:12px;color:var(--text3);padding:2px 0;">購入履歴なし（未購入バイヤー）</div>';
+    }
     el2.innerHTML='<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:5px;">バイヤー詳細</div>'+(rows||'<div style="font-size:12px;color:var(--text3);">情報なし</div>');
   }
 
