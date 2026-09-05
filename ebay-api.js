@@ -38,7 +38,7 @@ async function getAccessToken() {
   }
 
   const basic = Buffer.from(c.appId + ':' + c.certId).toString('base64');
-  const scopes = 'https://api.ebay.com/oauth/api_scope/sell.messaging';
+  const scopes = 'https://api.ebay.com/oauth/api_scope/commerce.message';
 
   const res = await fetch(EBAY_OAUTH_URL, {
     method: 'POST',
