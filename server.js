@@ -227,6 +227,56 @@ app.get('/api/ebay/test', async (req, res) => {
   }
 });
 
+// ===== シートの重複行を削除 =====
+app.get('/api/sheet/dedupe', async (req, res) => {
+  try {
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      return res.json({ ok: false, error: 'シート設定がありません' });
+    }
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:M`;
+    const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await r.json();
+    const rows = data.values || [];
+    if (rows.length <= 1) return res.json({ ok: true, removed: 0 });
+
+    const headers = rows[0];
+    const convIdx = headers.indexOf('conversationId');
+    if (convIdx < 0) return res.json({ ok: false, error: 'conversationId列がありません' });
+
+    // 後ろから見て、同じconversationIdの初出（=最新）だけ残す
+    const seen = {};
+    const keep = [];
+    for (let i = rows.length - 1; i >= 1; i--) {
+      const cid = rows[i][convIdx] || '';
+      if (cid) {
+        if (seen[cid]) continue;
+        seen[cid] = true;
+      }
+      keep.unshift(rows[i]);
+    }
+    const removed = (rows.length - 1) - keep.length;
+    if (removed === 0) return res.json({ ok: true, removed: 0, total: keep.length });
+
+    // 全消去して書き直す
+    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2:M10000:clear`;
+    await fetch(clearUrl, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+
+    const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2?valueInputOption=RAW`;
+    await fetch(putUrl, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: keep }),
+    });
+
+    res.json({ ok: true, removed, remaining: keep.length });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== eBay API: 生レスポンス確認（デバッグ用） =====
 app.get('/api/ebay/raw', async (req, res) => {
   try {
@@ -675,6 +725,21 @@ app.get('/api/messages', async (req, res) => {
         memo: memoVal,
       };
     });
+
+    // ===== 同じconversationIdの重複行を除去（最新1件のみ残す） =====
+    const convSeen = {};
+    const deduped = [];
+    for (let i = rawMessages.length - 1; i >= 0; i--) {
+      const r = rawMessages[i];
+      const cid = r.conversationId;
+      if (cid) {
+        if (convSeen[cid]) continue;
+        convSeen[cid] = true;
+      }
+      deduped.unshift(r);
+    }
+    rawMessages.length = 0;
+    Array.prototype.push.apply(rawMessages, deduped);
 
     // ===== 同一バイヤーをスレッドにまとめる =====
     const threadMap = {};
