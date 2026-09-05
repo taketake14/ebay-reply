@@ -357,16 +357,24 @@ app.post('/api/ebay/reply', async (req, res) => {
       conversationId, otherPartyUsername: buyer, messageText, itemId
     });
 
-    // 送信した返信をシートのhistoryに追記して永続化
+    // 送信した返信をシートのhistoryに追記して永続化（結果を待って返す）
+    let saved = null;
     if (conversationId) {
-      updateHistoryInSheet(conversationId, {
-        from: 'me',
-        text: messageText,
-        time: new Date().toISOString(),
-      }).catch(e => console.error('updateHistoryInSheet error:', e.message));
+      try {
+        saved = await updateHistoryInSheet(conversationId, {
+          from: 'me',
+          text: messageText,
+          time: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('updateHistoryInSheet error:', e.message);
+        saved = { ok: false, error: e.message };
+      }
+    } else {
+      saved = { ok: false, error: 'conversationIdなし' };
     }
 
-    res.json({ ok: true, result });
+    res.json({ ok: true, result, saved });
   } catch (e) {
     console.error('eBay reply error:', e.message);
     res.json({ ok: false, error: e.message });
@@ -443,14 +451,18 @@ async function updateHistoryInSheet(conversationId, entry) {
   const convIdx = headers.indexOf('conversationId');
   const histIdx = headers.indexOf('history');
   const repIdx = headers.indexOf('replied');
-  if (convIdx < 0 || histIdx < 0) return;
+  if (convIdx < 0 || histIdx < 0) {
+    return { ok: false, error: 'conversationId/history列が見つかりません', headers };
+  }
 
   // 該当行（最新のもの）を探す
   let targetRow = -1;
   for (let i = rows.length - 1; i >= 1; i--) {
     if ((rows[i][convIdx] || '') === String(conversationId)) { targetRow = i; break; }
   }
-  if (targetRow < 0) return;
+  if (targetRow < 0) {
+    return { ok: false, error: 'conversationId ' + conversationId + ' の行が見つかりません', totalRows: rows.length };
+  }
 
   let hist = [];
   try { hist = JSON.parse(rows[targetRow][histIdx] || '[]'); } catch (e) { hist = []; }
@@ -459,11 +471,15 @@ async function updateHistoryInSheet(conversationId, entry) {
   const rowNum = targetRow + 1;
   const histCol = String.fromCharCode(65 + histIdx);
   const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${histCol}${rowNum}?valueInputOption=RAW`;
-  await fetch(putUrl, {
+  const putRes = await fetch(putUrl, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ values: [[JSON.stringify(hist)]] }),
   });
+  if (!putRes.ok) {
+    const errTxt = await putRes.text();
+    return { ok: false, error: 'シート書込失敗 ' + putRes.status + ': ' + errTxt.substring(0, 200) };
+  }
 
   // replied も true に
   if (repIdx >= 0) {
@@ -475,7 +491,8 @@ async function updateHistoryInSheet(conversationId, entry) {
       body: JSON.stringify({ values: [['true']] }),
     });
   }
-  console.log('history updated in sheet:', conversationId);
+  console.log('history updated in sheet:', conversationId, 'row', rowNum);
+  return { ok: true, row: rowNum, historyCount: hist.length };
 }
 
 // ===== eBay Notification: リアルタイム通知受信 =====
