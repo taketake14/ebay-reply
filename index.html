@@ -657,6 +657,12 @@ var DEMO_DATA = [
    msg:'donde puedo ver la fecha de entrega? Gracias',replyHistory:[],reply:'',status:'pending'},
 ];
 
+// eBay画像URLのサイズを変換（s-l1600 → s-l140 など）
+function ebayImg(url, size){
+  if(!url) return '';
+  return url.replace(/\/s-l\d+\.(jpg|png|webp)/i, '/s-l'+size+'.$1');
+}
+
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');}
 function toJST(ts){
@@ -749,7 +755,7 @@ function renderList(){
     // 商品サムネ
     var thumbHtml='';
     if(m.imgUrl){
-      thumbHtml='<div class="s1-thumb"><img src="'+esc(m.imgUrl)+'" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>';
+      thumbHtml='<div class="s1-thumb"><img src="'+esc(ebayImg(m.imgUrl,140))+'" loading="lazy" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>';
     } else if(m.itemId){
       thumbHtml='<div class="s1-thumb" data-item="'+esc(m.itemId)+'">&#128230;</div>';
     } else {
@@ -823,9 +829,8 @@ function renderChatDetail(){
 
   // 右パネル：商品
   var imgWrap=document.getElementById('prod-img-wrap');
-  var thumbUrl=m.imgUrl||(m.itemId?('https://i.ebayimg.com/images/g/'+m.itemId+'/s-l225.jpg'):'');
-  if(thumbUrl){
-    imgWrap.innerHTML='<img src="'+thumbUrl+'" onerror="this.parentElement.innerHTML=\'&#128230;\'" style="width:100%;height:100%;object-fit:cover;">';
+  if(m.imgUrl){
+    imgWrap.innerHTML='<img src="'+esc(ebayImg(m.imgUrl,500))+'" onerror="this.parentElement.innerHTML=\'&#128230;\'" style="width:100%;height:100%;object-fit:contain;">';
   } else {
     imgWrap.innerHTML='&#128230;';
   }
@@ -843,7 +848,7 @@ function renderChatDetail(){
       : '<span class="kv-v" style="color:var(--text2);">未購入</span>'
     )+'</div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
-  if(m.itemId) loadItemDetail(m.itemId, currentIdx);
+  if(m.itemId) loadItemDetail(m.itemId, currentIdx, !!(m.item && m.imgUrl));
 
   // コピーチップ
   var chipHtml='<div class="copy-chip" onclick="copyText(\''+escAttr(m.buyer)+'\',this)">&#128100; バイヤー名</div>';
@@ -1105,7 +1110,7 @@ async function translateToEnglish(){
 
 // ===== 商品情報を取得して表示 =====
 var itemDetailCache={};
-async function loadItemDetail(itemId, idx){
+async function loadItemDetail(itemId, idx, hasBasics){
   function render(info){
     if(currentIdx!==idx) return;
     var nameEl=document.getElementById('prod-name');
@@ -1117,7 +1122,7 @@ async function loadItemDetail(itemId, idx){
     if(skuEl) skuEl.textContent=info.sku||'—';
     if(priceEl) priceEl.textContent=info.price||'—';
     if(imgEl && info.imageUrl){
-      imgEl.innerHTML='<img src="'+esc(info.imageUrl)+'" style="width:100%;height:100%;object-fit:contain;">';
+      imgEl.innerHTML='<img src="'+esc(ebayImg(info.imageUrl,500))+'" style="width:100%;height:100%;object-fit:contain;">';
     }
   }
   if(itemDetailCache[itemId]!==undefined){ render(itemDetailCache[itemId]); return; }
@@ -1147,12 +1152,19 @@ async function loadBuyerDetail(buyer, idx){
     var rows='';
     function row(k,v){ if(!v&&v!==0) return ''; return '<div style="display:flex;gap:6px;padding:2px 0;font-size:12px;"><span style="color:var(--text3);min-width:68px;flex-shrink:0;">'+k+'</span><span style="color:var(--text);word-break:break-all;">'+esc(String(v))+'</span></div>'; }
 
+    // アイコン画像があればバイヤーアバターに反映
+    if(info.photoUrl){
+      var av=document.getElementById('buyer-avatar');
+      if(av) av.innerHTML='<img src="'+esc(info.photoUrl)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.remove()">';
+    }
     // フィードバック（購入・未購入どちらでも表示）
-    if(info.feedbackScore!==null&&info.feedbackScore!==undefined){
+    if(info.feedbackScore!==null&&info.feedbackScore!==undefined&&info.feedbackScore!==''){
       var fb=info.feedbackScore;
-      if(info.positivePercent) fb+='（好評価 '+info.positivePercent+'%）';
+      if(info.positivePercent) fb+='（好評価 '+Math.round(parseFloat(info.positivePercent))+'%）';
       rows+=row('評価数', fb);
     }
+    if(info.userCountryLabel) rows+=row('登録国', info.userCountryLabel);
+    if(info.registrationDate) rows+=row('登録日', new Date(info.registrationDate).toLocaleDateString('ja-JP'));
 
     if(info.purchased){
       rows+=row('氏名', info.name);
