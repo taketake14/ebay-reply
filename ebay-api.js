@@ -365,6 +365,10 @@ async function getBuyerPublicInfo(username) {
 
 // ===== Browse API: Item IDから商品情報を取得 =====
 const itemCache = {};
+function getCachedItem(itemId) {
+  if (!itemId) return null;
+  return itemCache[String(itemId)] || null;
+}
 async function getItemInfo(legacyItemId) {
   if (!legacyItemId) return null;
   const key = String(legacyItemId);
@@ -590,6 +594,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 
 module.exports = {
   getItemInfo: getItemInfo,
+  getCachedItem: getCachedItem,
   getSellerSku: getSellerSku,
   getBuyerOrderInfo: getBuyerOrderInfo,
   getBuyerPublicInfo: getBuyerPublicInfo,
