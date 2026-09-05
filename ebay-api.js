@@ -163,6 +163,7 @@ async function getMessagesForApp(daysBack) {
     let body = lm.messageBody || '';
     let ts = lm.createdDate || c.createdDate || new Date().toISOString();
     let subject = '';
+    let msgFrom = 'buyer';
 
     if (detail) {
       subject = detail.conversationTitle || '';
@@ -171,16 +172,36 @@ async function getMessagesForApp(daysBack) {
         const sorted = msgs.slice().sort(function(a, b) {
           return new Date(a.createdDate || 0) - new Date(b.createdDate || 0);
         });
-        const latest = sorted[sorted.length - 1];
-        body = latest.messageBody || body;
-        ts = latest.createdDate || ts;
-        history = sorted.slice(0, -1).map(function(m) {
-          return {
-            from: (m.senderUsername === SELF) ? 'me' : 'buyer',
-            text: m.messageBody || '',
-            time: m.createdDate || '',
-          };
-        });
+        // 「新着メッセージ」= 相手(buyer)からの最後のメッセージ
+        let lastBuyerIdx = -1;
+        for (let k = sorted.length - 1; k >= 0; k--) {
+          if (sorted[k].senderUsername !== SELF) { lastBuyerIdx = k; break; }
+        }
+        if (lastBuyerIdx >= 0) {
+          body = sorted[lastBuyerIdx].messageBody || body;
+          ts = sorted[lastBuyerIdx].createdDate || ts;
+          // それ以外すべて（自分の返信を含む）を history に。自分の返信が後にあってもここに残る
+          history = sorted.filter(function(_, k) { return k !== lastBuyerIdx; }).map(function(mm) {
+            return {
+              from: (mm.senderUsername === SELF) ? 'me' : 'buyer',
+              text: mm.messageBody || '',
+              time: mm.createdDate || '',
+            };
+          });
+        } else {
+          // 相手からのメッセージが無い（自分だけ）ケース
+          const latest = sorted[sorted.length - 1];
+          body = latest.messageBody || body;
+          ts = latest.createdDate || ts;
+          msgFrom = 'me';
+          history = sorted.slice(0, -1).map(function(mm) {
+            return {
+              from: (mm.senderUsername === SELF) ? 'me' : 'buyer',
+              text: mm.messageBody || '',
+              time: mm.createdDate || '',
+            };
+          });
+        }
       }
     }
 
@@ -189,6 +210,7 @@ async function getMessagesForApp(daysBack) {
       buyer: buyer,
       subject: subject,
       body: body,
+      msgFrom: msgFrom,
       history: history,
       itemId: c.referenceId || '',
       timestamp: ts,
