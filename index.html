@@ -1630,29 +1630,30 @@ window.addEventListener('load',function(){
   }
   window.loadFromSheet = loadFromSheet; // グローバルに公開
   loadFromSheet();
+  // ===== 自動更新（60秒ごとにシートを読み直す） =====
   setInterval(async function(){
     try{
-      var r=await fetch('/latest');
-      var d=await r.json();
-      if(d.message){
-        var exists=messages.find(function(m){return m.id===d.message.id;});
-        if(!exists){
-          var jst=toJST(d.message.timestamp);d.message.date=jst.date;d.message.time=jst.time;
-          // 開いている会話を記憶してから挿入し、位置ズレを防ぐ
-          var openConv=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].conversationId:null;
-          var openId=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].id:null;
-          messages.unshift(d.message);
-          if(currentIdx!==null){
-            var ni=messages.findIndex(function(x){
-              return (openConv&&x.conversationId===openConv)||(!openConv&&x.id===openId);
-            });
-            currentIdx=(ni>=0)?ni:currentIdx+1;
-          }
-          renderList();
+      // チャットを開いている会話を覚えておく
+      var openConv=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].conversationId:null;
+      var openBuyer=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].buyer:null;
+      var beforeCount=messages.length;
+
+      await loadFromSheet();
+
+      // 開いていた会話の位置を追い直す（ズレ防止）
+      if(currentIdx!==null){
+        var ni=-1;
+        if(openConv) ni=messages.findIndex(function(x){return x.conversationId===openConv;});
+        if(ni<0&&openBuyer) ni=messages.findIndex(function(x){return x.buyer===openBuyer;});
+        if(ni>=0){
+          currentIdx=ni;
+          // 開いている画面も最新に更新
+          if(document.getElementById('screen-chat').style.display!=='none') renderChatDetail();
         }
       }
+      // loadFromSheet内でrenderList()が走るのでカウントは自動更新される
     }catch(e){}
-  },30000);
+  },60000);
   var saved=localStorage.getItem('ebay_manual');
   if(saved) document.getElementById('manual-text').value=saved;
   reorderHeaderDOM();
