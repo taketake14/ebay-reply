@@ -430,6 +430,16 @@ app.get('/api/ebay/item/:itemId', async (req, res) => {
   }
 });
 
+// ===== SKU単体テスト（デバッグ用） =====
+app.get('/api/ebay/sku/:itemId', async (req, res) => {
+  try {
+    const sku = await ebayApi.getSellerSku(req.params.itemId);
+    res.json({ ok: true, itemId: req.params.itemId, sku: sku || '(空)' });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== バイヤー情報を取得 =====
 app.get('/api/ebay/buyer/:username', async (req, res) => {
   try {
@@ -893,7 +903,12 @@ app.get('/api/state', (req, res) => {
 // ===== Googleスプレッドシートからメッセージ取得 =====
 app.get('/api/messages', async (req, res) => {
   try {
-    refreshBuyerSet().catch(() => {});
+    // 購入者リストが未取得なら待ってから返す（SOLD表示のタイムラグ防止）
+    if (buyerOrderSet.size === 0) {
+      await refreshBuyerSet().catch(() => {});
+    } else {
+      refreshBuyerSet().catch(() => {});
+    }
     const sheetId = process.env.SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!sheetId || !apiKey) return res.json({ messages });
@@ -1136,6 +1151,11 @@ async function autoSyncFromEbay() {
     autoSyncRunning = false;
   }
 }
+
+// 起動直後に購入者リストを先読み（SOLD表示のタイムラグ解消）
+setTimeout(() => { refreshBuyerSet().catch(() => {}); }, 3000);
+// 10分ごとに購入者リストを更新
+setInterval(() => { refreshBuyerSet().catch(() => {}); }, 10 * 60 * 1000);
 
 // 3分ごとに実行
 setInterval(autoSyncFromEbay, 3 * 60 * 1000);
