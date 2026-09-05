@@ -829,19 +829,18 @@ function renderChatDetail(){
   document.getElementById('prod-name').textContent=m.item||'（商品名なし）';
   var kvHtml='';
   if(m.orderId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">注文番号</span><a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(m.orderId)+'" target="_blank">'+esc(m.orderId)+'</a></div>';
-  // Sales Record No.（eBay API取得予定）
-  if(m.sold){
-    kvHtml+='<div class="prod-kv-row"><span class="kv-k">Sales Record No.</span><span class="kv-v" style="color:var(--text3);font-size:12px;">API取得予定</span></div>';
-  }
+
   if(m.itemId) kvHtml+='<div class="prod-kv-row"><span class="kv-k">Item ID</span><a class="kv-v link" href="https://www.ebay.com/itm/'+esc(m.itemId)+'" target="_blank">'+esc(m.itemId)+'</a></div>';
-  // SKU（現状スプレッドシートにないためAPI取得予定）
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" style="color:var(--text3);font-size:12px;" id="prod-sku">—</span></div>';
+  // SKU・価格（eBay APIから取得）
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" style="font-size:12px;" id="prod-sku">—</span></div>';
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">価格</span><span class="kv-v" style="font-size:12px;" id="prod-price">—</span></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
     +(m.sold
       ? '<span class="kv-v" style="display:flex;align-items:center;gap:6px;"><span style="background:#dc2626;color:#fff;font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;letter-spacing:0.05em;">✓ SOLD</span></span>'
       : '<span class="kv-v" style="color:var(--text2);">未購入</span>'
     )+'</div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
+  if(m.itemId) loadItemDetail(m.itemId, currentIdx);
 
   // コピーチップ
   var chipHtml='<div class="copy-chip" onclick="copyText(\''+escAttr(m.buyer)+'\',this)">&#128100; バイヤー名</div>';
@@ -868,17 +867,12 @@ function renderChatDetail(){
   // バイヤーリンク（商品パネルに注文番号があるので削除）
   var linksHtml='';
 
-  // バイヤー情報プレースホルダー（eBay API未接続のため）
-  linksHtml+='<div style="margin-top:8px;padding:8px 10px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">'
-    +'<div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:600;">バイヤー詳細情報</div>'
-    +'<div style="font-size:12px;color:var(--text2);line-height:1.8;">'
-    +(m.sold
-      ? '発送先・フィードバック数・登録日は<br>eBay APIで取得予定'
-      : '国名・フィードバック数・登録日は<br>eBay APIで取得予定'
-    )
-    +'</div></div>';
+  // バイヤー詳細情報（eBay APIから取得）
+  linksHtml+='<div id="buyer-detail" style="margin-top:8px;padding:9px 11px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">'
+    +'<div style="font-size:11px;color:var(--text3);font-weight:600;">読み込み中...</div></div>';
 
   document.getElementById('buyer-links').innerHTML=linksHtml;
+  loadBuyerDetail(m.buyer, currentIdx);
 
   // メモ
   document.getElementById('memo-input').value=m.memo||'';
@@ -1103,6 +1097,77 @@ async function translateToEnglish(){
     btn.innerHTML='✗ 失敗';
     alert('翻訳エラー: '+e.message);
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
+  }
+}
+
+// ===== 商品情報を取得して表示 =====
+var itemDetailCache={};
+async function loadItemDetail(itemId, idx){
+  function render(info){
+    if(currentIdx!==idx) return;
+    var nameEl=document.getElementById('prod-name');
+    var skuEl=document.getElementById('prod-sku');
+    var priceEl=document.getElementById('prod-price');
+    var imgEl=document.getElementById('prod-img-wrap');
+    if(!info) return;
+    if(nameEl && info.title) nameEl.textContent=info.title;
+    if(skuEl) skuEl.textContent=info.sku||'—';
+    if(priceEl) priceEl.textContent=info.price||'—';
+    if(imgEl && info.imageUrl){
+      imgEl.innerHTML='<img src="'+esc(info.imageUrl)+'" style="width:100%;height:100%;object-fit:contain;">';
+    }
+  }
+  if(itemDetailCache[itemId]!==undefined){ render(itemDetailCache[itemId]); return; }
+  try{
+    var r=await fetch('/api/ebay/item/'+encodeURIComponent(itemId));
+    var d=await r.json();
+    itemDetailCache[itemId]=d.item||null;
+    render(d.item||null);
+  }catch(e){ itemDetailCache[itemId]=null; }
+}
+
+// ===== バイヤー詳細情報を取得して表示 =====
+var buyerDetailCache={};
+async function loadBuyerDetail(buyer, idx){
+  var el=document.getElementById('buyer-detail');
+  if(!el||!buyer) return;
+
+  function render(info){
+    var el2=document.getElementById('buyer-detail');
+    if(!el2) return;
+    if(currentIdx!==idx) return;  // 別の会話に移動していたら描画しない
+    if(!info){
+      el2.innerHTML='<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:3px;">バイヤー詳細</div>'
+        +'<div style="font-size:12px;color:var(--text3);">購入履歴なし（未購入バイヤー）</div>';
+      return;
+    }
+    var rows='';
+    function row(k,v){ if(!v) return ''; return '<div style="display:flex;gap:6px;padding:2px 0;font-size:12px;"><span style="color:var(--text3);min-width:64px;flex-shrink:0;">'+k+'</span><span style="color:var(--text);word-break:break-all;">'+esc(v)+'</span></div>'; }
+    rows+=row('氏名', info.name);
+    var addr=[info.addressLine1, info.addressLine2].filter(Boolean).join(' ');
+    rows+=row('住所', addr);
+    var cityLine=[info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' ');
+    rows+=row('市区/州', cityLine);
+    rows+=row('国', info.country);
+    rows+=row('電話', info.phone);
+    rows+=row('メール', info.email);
+    rows+=row('注文日', info.orderDate?new Date(info.orderDate).toLocaleDateString('ja-JP'):'');
+    rows+=row('発送期限', info.shipByDate?new Date(info.shipByDate).toLocaleDateString('ja-JP'):'');
+    rows+=row('注文金額', info.total);
+    rows+=row('注文回数', info.orderCount?info.orderCount+'件':'');
+    el2.innerHTML='<div style="font-size:11px;color:var(--text3);font-weight:600;margin-bottom:5px;">バイヤー詳細</div>'+(rows||'<div style="font-size:12px;color:var(--text3);">情報なし</div>');
+  }
+
+  if(buyerDetailCache[buyer]!==undefined){ render(buyerDetailCache[buyer]); return; }
+
+  try{
+    var r=await fetch('/api/ebay/buyer/'+encodeURIComponent(buyer));
+    var d=await r.json();
+    buyerDetailCache[buyer]=d.buyer||null;
+    render(d.buyer||null);
+  }catch(e){
+    buyerDetailCache[buyer]=null;
+    render(null);
   }
 }
 
