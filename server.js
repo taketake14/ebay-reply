@@ -430,6 +430,16 @@ app.get('/api/ebay/item/:itemId', async (req, res) => {
   }
 });
 
+// ===== GetUser テスト（デバッグ用） =====
+app.get('/api/ebay/user/:username', async (req, res) => {
+  try {
+    const info = await ebayApi.getUserInfo(req.params.username);
+    res.json({ ok: !!info, user: info });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== SKU単体テスト（デバッグ用） =====
 app.get('/api/ebay/sku/:itemId', async (req, res) => {
   try {
@@ -445,22 +455,21 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
   try {
     const debug = req.query.debug === '1';
     const uname = req.params.username;
-    const [order, pub] = await Promise.all([
+    const [order, user] = await Promise.all([
       ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null),
-      ebayApi.getBuyerPublicInfo(uname).catch(() => null),
+      ebayApi.getUserInfo(uname).catch(() => null),
     ]);
-    // 未購入でも国名・フィードバックだけは返す
+    const common = user ? {
+      feedbackScore: user.feedbackScore || null,
+      positivePercent: user.positivePercent || null,
+      photoUrl: user.photoUrl || '',
+      registrationDate: user.registrationDate || '',
+      userCountry: user.country || '',
+      userCountryLabel: user.country ? ebayApi.countryName(user.country) : '',
+    } : {};
     const buyer = order
-      ? Object.assign({}, order, {
-          feedbackScore: pub ? pub.feedbackScore : null,
-          positivePercent: pub ? pub.positivePercent : null,
-          purchased: true,
-        })
-      : (pub ? {
-          purchased: false,
-          feedbackScore: pub.feedbackScore,
-          positivePercent: pub.positivePercent,
-        } : null);
+      ? Object.assign({}, order, common, { purchased: true })
+      : (user ? Object.assign({ purchased: false }, common) : null);
     res.json({ ok: !!buyer, buyer, debug: debug ? ebayApi.getLastOrderDebug() : undefined });
   } catch (e) {
     res.json({ ok: false, error: e.message });
