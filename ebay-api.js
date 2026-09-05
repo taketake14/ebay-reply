@@ -203,7 +203,56 @@ async function testConnection() {
   }
 }
 
+// ===== OAuth: 認証URLを生成 =====
+function getAuthUrl() {
+  const c = getCreds();
+  const ruName = process.env.EBAY_RUNAME;
+  if (!c.appId) throw new Error('EBAY_APP_ID が未設定です');
+  if (!ruName) throw new Error('EBAY_RUNAME が未設定です');
+  const scopes = [
+    'https://api.ebay.com/oauth/api_scope',
+    'https://api.ebay.com/oauth/api_scope/commerce.message',
+  ].join(' ');
+  const q = new URLSearchParams({
+    client_id: c.appId,
+    redirect_uri: ruName,
+    response_type: 'code',
+    scope: scopes,
+  });
+  return 'https://auth.ebay.com/oauth2/authorize?' + q.toString();
+}
+
+// ===== OAuth: 認証コードをトークンに交換 =====
+async function exchangeCodeForTokens(code) {
+  const c = getCreds();
+  const ruName = process.env.EBAY_RUNAME;
+  if (!c.appId || !c.certId) throw new Error('EBAY_APP_ID / EBAY_CERT_ID が未設定です');
+  if (!ruName) throw new Error('EBAY_RUNAME が未設定です');
+
+  const basic = Buffer.from(c.appId + ':' + c.certId).toString('base64');
+  const res = await fetch(EBAY_OAUTH_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic ' + basic,
+    },
+    body: 'grant_type=authorization_code&code=' + encodeURIComponent(code) + '&redirect_uri=' + encodeURIComponent(ruName),
+  });
+  const data = await res.json();
+  if (!res.ok || !data.refresh_token) {
+    throw new Error('コード交換失敗 (' + res.status + '): ' + JSON.stringify(data).substring(0, 400));
+  }
+  // メモリにも保持（再デプロイまで有効）
+  if (data.access_token) {
+    cachedToken = data.access_token;
+    tokenExpiry = Date.now() + (data.expires_in || 7200) * 1000;
+  }
+  return data;
+}
+
 module.exports = {
+  getAuthUrl: getAuthUrl,
+  exchangeCodeForTokens: exchangeCodeForTokens,
   getConversations: getConversations,
   getConversation: getConversation,
   getMessagesForApp: getMessagesForApp,
