@@ -277,6 +277,26 @@ app.get('/api/sheet/dedupe', async (req, res) => {
   }
 });
 
+// ===== 商品情報を取得 =====
+app.get('/api/ebay/item/:itemId', async (req, res) => {
+  try {
+    const info = await ebayApi.getItemInfo(req.params.itemId);
+    res.json({ ok: !!info, item: info });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===== バイヤー情報を取得 =====
+app.get('/api/ebay/buyer/:username', async (req, res) => {
+  try {
+    const info = await ebayApi.getBuyerOrderInfo(req.params.username);
+    res.json({ ok: !!info, buyer: info });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== eBay API: 生レスポンス確認（デバッグ用） =====
 app.get('/api/ebay/raw', async (req, res) => {
   try {
@@ -324,6 +344,11 @@ app.get('/api/ebay/sync', async (req, res) => {
         continue;
       }
 
+      // 商品名・画像を取得（失敗しても続行）
+      let itemInfo = null;
+      if (em.itemId) {
+        try { itemInfo = await ebayApi.getItemInfo(em.itemId); } catch (e) {}
+      }
       const msg = {
         id: Date.now() + added,
         conversationId: em.conversationId,
@@ -333,10 +358,10 @@ app.get('/api/ebay/sync', async (req, res) => {
         msg: em.body || '',
         msgFrom: em.msgFrom || 'buyer',
         history: em.history || [],
-        item: extractItemFromSubject(em.subject || ''),
+        item: itemInfo ? itemInfo.title : extractItemFromSubject(em.subject || ''),
         orderId: '',
         itemId: em.itemId || '',
-        imgUrl: '',
+        imgUrl: itemInfo ? itemInfo.imageUrl : '',
         sold: false,
         timestamp: em.timestamp || new Date().toISOString(),
         read: em.read || false, starred: false, replied: false, memo: '',
@@ -908,6 +933,13 @@ async function autoSyncFromEbay() {
       const inMemory = messages.find(m => m.conversationId === em.conversationId);
       const inSheet = sheetConvIds.has(String(em.conversationId));
       if (inMemory || inSheet) continue;
+      // 商品名・画像を取得（失敗しても続行）
+      let itemInfo = null;
+      if (em.itemId) {
+        try { itemInfo = await ebayApi.getItemInfo(em.itemId); } catch (e) {}
+      }
+      let aInfo = null;
+      if (em.itemId) { try { aInfo = await ebayApi.getItemInfo(em.itemId); } catch (e) {} }
       const msg = {
         id: Date.now() + added,
         conversationId: em.conversationId,
@@ -917,8 +949,8 @@ async function autoSyncFromEbay() {
         msg: em.body || '',
         msgFrom: em.msgFrom || 'buyer',
         history: em.history || [],
-        item: extractItemFromSubject(em.subject || ''),
-        orderId: '', itemId: em.itemId || '', imgUrl: '',
+        item: aInfo ? aInfo.title : extractItemFromSubject(em.subject || ''),
+        orderId: '', itemId: em.itemId || '', imgUrl: aInfo ? aInfo.imageUrl : '',
         sold: false,
         timestamp: em.timestamp || new Date().toISOString(),
         read: em.read || false, starred: false, replied: false, memo: '',
