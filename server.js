@@ -227,6 +227,27 @@ app.get('/api/ebay/test', async (req, res) => {
   }
 });
 
+// ===== eBay API: 生レスポンス確認（デバッグ用） =====
+app.get('/api/ebay/raw', async (req, res) => {
+  try {
+    const convs = await ebayApi.getConversations(2, 2);
+    const list = (convs && convs.conversations) || [];
+    let detail = null;
+    if (list.length > 0) {
+      detail = await ebayApi.getConversation(list[0].conversationId);
+    }
+    res.json({
+      ok: true,
+      conversationsTopLevelKeys: convs ? Object.keys(convs) : [],
+      firstConversation: list[0] || null,
+      conversationDetailKeys: detail ? Object.keys(detail) : [],
+      conversationDetail: detail || null,
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== eBay API: メッセージ同期 =====
 app.get('/api/ebay/sync', async (req, res) => {
   try {
