@@ -22,7 +22,8 @@ let tokenExpiry = 0;
 async function getAccessToken() {
   const c = getCreds();
 
-  if (c.accessToken && !c.refreshToken) {
+  // ACCESS_TOKEN が設定されていれば優先して使う（切り分け用）
+  if (c.accessToken) {
     return c.accessToken;
   }
 
