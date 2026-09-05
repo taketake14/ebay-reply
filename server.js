@@ -236,7 +236,7 @@ app.get('/api/sheet/dedupe', async (req, res) => {
     }
     const token = await getGoogleAccessToken();
     const sheetName = encodeURIComponent('シート1');
-    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`;
+    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O`;
     const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await r.json();
     const rows = data.values || [];
@@ -261,7 +261,7 @@ app.get('/api/sheet/dedupe', async (req, res) => {
     if (removed === 0) return res.json({ ok: true, removed: 0, total: keep.length });
 
     // 全消去して書き直す
-    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2:N10000:clear`;
+    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2:O10000:clear`;
     await fetch(clearUrl, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
 
     const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A2?valueInputOption=RAW`;
@@ -320,7 +320,7 @@ app.get('/api/ebay/enrich', async (req, res) => {
     const token = await getGoogleAccessToken();
     const sheetName = encodeURIComponent('シート1');
 
-    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`,
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O`,
       { headers: { 'Authorization': `Bearer ${token}` } });
     const data = await r.json();
     const rows = data.values || [];
@@ -356,12 +356,20 @@ app.get('/api/ebay/enrich', async (req, res) => {
       const buyer = (row[iBuyer] || '').toLowerCase();
       const rowNum = i + 1;
 
-      // 商品名が空でitemIdがある行だけ処理
-      if (itemId && (!curItem || curItem === '')) {
+      const iImg = h.indexOf('imgUrl');
+      const curImg = iImg >= 0 ? (row[iImg] || '') : '';
+      // 商品名または画像が空でitemIdがある行を処理
+      if (itemId && (!curItem || (iImg >= 0 && !curImg))) {
         const info = await ebayApi.getItemInfo(itemId);
-        if (info && info.title) {
-          const col = String.fromCharCode(65 + iItem);
-          updates.push({ range: `シート1!${col}${rowNum}`, values: [[info.title]] });
+        if (info) {
+          if (info.title && !curItem) {
+            const col = String.fromCharCode(65 + iItem);
+            updates.push({ range: `シート1!${col}${rowNum}`, values: [[info.title]] });
+          }
+          if (info.imageUrl && iImg >= 0 && !curImg) {
+            const icol = String.fromCharCode(65 + iImg);
+            updates.push({ range: `シート1!${icol}${rowNum}`, values: [[info.imageUrl]] });
+          }
           done++;
         }
       }
@@ -426,10 +434,26 @@ app.get('/api/ebay/item/:itemId', async (req, res) => {
 app.get('/api/ebay/buyer/:username', async (req, res) => {
   try {
     const debug = req.query.debug === '1';
-    const info = await ebayApi.getBuyerOrderInfo(req.params.username, 120, debug);
-    res.json({ ok: !!info, buyer: info, debug: debug ? ebayApi.getLastOrderDebug() : undefined });
+    const uname = req.params.username;
+    const [order, pub] = await Promise.all([
+      ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null),
+      ebayApi.getBuyerPublicInfo(uname).catch(() => null),
+    ]);
+    // 未購入でも国名・フィードバックだけは返す
+    const buyer = order
+      ? Object.assign({}, order, {
+          feedbackScore: pub ? pub.feedbackScore : null,
+          positivePercent: pub ? pub.positivePercent : null,
+          purchased: true,
+        })
+      : (pub ? {
+          purchased: false,
+          feedbackScore: pub.feedbackScore,
+          positivePercent: pub.positivePercent,
+        } : null);
+    res.json({ ok: !!buyer, buyer, debug: debug ? ebayApi.getLastOrderDebug() : undefined });
   } catch (e) {
-    res.json({ ok: false, error: e.message, stack: e.stack ? e.stack.substring(0,300) : '' });
+    res.json({ ok: false, error: e.message });
   }
 });
 
@@ -581,7 +605,7 @@ async function refreshRowInSheet(em) {
   const token = await getGoogleAccessToken();
   const sheetName = encodeURIComponent('シート1');
 
-  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`;
+  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O`;
   const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
   const data = await r.json();
   const rows = data.values || [];
@@ -617,9 +641,10 @@ async function refreshRowInSheet(em) {
     em.conversationId,
     JSON.stringify(em.history || []),
     em.msgFrom || 'buyer',
+    (em.imgUrl || get('imgUrl') || ''),
   ]];
 
-  const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A${rowNum}:N${rowNum}?valueInputOption=RAW`;
+  const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A${rowNum}:O${rowNum}?valueInputOption=RAW`;
   await fetch(putUrl, {
     method: 'PUT',
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -635,7 +660,7 @@ async function updateHistoryInSheet(conversationId, entry) {
   const sheetName = encodeURIComponent('シート1');
 
   // 全行取得して該当行を探す
-  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:N`;
+  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O`;
   const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
   const data = await r.json();
   const rows = data.values || [];
@@ -716,7 +741,8 @@ app.post('/api/ebay/notification', async (req, res) => {
         message: em.body || '',
         msg: em.body || '',
         history: em.history || [],
-        item: extractItemFromSubject(em.subject || ''),
+        msgFrom: em.msgFrom || 'buyer',
+        item: em.itemId ? '' : extractItemFromSubject(em.subject || ''),
         orderId: '', itemId: em.itemId || '', imgUrl: '',
         sold: false,
         timestamp: em.timestamp || new Date().toISOString(),
@@ -826,7 +852,8 @@ async function appendToSheet(msg) {
           '',                             // memo
           msg.conversationId || '',       // L列: conversationId
           JSON.stringify(msg.history || []), // M列: history(JSON)
-          msg.msgFrom || 'buyer'          // N列: msgFrom
+          msg.msgFrom || 'buyer',         // N列: msgFrom
+          msg.imgUrl || ''                // O列: imgUrl
         ]]
       }),
     });
