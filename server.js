@@ -598,6 +598,7 @@ app.get('/api/messages', async (req, res) => {
       });
       return {
         id: latest.id,
+        conversationId: thread.conversationId || latest.conversationId || '',
         buyer: thread.buyer,
         subject: latest.subject,
         msg: latest.msg,
