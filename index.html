@@ -998,7 +998,7 @@ function renderChatBubbles(){
   // 最新メッセージ（バイヤーからの新着）
   var nt=new Date(m.timestamp||0).getTime();
   var newTs=isNaN(nt)?0:nt;
-  allItems.push({from:'buyer', text:m.msg, time:(m.date+' '+m.time), isNew:true, ts:newTs, ord:allItems.length});
+  allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), isNew:true, ts:newTs, ord:allItems.length});
 
   // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
   var lastTs=0;
@@ -1015,7 +1015,7 @@ function renderChatBubbles(){
     var side=h.from==='me'?'mine':'theirs';
     var who=h.from==='me'?'Ken':m.buyer;
     // 新着バッジは「未返信 かつ 最後のメッセージがバイヤーから」の場合だけ
-    if(h.isNew && idx===lastIdx && idx>0 && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
+    if(h.isNew && idx===lastIdx && idx>0 && h.from==='buyer' && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
       +'<div class="bbl-meta">'+esc(fmtTime(h.time))+'</div>'
