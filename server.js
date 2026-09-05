@@ -793,7 +793,9 @@ app.get('/api/messages', async (req, res) => {
     // ===== 同一バイヤーをスレッドにまとめる =====
     const threadMap = {};
     rawMessages.forEach(m => {
-      const key = m.buyer.toLowerCase();
+      // バイヤー名を正規化（前後空白・不可視文字・引用符を除去）
+      const key = String(m.buyer || '').toLowerCase().replace(/[\s\u200b-\u200f"'`]/g, '').trim();
+      if (!key) return;
       if (!threadMap[key]) {
         threadMap[key] = { ...m, threadMessages: [m], sold: m.sold };
       } else {
@@ -817,25 +819,42 @@ app.get('/api/messages', async (req, res) => {
     });
 
     const threads = Object.values(threadMap).map(thread => {
-      const sorted = thread.threadMessages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      const sorted = thread.threadMessages.slice().sort((a, b) => {
+        const ta = new Date(a.timestamp || 0).getTime() || 0;
+        const tb = new Date(b.timestamp || 0).getTime() || 0;
+        return ta - tb;
+      });
       const latest = sorted[sorted.length - 1];
+      // 同じconversationIdの行は1回だけ使う（同一データの二重読み込みを防ぐ）
+      const usedConv = new Set();
+      const uniqueRows = sorted.filter(m => {
+        const cid = m.conversationId || '';
+        if (!cid) return true;             // 旧Gmailデータ等はそのまま
+        if (usedConv.has(cid)) return false;
+        usedConv.add(cid);
+        return true;
+      });
+
       const allHistory = [];
-      sorted.forEach((m, idx) => {
+      uniqueRows.forEach((m, idx) => {
         if (m.history && m.history.length > 0) {
           m.history.forEach(h => allHistory.push({ from: h.from, text: h.text, time: h.time || m.timestamp }));
         }
-        if (idx < sorted.length - 1 && m.msg) {
-          allHistory.push({ from: 'buyer', text: m.msg, time: m.timestamp });
+        // 最後の行のmsgは latest として別途表示されるので、それ以外だけ履歴に入れる
+        if (idx < uniqueRows.length - 1 && m.msg) {
+          allHistory.push({ from: m.msgFrom === 'me' ? 'me' : 'buyer', text: m.msg, time: m.timestamp });
         }
       });
-      const seenTexts = new Set();
-      const dedupedHistory = allHistory.filter(h => {
-        if (!h.text) return false;
-        const k = h.text.substring(0, 50);
-        if (seenTexts.has(k)) return false;
-        seenTexts.add(k);
-        return true;
-      });
+      // 【重要】メッセージは一切間引かない。eBayにあるものは全てそのまま表示する。
+      // （同じ文面を2回送ることは実際にあり、勝手に消すと事実と食い違う）
+      // 空テキストだけ除外し、時系列に並べる。
+      const dedupedHistory = allHistory
+        .filter(h => h.text)
+        .sort((a, b) => {
+          const ta = new Date(a.time || 0).getTime() || 0;
+          const tb = new Date(b.time || 0).getTime() || 0;
+          return ta - tb;
+        });
       return {
         id: latest.id,
         conversationId: thread.conversationId || latest.conversationId || '',
@@ -857,7 +876,11 @@ app.get('/api/messages', async (req, res) => {
       };
     });
 
-    threads.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    threads.sort((a, b) => {
+      const ta = new Date(a.timestamp || 0).getTime() || 0;
+      const tb = new Date(b.timestamp || 0).getTime() || 0;
+      return tb - ta;   // 新しい順
+    });
     res.json({ messages: threads });
   } catch (e) {
     console.error('Error:', e.message);
