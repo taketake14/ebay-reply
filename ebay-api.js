@@ -259,6 +259,13 @@ function getAuthUrl() {
   const scopes = [
     'https://api.ebay.com/oauth/api_scope',
     'https://api.ebay.com/oauth/api_scope/commerce.message',
+    'https://api.ebay.com/oauth/api_scope/sell.fulfillment',
+    'https://api.ebay.com/oauth/api_scope/sell.fulfillment.readonly',
+    'https://api.ebay.com/oauth/api_scope/sell.inventory',
+    'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
+    'https://api.ebay.com/oauth/api_scope/sell.account',
+    'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
+    'https://api.ebay.com/oauth/api_scope/commerce.feedback',
   ].join(' ');
   const q = new URLSearchParams({
     client_id: c.appId,
