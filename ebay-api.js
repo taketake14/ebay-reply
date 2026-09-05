@@ -395,12 +395,56 @@ async function getItemInfo(legacyItemId) {
       condition: d.condition || '',
       itemWebUrl: d.itemWebUrl || '',
     };
+    // Browse APIはSKUを返さないので、セラー向けAPIから補完
+    if (!info.sku) {
+      try {
+        const sku = await getSellerSku(key);
+        if (sku) info.sku = sku;
+      } catch (e) { /* ignore */ }
+    }
     itemCache[key] = info;
     return info;
   } catch (e) {
     console.error('getItemInfo error:', e.message);
     itemCache[key] = null;
     return null;
+  }
+}
+
+// ===== Trading API GetItem でセラー自身のSKUを取得 =====
+const skuCache = {};
+async function getSellerSku(itemId) {
+  if (!itemId) return '';
+  const key = String(itemId);
+  if (skuCache[key] !== undefined) return skuCache[key];
+  try {
+    const token = await getAccessToken();
+    const xml = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+      + '<ItemID>' + key + '</ItemID>'
+      + '<DetailLevel>ReturnAll</DetailLevel>'
+      + '</GetItemRequest>';
+    const res = await fetch('https://api.ebay.com/ws/api.dll', {
+      method: 'POST',
+      headers: {
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+        'X-EBAY-API-CALL-NAME': 'GetItem',
+        'X-EBAY-API-IAF-TOKEN': token,
+        'Content-Type': 'text/xml',
+      },
+      body: xml,
+    });
+    const t = await res.text();
+    const m = t.match(/<SKU>([\s\S]*?)<\/SKU>/);
+    const sku = m ? m[1].trim() : '';
+    skuCache[key] = sku;
+    if (!sku) console.log('[getSellerSku] SKUなし item=' + key + ' resp=' + t.substring(0, 200));
+    return sku;
+  } catch (e) {
+    console.error('getSellerSku error:', e.message);
+    skuCache[key] = '';
+    return '';
   }
 }
 
@@ -497,6 +541,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 
 module.exports = {
   getItemInfo: getItemInfo,
+  getSellerSku: getSellerSku,
   getBuyerOrderInfo: getBuyerOrderInfo,
   getBuyerPublicInfo: getBuyerPublicInfo,
   countryName: countryName,
