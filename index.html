@@ -102,8 +102,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-read-dot{width:7px;height:7px;}
 /* 商品画像 */
 .s1-thumb{width:64px;height:64px;border-radius:6px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;}
-.s1-thumb img{width:100%;height:100%;object-fit:contain;image-rendering:auto;}
-.s1-thumb img{width:100%;height:100%;object-fit:cover;}
+.s1-thumb img{width:100%;height:100%;object-fit:contain;}
 /* 商品情報 */
 .s1-item-cell{display:flex;flex-direction:column;gap:2px;min-width:0;padding-right:10px;}
 .s1-item-name{font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
@@ -228,7 +227,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .panel-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}
 
 /* 商品パネル */
-.prod-img-wrap{width:100%;height:150px;background:var(--bg3);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border);overflow:hidden;}
+.prod-img-wrap{width:100%;height:150px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border);overflow:hidden;}
 .prod-img-wrap img{width:100%;height:100%;object-fit:contain;}
 .prod-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.5;}
 .prod-kv{display:flex;flex-direction:column;gap:0;}
@@ -1123,6 +1122,13 @@ async function loadItemDetail(itemId, idx, hasBasics){
     if(priceEl) priceEl.textContent=info.price||'—';
     if(imgEl && info.imageUrl){
       imgEl.innerHTML='<img src="'+esc(ebayImg(info.imageUrl,500))+'" style="width:100%;height:100%;object-fit:contain;">';
+    }
+    // 一覧と詳細で画像が食い違わないよう、最新のURLをメッセージにも反映
+    var mm=messages[idx];
+    if(mm && info.imageUrl && mm.imgUrl!==info.imageUrl){
+      mm.imgUrl=info.imageUrl;
+      if(info.title) mm.item=info.title;
+      renderList();
     }
   }
   if(itemDetailCache[itemId]!==undefined){ render(itemDetailCache[itemId]); return; }
