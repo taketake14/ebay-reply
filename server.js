@@ -252,11 +252,21 @@ app.get('/api/ebay/raw', async (req, res) => {
 app.get('/api/ebay/sync', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 7;
+    const force = req.query.force === '1';   // 既存行も上書き更新する
     const ebayMsgs = await ebayApi.getMessagesForApp(days);
-    let added = 0;
+    let added = 0, updated = 0;
     for (const em of ebayMsgs) {
       const exists = messages.find(m => m.conversationId === em.conversationId);
-      if (exists) continue;
+      if (exists) {
+        if (force) {
+          // シート上の既存行を最新内容で更新
+          try {
+            await refreshRowInSheet(em);
+            updated++;
+          } catch (e) { console.error('refreshRow error:', e.message); }
+        }
+        continue;
+      }
 
       const msg = {
         id: Date.now() + added,
@@ -281,7 +291,7 @@ app.get('/api/ebay/sync', async (req, res) => {
       appendToSheet(msg).catch(e => console.error('appendToSheet error:', e.message));
     }
     if (messages.length > 300) messages = messages.slice(0, 300);
-    res.json({ ok: true, fetched: ebayMsgs.length, added });
+    res.json({ ok: true, fetched: ebayMsgs.length, added, updated });
   } catch (e) {
     console.error('eBay sync error:', e.message);
     res.json({ ok: false, error: e.message });
@@ -312,6 +322,58 @@ app.post('/api/ebay/reply', async (req, res) => {
     res.json({ ok: false, error: e.message });
   }
 });
+
+// ===== シートの既存行を最新のeBayデータで更新 =====
+async function refreshRowInSheet(em) {
+  const sheetId = process.env.SHEET_ID;
+  if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
+  const token = await getGoogleAccessToken();
+  const sheetName = encodeURIComponent('シート1');
+
+  const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:M`;
+  const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+  const data = await r.json();
+  const rows = data.values || [];
+  if (rows.length <= 1) return;
+
+  const headers = rows[0];
+  const convIdx = headers.indexOf('conversationId');
+  if (convIdx < 0) return;
+
+  let targetRow = -1;
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if ((rows[i][convIdx] || '') === String(em.conversationId)) { targetRow = i; break; }
+  }
+  if (targetRow < 0) return;
+
+  const rowNum = targetRow + 1;
+  const existing = rows[targetRow];
+  const get = (name) => { const k = headers.indexOf(name); return k >= 0 ? (existing[k] || '') : ''; };
+
+  // A〜M列を再構築（ユーザー操作分 read/starred/replied/memo は維持）
+  const values = [[
+    em.timestamp,
+    em.buyer,
+    em.subject || get('subject'),
+    em.body || '',
+    get('item'),
+    get('orderId'),
+    em.itemId || get('itemId'),
+    get('read') || 'false',
+    get('starred') || 'false',
+    get('replied') || 'false',
+    get('memo'),
+    em.conversationId,
+    JSON.stringify(em.history || []),
+  ]];
+
+  const putUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A${rowNum}:M${rowNum}?valueInputOption=RAW`;
+  await fetch(putUrl, {
+    method: 'PUT',
+    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ values }),
+  });
+}
 
 // ===== シートのhistory列に返信を追記 =====
 async function updateHistoryInSheet(conversationId, entry) {
