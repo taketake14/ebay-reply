@@ -305,6 +305,64 @@ async function exchangeCodeForTokens(code) {
 }
 
 
+// ===== 国コード→日本語国名 =====
+const COUNTRY_NAMES = {
+  US:'アメリカ', CA:'カナダ', GB:'イギリス', AU:'オーストラリア', DE:'ドイツ', FR:'フランス',
+  IT:'イタリア', ES:'スペイン', NL:'オランダ', BE:'ベルギー', CH:'スイス', AT:'オーストリア',
+  SE:'スウェーデン', NO:'ノルウェー', DK:'デンマーク', FI:'フィンランド', PL:'ポーランド',
+  PT:'ポルトガル', IE:'アイルランド', CZ:'チェコ', GR:'ギリシャ', HU:'ハンガリー',
+  RO:'ルーマニア', BG:'ブルガリア', HR:'クロアチア', SK:'スロバキア', SI:'スロベニア',
+  EE:'エストニア', LV:'ラトビア', LT:'リトアニア', LU:'ルクセンブルク', MT:'マルタ',
+  CY:'キプロス', IS:'アイスランド',
+  JP:'日本', CN:'中国', KR:'韓国', TW:'台湾', HK:'香港', SG:'シンガポール',
+  MY:'マレーシア', TH:'タイ', ID:'インドネシア', PH:'フィリピン', VN:'ベトナム', IN:'インド',
+  NZ:'ニュージーランド',
+  BR:'ブラジル', MX:'メキシコ', AR:'アルゼンチン', CL:'チリ', CO:'コロンビア', PE:'ペルー',
+  VE:'ベネズエラ', EC:'エクアドル', UY:'ウルグアイ', PY:'パラグアイ', BO:'ボリビア',
+  CR:'コスタリカ', PA:'パナマ', GT:'グアテマラ', DO:'ドミニカ共和国', PR:'プエルトリコ',
+  RU:'ロシア', UA:'ウクライナ', TR:'トルコ', IL:'イスラエル', SA:'サウジアラビア',
+  AE:'アラブ首長国連邦', QA:'カタール', KW:'クウェート', ZA:'南アフリカ', EG:'エジプト',
+  NG:'ナイジェリア', KE:'ケニア', MA:'モロッコ',
+};
+function countryName(code) {
+  if (!code) return '';
+  const c = String(code).toUpperCase();
+  return COUNTRY_NAMES[c] ? COUNTRY_NAMES[c] + '（' + c + '）' : c;
+}
+
+// ===== バイヤーの公開情報（フィードバック数・国）を取得 =====
+const buyerPublicCache = {};
+async function getBuyerPublicInfo(username) {
+  if (!username) return null;
+  const key = String(username).toLowerCase();
+  if (buyerPublicCache[key] !== undefined) return buyerPublicCache[key];
+  try {
+    const token = await getAccessToken();
+    // Feedback API でバイヤーの評価サマリを取得
+    const url = 'https://api.ebay.com/commerce/feedback/v1/feedback_summary?user_id=' + encodeURIComponent(username);
+    const res = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('getBuyerPublicInfo ' + res.status + ':', t.substring(0, 150));
+      buyerPublicCache[key] = null;
+      return null;
+    }
+    const d = await res.json();
+    const info = {
+      feedbackScore: d.feedbackScore !== undefined ? d.feedbackScore : null,
+      positivePercent: d.positiveFeedbackPercentage || null,
+    };
+    buyerPublicCache[key] = info;
+    return info;
+  } catch (e) {
+    console.error('getBuyerPublicInfo error:', e.message);
+    buyerPublicCache[key] = null;
+    return null;
+  }
+}
+
 // ===== Browse API: Item IDから商品情報を取得 =====
 const itemCache = {};
 async function getItemInfo(legacyItemId) {
@@ -422,6 +480,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       stateOrProvince: addr.stateOrProvince || '',
       postalCode: addr.postalCode || '',
       country: addr.countryCode || '',
+      countryLabel: countryName(addr.countryCode || ''),
       shipByDate: li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate || '',
       orderCount: mine.length,
       total: o.pricingSummary && o.pricingSummary.total
@@ -439,6 +498,8 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 module.exports = {
   getItemInfo: getItemInfo,
   getBuyerOrderInfo: getBuyerOrderInfo,
+  getBuyerPublicInfo: getBuyerPublicInfo,
+  countryName: countryName,
   getLastOrderDebug: getLastOrderDebug,
   getAuthUrl: getAuthUrl,
   exchangeCodeForTokens: exchangeCodeForTokens,
