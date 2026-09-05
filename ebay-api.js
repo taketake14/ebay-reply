@@ -289,7 +289,113 @@ async function exchangeCodeForTokens(code) {
   return data;
 }
 
+
+// ===== Browse API: Item IDから商品情報を取得 =====
+const itemCache = {};
+async function getItemInfo(legacyItemId) {
+  if (!legacyItemId) return null;
+  const key = String(legacyItemId);
+  if (itemCache[key] !== undefined) return itemCache[key];
+
+  try {
+    const token = await getAccessToken();
+    const url = 'https://api.ebay.com/buy/browse/v1/item/get_item_by_legacy_id?legacy_item_id=' + encodeURIComponent(key);
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json',
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+      },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('getItemInfo ' + res.status + ':', t.substring(0, 150));
+      itemCache[key] = null;
+      return null;
+    }
+    const d = await res.json();
+    const info = {
+      title: d.title || '',
+      imageUrl: (d.image && d.image.imageUrl) || '',
+      price: d.price ? (d.price.value + ' ' + d.price.currency) : '',
+      sku: d.sku || '',
+      condition: d.condition || '',
+      itemWebUrl: d.itemWebUrl || '',
+    };
+    itemCache[key] = info;
+    return info;
+  } catch (e) {
+    console.error('getItemInfo error:', e.message);
+    itemCache[key] = null;
+    return null;
+  }
+}
+
+// ===== Fulfillment API: バイヤーの注文情報（住所など）を取得 =====
+const orderCache = {};
+async function getBuyerOrderInfo(buyerUsername, daysBack) {
+  if (!buyerUsername) return null;
+  const key = String(buyerUsername).toLowerCase();
+  if (orderCache[key] !== undefined) return orderCache[key];
+
+  try {
+    const token = await getAccessToken();
+    const days = daysBack || 90;
+    const from = new Date(Date.now() - days * 86400000).toISOString();
+    const filter = encodeURIComponent('creationdate:[' + from + '..]');
+    const url = 'https://api.ebay.com/sell/fulfillment/v1/order?filter=' + filter + '&limit=200';
+    const res = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('getBuyerOrderInfo ' + res.status + ':', t.substring(0, 150));
+      orderCache[key] = null;
+      return null;
+    }
+    const d = await res.json();
+    const orders = d.orders || [];
+    const mine = orders.filter(o => (o.buyer && o.buyer.username || '').toLowerCase() === key);
+    if (mine.length === 0) { orderCache[key] = null; return null; }
+
+    mine.sort((a, b) => new Date(b.creationDate || 0) - new Date(a.creationDate || 0));
+    const o = mine[0];
+    const ship = (o.fulfillmentStartInstructions && o.fulfillmentStartInstructions[0]
+      && o.fulfillmentStartInstructions[0].shippingStep
+      && o.fulfillmentStartInstructions[0].shippingStep.shipTo) || {};
+    const addr = ship.contactAddress || {};
+    const li = (o.lineItems && o.lineItems[0]) || {};
+
+    const info = {
+      orderId: o.orderId || '',
+      orderDate: o.creationDate || '',
+      salesRecordNo: (li.legacyReference && li.legacyReference.legacyItemId) || '',
+      name: ship.fullName || '',
+      email: ship.email || '',
+      phone: ship.primaryPhone && ship.primaryPhone.phoneNumber || '',
+      addressLine1: addr.addressLine1 || '',
+      addressLine2: addr.addressLine2 || '',
+      city: addr.city || '',
+      stateOrProvince: addr.stateOrProvince || '',
+      postalCode: addr.postalCode || '',
+      country: addr.countryCode || '',
+      shipByDate: li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate || '',
+      orderCount: mine.length,
+      total: o.pricingSummary && o.pricingSummary.total
+        ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
+    };
+    orderCache[key] = info;
+    return info;
+  } catch (e) {
+    console.error('getBuyerOrderInfo error:', e.message);
+    orderCache[key] = null;
+    return null;
+  }
+}
+
 module.exports = {
+  getItemInfo: getItemInfo,
+  getBuyerOrderInfo: getBuyerOrderInfo,
   getAuthUrl: getAuthUrl,
   exchangeCodeForTokens: exchangeCodeForTokens,
   getConversations: getConversations,
