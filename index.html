@@ -327,6 +327,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="s1-toolbar">
       <span class="s1-title">受信トレイ</span>
       <span class="s1-count-badge" id="msg-count">0</span>
+      <!-- 一括操作（チェック時のみ表示。ツールバー内なのでリストがずれない） -->
+      <div id="bulk-bar" style="display:none;align-items:center;gap:6px;margin-left:12px;padding:3px 10px;background:#fff8ed;border:1px solid #fed7aa;border-radius:7px;">
+        <span id="bulk-count" style="font-size:12px;font-weight:700;color:#c2410c;white-space:nowrap;">0件</span>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkMarkRead(true)">✓既読</button>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkMarkRead(false)">○未読</button>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkSetFlag(true)">★付ける</button>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkSetFlag(false)">☆外す</button>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="clearAllChecks()">×解除</button>
+      </div>
       <div class="s1-filters">
         <button class="s1-filter on" onclick="setFilter('all',this)">すべて</button>
         <button class="s1-filter" onclick="setFilter('unread',this)">未読</button>
@@ -347,15 +356,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <div class="col-toggle-item"><input type="checkbox" id="col-flag" checked onchange="updateColVisibility()"><label for="col-flag" style="cursor:pointer;">フラグ</label></div>
         </div>
       </div>
-    </div>
-    <!-- 一括操作バー（チェックした時に表示） -->
-    <div id="bulk-bar" style="display:none;padding:7px 18px;background:#fff8ed;border-bottom:1px solid #fed7aa;display:none;align-items:center;gap:10px;flex-shrink:0;">
-      <span id="bulk-count" style="font-size:13px;font-weight:600;color:var(--text2);">0件選択</span>
-      <button class="s1-filter" style="font-size:12px;" onclick="bulkMarkRead(true)">✓ 既読にする</button>
-      <button class="s1-filter" style="font-size:12px;" onclick="bulkMarkRead(false)">○ 未読にする</button>
-      <button class="s1-filter" style="font-size:12px;" onclick="bulkSetFlag(true)">★ フラグをつける</button>
-      <button class="s1-filter" style="font-size:12px;" onclick="bulkSetFlag(false)">☆ フラグを外す</button>
-      <button class="s1-filter" style="font-size:12px;margin-left:auto;" onclick="clearAllChecks()">× 選択解除</button>
     </div>
     <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
       <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
@@ -557,7 +557,7 @@ function updateBulkBar(){
   if(!bar||!cnt) return;
   if(checkedIds.size>0){
     bar.style.display='flex';
-    cnt.textContent=checkedIds.size+'件選択中';
+    cnt.textContent=checkedIds.size+'件';
   } else {
     bar.style.display='none';
   }
@@ -1000,14 +1000,16 @@ function renderChatBubbles(){
   var newTs=isNaN(nt)?0:nt;
   allItems.push({from:'buyer', text:m.msg, time:(m.date+' '+m.time), isNew:true, ts:newTs, ord:allItems.length});
 
-  // tsが全部揃っているときだけ時系列ソート。欠けていれば元の順序を保つ
-  var allHaveTs=allItems.every(function(x){return x.ts>0;});
-  if(allHaveTs){
-    allItems.sort(function(a,b){
-      if(a.ts!==b.ts) return a.ts-b.ts;
-      return a.ord-b.ord;
-    });
-  }
+  // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
+  var lastTs=0;
+  allItems.forEach(function(x){
+    if(x.ts>0) lastTs=x.ts;
+    else x.ts=lastTs;
+  });
+  allItems.sort(function(a,b){
+    if(a.ts!==b.ts) return a.ts-b.ts;
+    return a.ord-b.ord;
+  });
   var lastIdx=allItems.length-1;
   allItems.forEach(function(h,idx){
     var side=h.from==='me'?'mine':'theirs';
@@ -1016,7 +1018,7 @@ function renderChatBubbles(){
     if(h.isNew && idx===lastIdx && idx>0 && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
-      +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+esc(fmtTime(h.time))+'</div>'
+      +'<div class="bbl-meta">'+esc(fmtTime(h.time))+'</div>'
       +'</div>';
   });
   el.innerHTML=html;
@@ -1496,8 +1498,8 @@ document.addEventListener('mousedown',function(e){
       var rightPanel=document.getElementById('right-panel');
       if(s.chatH&&chatArea){chatArea.style.flex='none';chatArea.style.height=s.chatH+'px';}
       if(s.replyH&&replyArea){replyArea.style.flex='none';replyArea.style.height=s.replyH+'px';}
-      if(s.chatW&&chatCol){chatCol.style.flex='none';chatCol.style.width=s.chatW+'px';}
-      if(s.rightW&&rightPanel){rightPanel.style.width=s.rightW+'px';}
+      if(s.rightW&&rightPanel){rightPanel.style.flex='none';rightPanel.style.width=s.rightW+'px';}
+      if(chatCol){chatCol.style.flex='1';chatCol.style.width='auto';}
     }catch(e){}
   }
   function saveResize(){
@@ -1568,11 +1570,13 @@ document.addEventListener('mousedown',function(e){
   document.addEventListener('mousemove',function(e){
     if(!hDragging) return;
     var dx=e.clientX-hStartX;
-    var newCW=Math.max(300, hStartCW+dx);
-    var newRW=Math.max(160, hStartRW-dx);
-    chatCol.style.flex='none';
-    chatCol.style.width=newCW+'px';
-    rightPanel.style.width=newRW+'px';
+    // レイアウト: 左=パネル(right-panel) / 右=チャット(chat-col)
+    // 右へドラッグ(dx>0) → 左のパネルが広がる
+    var newPW=Math.max(160, hStartRW+dx);
+    rightPanel.style.width=newPW+'px';
+    rightPanel.style.flex='none';
+    chatCol.style.flex='1';
+    chatCol.style.width='auto';
   });
   document.addEventListener('mouseup',function(){
     if(hDragging){
