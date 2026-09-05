@@ -412,10 +412,12 @@ async function appendToSheet(msg) {
           msg.item || '',
           msg.orderId || '',
           msg.itemId || '',
-          'false', // read
-          'false', // starred
-          'false', // replied
-          ''       // memo
+          msg.read ? 'true' : 'false',   // read
+          'false',                        // starred
+          'false',                        // replied
+          '',                             // memo
+          msg.conversationId || '',       // L列: conversationId
+          JSON.stringify(msg.history || []) // M列: history(JSON)
         ]]
       }),
     });
@@ -478,7 +480,25 @@ app.get('/api/messages', async (req, res) => {
       headers.forEach((h, j) => { obj[h] = row[j] || ''; });
       const rawBody = obj.message || '';
       const fromName = obj.buyer || '';
-      const parsed = parseEbayEmail(rawBody, fromName);
+      const convId = obj.conversationId || '';
+      // eBay API由来（conversationIdあり）はメール解析をスキップ
+      const isFromApi = !!convId;
+      let parsed;
+      if (isFromApi) {
+        let hist = [];
+        try { hist = obj.history ? JSON.parse(obj.history) : []; } catch (e) { hist = []; }
+        parsed = {
+          buyer: fromName,
+          newMsg: rawBody,
+          history: hist,
+          itemName: '',
+          orderId: '',
+          itemId: obj.itemId || '',
+          sold: false,
+        };
+      } else {
+        parsed = parseEbayEmail(rawBody, fromName);
+      }
       const id = i + 1;
       const savedState = stateStore[id] || {};
 
@@ -490,6 +510,7 @@ app.get('/api/messages', async (req, res) => {
 
       return {
         id,
+        conversationId: convId,
         buyer: parsed.buyer || 'unknown',
         subject: obj.subject || '',
         message: rawBody,
@@ -525,6 +546,7 @@ app.get('/api/messages', async (req, res) => {
         }
         if (m.orderId) thread.orderId = m.orderId;
         if (m.itemId) thread.itemId = m.itemId;
+        if (m.conversationId) thread.conversationId = m.conversationId;
         if (m.item) thread.item = m.item;
         if (m.starred) thread.starred = true;
         if (m.replied) thread.replied = true;
