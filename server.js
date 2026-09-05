@@ -312,6 +312,48 @@ async function refreshBuyerSet() {
 }
 
 // ===== 既存データに商品情報とSOLD状態を一括反映 =====
+// ===== 特定itemIdの画像・商品名をシートに強制反映 =====
+app.get('/api/ebay/fiximage/:itemId', async (req, res) => {
+  try {
+    const itemId = req.params.itemId;
+    const info = await ebayApi.getItemInfo(itemId);
+    if (!info) return res.json({ ok: false, error: '商品情報を取得できません' });
+
+    const sheetId = process.env.SHEET_ID;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O`,
+      { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await r.json();
+    const rows = data.values || [];
+    const h = rows[0] || [];
+    const iItemId = h.indexOf('itemId'), iItem = h.indexOf('item'), iImg = h.indexOf('imgUrl');
+    if (iItemId < 0) return res.json({ ok: false, error: 'itemId列なし' });
+
+    const updates = [];
+    for (let i = 1; i < rows.length; i++) {
+      if ((rows[i][iItemId] || '') !== String(itemId)) continue;
+      const rowNum = i + 1;
+      if (iItem >= 0 && info.title) {
+        updates.push({ range: `シート1!${String.fromCharCode(65 + iItem)}${rowNum}`, values: [[info.title]] });
+      }
+      if (iImg >= 0 && info.imageUrl) {
+        updates.push({ range: `シート1!${String.fromCharCode(65 + iImg)}${rowNum}`, values: [[info.imageUrl]] });
+      }
+    }
+    if (updates.length > 0) {
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valueInputOption: 'RAW', data: updates }),
+      });
+    }
+    res.json({ ok: true, itemId, title: info.title, imageUrl: info.imageUrl, rowsUpdated: updates.length });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/ebay/enrich', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 60;
@@ -1081,10 +1123,21 @@ app.get('/api/messages', async (req, res) => {
         msg: latest.msg,
         msgFrom: latest.msgFrom || 'buyer',
         history: dedupedHistory,
-        item: thread.item || latest.item,
+        item: (function(){
+          const iid = thread.itemId || latest.itemId;
+          const cached = iid ? ebayApi.getCachedItem(iid) : null;
+          if (cached && cached.title) return cached.title;
+          return thread.item || latest.item;
+        })(),
         orderId: thread.orderId || latest.orderId,
         itemId: thread.itemId || latest.itemId,
-        imgUrl: thread.imgUrl || latest.imgUrl,
+        imgUrl: (function(){
+          // APIキャッシュに新しい画像があればそれを優先（シートの古い値を上書き）
+          const iid = thread.itemId || latest.itemId;
+          const cached = iid ? ebayApi.getCachedItem(iid) : null;
+          if (cached && cached.imageUrl) return cached.imageUrl;
+          return thread.imgUrl || latest.imgUrl;
+        })(),
         sold: thread.sold || latest.sold || buyerOrderSet.has(String(thread.buyer||'').toLowerCase()),
         timestamp: latest.timestamp,
         read: thread.read,
@@ -1099,6 +1152,17 @@ app.get('/api/messages', async (req, res) => {
       const tb = new Date(b.timestamp || 0).getTime() || 0;
       return tb - ta;   // 新しい順
     });
+
+    // 表示上位の商品情報を先読みしてキャッシュに載せる（次回以降が正確になる）
+    const topIds = [];
+    for (const t of threads.slice(0, 40)) {
+      if (t.itemId && !ebayApi.getCachedItem(t.itemId)) topIds.push(t.itemId);
+    }
+    if (topIds.length > 0) {
+      Promise.all(topIds.slice(0, 20).map(id =>
+        ebayApi.getItemInfo(id).catch(() => null)
+      )).catch(() => {});
+    }
     res.json({ messages: threads });
   } catch (e) {
     console.error('Error:', e.message);
