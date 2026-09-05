@@ -1148,6 +1148,13 @@ async function sendReplyToEbay(){
     var d=await r.json();
     if(d.ok){
       btn.innerHTML='&#10003; 送信完了';
+      // 履歴のシート保存に失敗した場合は警告（送信自体は成功している）
+      if(d.saved && d.saved.ok===false){
+        console.warn('履歴保存失敗:', d.saved.error);
+        setTimeout(function(){
+          alert('メッセージはeBayに送信されました。\nただし履歴のシート保存に失敗しました:\n'+(d.saved.error||''));
+        },300);
+      }
       // 送信対象を conversationId で再解決（ポーリングで配列がずれていても正しい相手に反映）
       var tm=null;
       if(targetConvId) tm=messages.find(function(x){return x.conversationId===targetConvId;});
