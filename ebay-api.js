@@ -361,24 +361,42 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
     const days = daysBack || 120;
     const from = new Date(Date.now() - days * 86400000).toISOString();
     const filter = encodeURIComponent('creationdate:[' + from + '..]');
-    const url = 'https://api.ebay.com/sell/fulfillment/v1/order?filter=' + filter + '&limit=200';
-    const res = await fetch(url, {
-      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      lastOrderDebug = { status: res.status, body: t.substring(0, 400), url: url };
-      console.error('getBuyerOrderInfo ' + res.status + ':', t.substring(0, 200));
-      orderCache[key] = null;
-      return null;
+
+    // ページングで全件取得（1回200件・最大2000件まで）
+    const orders = [];
+    let offset = 0;
+    let pages = 0;
+    let lastStatus = 0;
+    while (pages < 10) {
+      const url = 'https://api.ebay.com/sell/fulfillment/v1/order?filter=' + filter
+        + '&limit=200&offset=' + offset;
+      const res = await fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+      });
+      lastStatus = res.status;
+      if (!res.ok) {
+        const t = await res.text();
+        lastOrderDebug = { status: res.status, body: t.substring(0, 400), url: url };
+        console.error('getBuyerOrderInfo ' + res.status + ':', t.substring(0, 200));
+        if (orders.length === 0) { orderCache[key] = null; return null; }
+        break;
+      }
+      const pd = await res.json();
+      const batch = pd.orders || [];
+      orders.push(...batch);
+      pages++;
+      // 目的のバイヤーが見つかったら打ち切り
+      if (batch.some(o => ((o.buyer && o.buyer.username) || '').toLowerCase() === key)) break;
+      if (batch.length < 200) break;
+      offset += 200;
     }
-    const d = await res.json();
-    const orders = d.orders || [];
+
     lastOrderDebug = {
-      status: 200,
+      status: lastStatus,
       totalOrders: orders.length,
-      sampleBuyers: orders.slice(0, 10).map(o => (o.buyer && o.buyer.username) || '(none)'),
+      pages: pages,
       lookingFor: key,
+      found: orders.some(o => ((o.buyer && o.buyer.username) || '').toLowerCase() === key),
     };
     const mine = orders.filter(o => (o.buyer && o.buyer.username || '').toLowerCase() === key);
     if (mine.length === 0) { orderCache[key] = null; return null; }
