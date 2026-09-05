@@ -173,6 +173,50 @@ app.get('/ping', (req, res) => {
   res.send('OK');
 });
 
+// ===== eBay OAuth: 認証開始 =====
+app.get('/api/ebay/auth', (req, res) => {
+  try {
+    res.redirect(ebayApi.getAuthUrl());
+  } catch (e) {
+    res.status(500).send('エラー: ' + e.message);
+  }
+});
+
+// ===== eBay OAuth: コールバック（認証コード受け取り） =====
+app.get('/api/ebay/callback', async (req, res) => {
+  const code = req.query.code;
+  if (!code) {
+    return res.send('<h2>認証エラー</h2><p>認証コードがありません。</p><p>' + JSON.stringify(req.query) + '</p>');
+  }
+  try {
+    const tokens = await ebayApi.exchangeCodeForTokens(code);
+    const rt = tokens.refresh_token || '';
+    const expDays = Math.round((tokens.refresh_token_expires_in || 0) / 86400);
+    res.send(
+      '<html><head><meta charset="utf-8"><title>eBay認証完了</title>' +
+      '<style>body{font-family:sans-serif;max-width:900px;margin:40px auto;padding:20px;line-height:1.7;}' +
+      'textarea{width:100%;height:160px;font-family:monospace;font-size:12px;padding:10px;border:2px solid #2563eb;border-radius:8px;}' +
+      '.box{background:#eff6ff;border:1px solid #93c5fd;border-radius:8px;padding:16px;margin:16px 0;}' +
+      '.ok{color:#059669;font-weight:700;font-size:20px;}' +
+      'button{background:#2563eb;color:#fff;border:none;padding:10px 20px;border-radius:6px;font-size:14px;cursor:pointer;}' +
+      '</style></head><body>' +
+      '<p class="ok">✓ 認証に成功しました</p>' +
+      '<div class="box"><b>次の手順：</b><br>' +
+      '1. 下のリフレッシュトークンをコピー<br>' +
+      '2. Render の環境変数 <code>EBAY_REFRESH_TOKEN</code> に貼り付け<br>' +
+      '3. <code>EBAY_ACCESS_TOKEN</code> は削除<br>' +
+      '4. Save Changes</div>' +
+      '<p><b>Refresh Token</b>（有効期限：約' + expDays + '日）</p>' +
+      '<textarea id="rt" readonly onclick="this.select()">' + rt + '</textarea>' +
+      '<p><button onclick="navigator.clipboard.writeText(document.getElementById(\'rt\').value);this.textContent=\'✓ コピーしました\';">クリップボードにコピー</button></p>' +
+      '<p><a href="https://dashboard.render.com/web/srv-d7f0m44vikkc73c83ghg/env" target="_blank">→ Renderの環境変数ページを開く</a></p>' +
+      '</body></html>'
+    );
+  } catch (e) {
+    res.send('<html><head><meta charset="utf-8"></head><body><h2>交換エラー</h2><pre>' + e.message + '</pre></body></html>');
+  }
+});
+
 // ===== eBay API: 接続テスト =====
 app.get('/api/ebay/test', async (req, res) => {
   try {
