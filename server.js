@@ -265,6 +265,7 @@ app.get('/api/ebay/sync', async (req, res) => {
         subject: em.subject || '',
         message: em.body || '',
         msg: em.body || '',
+        msgFrom: em.msgFrom || 'buyer',
         history: em.history || [],
         item: extractItemFromSubject(em.subject || ''),
         orderId: '',
