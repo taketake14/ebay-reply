@@ -140,42 +140,59 @@ async function getMessagesForApp(daysBack) {
   const convs = await getConversations(daysBack, 50);
   const list = (convs && convs.conversations) || [];
   const out = [];
+  const SELF = process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142';
 
   for (let i = 0; i < list.length; i++) {
     const c = list[i];
     const cid = c.conversationId;
+    const lm = c.latestMessage || {};
+
+    // 相手のユーザー名を判定
+    let buyer = lm.senderUsername;
+    if (!buyer || buyer === SELF) buyer = lm.recipientUsername;
+    if (!buyer || buyer === SELF) buyer = 'unknown';
+
     let detail = null;
     try {
       detail = await getConversation(cid);
     } catch (e) {
       console.error('getConversation error:', cid, e.message);
-      continue;
     }
-    const msgs = (detail && detail.messages) || [];
-    if (msgs.length === 0) continue;
 
-    const sorted = msgs.slice().sort(function(a, b) {
-      return new Date(a.creationDate || 0) - new Date(b.creationDate || 0);
-    });
-    const latest = sorted[sorted.length - 1];
+    let history = [];
+    let body = lm.messageBody || '';
+    let ts = lm.createdDate || c.createdDate || new Date().toISOString();
+    let subject = '';
 
-    const history = sorted.slice(0, -1).map(function(m) {
-      return {
-        from: (m.sender === c.otherPartyUsername) ? 'buyer' : 'me',
-        text: m.messageText || '',
-        time: m.creationDate || '',
-      };
-    });
+    if (detail) {
+      subject = detail.conversationTitle || '';
+      const msgs = detail.messages || [];
+      if (msgs.length > 0) {
+        const sorted = msgs.slice().sort(function(a, b) {
+          return new Date(a.createdDate || 0) - new Date(b.createdDate || 0);
+        });
+        const latest = sorted[sorted.length - 1];
+        body = latest.messageBody || body;
+        ts = latest.createdDate || ts;
+        history = sorted.slice(0, -1).map(function(m) {
+          return {
+            from: (m.senderUsername === SELF) ? 'me' : 'buyer',
+            text: m.messageBody || '',
+            time: m.createdDate || '',
+          };
+        });
+      }
+    }
 
     out.push({
       conversationId: cid,
-      buyer: c.otherPartyUsername || c.otherPartyUserId || 'unknown',
-      subject: c.subject || '',
-      body: latest.messageText || '',
+      buyer: buyer,
+      subject: subject,
+      body: body,
       history: history,
-      itemId: (c.reference && c.reference.referenceId) || '',
-      timestamp: latest.creationDate || c.lastMessageDate || new Date().toISOString(),
-      read: c.read === true,
+      itemId: c.referenceId || '',
+      timestamp: ts,
+      read: (c.unreadCount || 0) === 0,
     });
   }
   return out;
