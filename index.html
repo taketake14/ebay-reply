@@ -163,7 +163,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
-.bbl{max-width:74%;padding:10px 14px;font-size:14px;line-height:1.7;word-break:break-word;}
+.bbl{max-width:74%;padding:10px 14px;font-size:14px;line-height:1.7;word-break:break-word;white-space:pre-wrap;}
 /* 自分の吹き出し：極薄白ベース＋アクセントの濃い枠線 */
 .bbl.mine{background:#ffffff;color:#1e293b;border-radius:16px 16px 4px 16px;border:2px solid #93c5fd;}
 .bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
@@ -979,22 +979,35 @@ function restoreOriginalTexts(container){
   originalTexts.clear();
 }
 
+function fmtTime(t){
+  if(!t) return '';
+  var d=new Date(t);
+  if(isNaN(d.getTime())) return String(t);
+  return d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
+}
+
 function renderChatBubbles(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
   var el=document.getElementById('chat-area');
   var html='';
-  var allItems=(m.history||[]).map(function(h){
-    return {from:h.from, text:h.text, time:h.time||'', isNew:false, ts:new Date(h.time||0).getTime()||0};
+  var allItems=(m.history||[]).map(function(h,i){
+    var t=new Date(h.time||0).getTime();
+    return {from:h.from, text:h.text, time:h.time||'', isNew:false, ts:(isNaN(t)?0:t), ord:i};
   });
   // 最新メッセージ（バイヤーからの新着）
-  var newTs=new Date(m.timestamp||0).getTime()||Date.now();
-  allItems.push({from:'buyer', text:m.msg, time:(m.date+' '+m.time), isNew:true, ts:newTs});
-  // 時系列順に並べ替え（ts=0のものは元の順序を維持）
-  allItems.sort(function(a,b){
-    if(!a.ts||!b.ts) return 0;
-    return a.ts-b.ts;
-  });
+  var nt=new Date(m.timestamp||0).getTime();
+  var newTs=isNaN(nt)?0:nt;
+  allItems.push({from:'buyer', text:m.msg, time:(m.date+' '+m.time), isNew:true, ts:newTs, ord:allItems.length});
+
+  // tsが全部揃っているときだけ時系列ソート。欠けていれば元の順序を保つ
+  var allHaveTs=allItems.every(function(x){return x.ts>0;});
+  if(allHaveTs){
+    allItems.sort(function(a,b){
+      if(a.ts!==b.ts) return a.ts-b.ts;
+      return a.ord-b.ord;
+    });
+  }
   var lastIdx=allItems.length-1;
   allItems.forEach(function(h,idx){
     var side=h.from==='me'?'mine':'theirs';
@@ -1003,7 +1016,7 @@ function renderChatBubbles(){
     if(h.isNew && idx===lastIdx && idx>0 && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
-      +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+h.time+'</div>'
+      +'<div class="bbl-meta">'+esc(who)+' &nbsp;·&nbsp; '+esc(fmtTime(h.time))+'</div>'
       +'</div>';
   });
   el.innerHTML=html;
@@ -1123,7 +1136,11 @@ async function sendReplyToEbay(){
       m.replied=true;
       // チャット画面に自分の返信を追加
       if(!m.history) m.history=[];
-      m.history.push({from:'me', text:text, time:new Date().toISOString()});
+      var nowTs=new Date();
+      var msgTs=new Date(m.timestamp||0);
+      // バイヤーの最新より必ず後になる時刻にする
+      if(!isNaN(msgTs.getTime()) && nowTs<=msgTs) nowTs=new Date(msgTs.getTime()+1000);
+      m.history.push({from:'me', text:text, time:nowTs.toISOString()});
       saveState(m);
       // 入力欄をクリア
       document.getElementById('d-input-ja').value='';
