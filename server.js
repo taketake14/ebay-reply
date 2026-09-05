@@ -895,4 +895,51 @@ app.get('/latest', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+// ===== eBayから定期自動同期（3分ごと） =====
+let autoSyncRunning = false;
+async function autoSyncFromEbay() {
+  if (autoSyncRunning) return;
+  autoSyncRunning = true;
+  try {
+    const ebayMsgs = await ebayApi.getMessagesForApp(2);
+    const sheetConvIds = await getSheetConversationIds();
+    let added = 0;
+    for (const em of ebayMsgs) {
+      const inMemory = messages.find(m => m.conversationId === em.conversationId);
+      const inSheet = sheetConvIds.has(String(em.conversationId));
+      if (inMemory || inSheet) continue;
+      const msg = {
+        id: Date.now() + added,
+        conversationId: em.conversationId,
+        buyer: em.buyer || 'unknown',
+        subject: em.subject || '',
+        message: em.body || '',
+        msg: em.body || '',
+        msgFrom: em.msgFrom || 'buyer',
+        history: em.history || [],
+        item: extractItemFromSubject(em.subject || ''),
+        orderId: '', itemId: em.itemId || '', imgUrl: '',
+        sold: false,
+        timestamp: em.timestamp || new Date().toISOString(),
+        read: em.read || false, starred: false, replied: false, memo: '',
+        replyHistory: [], reply: '', status: 'pending'
+      };
+      messages.unshift(msg);
+      added++;
+      await appendToSheet(msg).catch(e => console.error('appendToSheet:', e.message));
+    }
+    if (messages.length > 300) messages = messages.slice(0, 300);
+    if (added > 0) console.log(`[autoSync] ${added}件の新着を取得`);
+  } catch (e) {
+    console.error('[autoSync] error:', e.message);
+  } finally {
+    autoSyncRunning = false;
+  }
+}
+
+// 3分ごとに実行
+setInterval(autoSyncFromEbay, 3 * 60 * 1000);
+// 起動30秒後に初回実行
+setTimeout(autoSyncFromEbay, 30 * 1000);
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
