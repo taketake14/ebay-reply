@@ -286,20 +286,26 @@ async function refreshBuyerSet() {
     const at = await ebayApi.getAccessToken();
     const from = new Date(Date.now() - 180 * 86400000).toISOString();
     const f = encodeURIComponent('creationdate:[' + from + '..]');
-    const or = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + f + '&limit=200',
-      { headers: { 'Authorization': 'Bearer ' + at, 'Accept': 'application/json' } });
-    if (or.ok) {
+    const s = new Set();
+    let offset = 0;
+    for (let p = 0; p < 10; p++) {
+      const or = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + f
+        + '&limit=200&offset=' + offset,
+        { headers: { 'Authorization': 'Bearer ' + at, 'Accept': 'application/json' } });
+      if (!or.ok) { console.error('[buyerSet] ' + or.status); break; }
       const od = await or.json();
-      const s = new Set();
-      (od.orders || []).forEach(o => {
+      const batch = od.orders || [];
+      batch.forEach(o => {
         const u = (o.buyer && o.buyer.username) || '';
         if (u) s.add(u.toLowerCase());
       });
+      if (batch.length < 200) break;
+      offset += 200;
+    }
+    if (s.size > 0) {
       buyerOrderSet = s;
       buyerSetUpdatedAt = Date.now();
       console.log('[buyerSet] ' + s.size + '人の購入者を取得');
-    } else {
-      console.error('[buyerSet] ' + or.status);
     }
   } catch (e) { console.error('[buyerSet]', e.message); }
   return buyerOrderSet;
