@@ -126,13 +126,31 @@ async function getMyMessages(daysBack = 7) {
 
 // ===== 接続テスト =====
 async function testConnection() {
-  const xml = await callTradingAPI('GeteBayOfficialTime', '');
-  const ack = xmlVal(xml, 'Ack');
-  const time = xmlVal(xml, 'Timestamp');
-  if (ack === 'Success') {
-    return { ok: true, time };
+  const c = getCreds();
+  const diag = {
+    appId: c.appId ? c.appId.substring(0,20)+'...' : 'MISSING',
+    devId: c.devId ? c.devId.substring(0,12)+'...' : 'MISSING',
+    certId: c.certId ? c.certId.substring(0,12)+'...' : 'MISSING',
+    tokenLen: c.userToken ? c.userToken.length : 0,
+  };
+  try {
+    const xml = await callTradingAPI('GeteBayOfficialTime', '');
+    const ack = xmlVal(xml, 'Ack');
+    const time = xmlVal(xml, 'Timestamp');
+    if (ack === 'Success') {
+      return { ok: true, time, diag };
+    }
+    return {
+      ok: false,
+      ack: ack || '(no Ack)',
+      error: xmlVal(xml, 'LongMessage') || xmlVal(xml, 'ShortMessage') || '(no error message)',
+      errorCode: xmlVal(xml, 'ErrorCode'),
+      raw: xml.substring(0, 800),
+      diag
+    };
+  } catch (e) {
+    return { ok: false, error: 'exception: ' + e.message, diag };
   }
-  return { ok: false, error: xmlVal(xml, 'LongMessage') || xmlVal(xml, 'ShortMessage') || xml.substring(0, 500) };
 }
 
 module.exports = { getMemberMessages, getMyMessages, testConnection, callTradingAPI };
