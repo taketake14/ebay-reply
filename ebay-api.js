@@ -460,10 +460,10 @@ async function getUserInfo(username, skipCache) {
   if (!skipCache && userInfoCache[key] !== undefined) return userInfoCache[key];
   try {
     const token = await getAccessToken();
+    // DetailLevel を指定すると ItemID が必須になるため付けない（基本情報のみ取得）
     const xml = '<?xml version="1.0" encoding="utf-8"?>'
       + '<GetUserRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
       + '<UserID>' + username + '</UserID>'
-      + '<DetailLevel>ReturnAll</DetailLevel>'
       + '</GetUserRequest>';
     const res = await fetch('https://api.ebay.com/ws/api.dll', {
       method: 'POST',
