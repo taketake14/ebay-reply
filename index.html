@@ -180,7 +180,34 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .status-done{background:#d1fae5;color:#065f46;}
 .status-error{background:#fee2e2;color:var(--danger);}
 .reply-history-select{font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;color:var(--text2);outline:none;margin-left:auto;cursor:pointer;}
-.reply-split{display:grid;grid-template-columns:1fr 1fr;padding:8px 18px;gap:12px;flex:1;min-height:0;}
+.reply-split{display:grid;grid-template-columns:1fr 46px 1fr;padding:8px 18px;gap:8px;flex:1;min-height:0;}
+
+/* 中央の変換ボタン列 */
+.reply-mid{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding-top:22px;}
+.arrow-btn{width:44px;height:52px;border-radius:8px;border:1px solid transparent;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-family:var(--sans);transition:all 0.12s;padding:0;}
+.arrow-btn:hover{transform:scale(1.04);}
+.arrow-btn:active{transform:scale(0.97);}
+.arrow-btn:disabled{background:#e2e8f0 !important;color:#94a3b8 !important;border-color:#cbd5e1 !important;cursor:not-allowed;transform:none;}
+.arrow-mark{font-size:19px;line-height:1;font-weight:700;}
+.arrow-txt{font-size:11px;font-weight:700;letter-spacing:0.02em;}
+.arrow-en{background:#7c3aed;color:#fff;border-color:#6d28d9;}
+.arrow-en:hover{background:#6d28d9;}
+.arrow-ja{background:#0891b2;color:#fff;border-color:#0e7490;}
+.arrow-ja:hover{background:#0e7490;}
+
+/* フォーム見出し内の小さいコピーボタン */
+.reply-col-label{position:relative;}
+.mini-btn{margin-left:auto;background:var(--bg2);border:1px solid var(--border2);border-radius:5px;padding:2px 8px;font-size:11px;color:var(--text2);cursor:pointer;font-family:var(--sans);white-space:nowrap;}
+.mini-btn:hover{background:var(--bg3);border-color:var(--accent);color:var(--accent);}
+
+/* 英語欄と送信ボタン */
+.en-wrap{position:relative;flex:1;display:flex;min-height:0;}
+.en-wrap textarea{padding-bottom:44px;}
+.send-float{position:absolute;right:8px;bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:2;}
+
+/* AI返信案ボタン */
+.btn-ai{background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;border:1px solid #ea580c;font-weight:700;}
+.btn-ai:hover{background:linear-gradient(135deg,#d97706,#ea580c);}
 .reply-col{display:flex;flex-direction:column;gap:5px;min-height:0;}
 .reply-col-label{font-size:12px;color:var(--text);font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0;}
 .reply-col-dot{width:7px;height:7px;border-radius:50%;}
@@ -479,30 +506,47 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="v-resizer" id="v-resizer"></div>
       <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
         <div class="reply-top">
-          <span class="reply-label">返信案</span>
+          <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AI返信案を作る</button>
+          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
           <span class="reply-status" id="d-status"></span>
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
             <option value="-1">最新の返信案</option>
           </select>
         </div>
         <div class="reply-split">
+          <!-- 左：日本語 -->
           <div class="reply-col">
-            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--success);"></span>日本語で入力 <span style="font-weight:400;color:var(--text3);font-size:11px;">（ここに書いて「英訳」を押す）</span></div>
-            <textarea class="reply-input-ja" id="d-input-ja" placeholder="返信したい内容を日本語で入力してください..."></textarea>
+            <div class="reply-col-label">
+              <span class="reply-col-dot" style="background:var(--success);"></span>日本語
+              <button class="mini-btn" onclick="copyFromField('d-input-ja',this)" title="日本語をコピー">&#128203; コピー</button>
+            </div>
+            <textarea class="reply-input-ja" id="d-input-ja" placeholder="返信内容を日本語で入力、または「AI返信案」を押す..."></textarea>
           </div>
+
+          <!-- 中央：変換ボタン -->
+          <div class="reply-mid">
+            <button class="arrow-btn arrow-en" id="btn-translate-en" onclick="translateToEnglish()" title="日本語を英語に変換">
+              <span class="arrow-mark">&#8594;</span><span class="arrow-txt">英訳</span>
+            </button>
+            <button class="arrow-btn arrow-ja" id="btn-translate-ja" onclick="translateToJapanese()" title="英語を日本語に変換">
+              <span class="arrow-mark">&#8592;</span><span class="arrow-txt">和訳</span>
+            </button>
+          </div>
+
+          <!-- 右：英語（送信される文） -->
           <div class="reply-col">
-            <div class="reply-col-label"><span class="reply-col-dot" style="background:var(--accent);"></span>英語（送信される文）<span style="font-weight:400;color:var(--text3);font-size:11px;">（編集可）</span></div>
-            <textarea class="reply-input-en" id="d-reply"></textarea>
+            <div class="reply-col-label">
+              <span class="reply-col-dot" style="background:var(--accent);"></span>英語 <span style="font-weight:400;color:var(--text3);font-size:11px;">（送信される文）</span>
+              <button class="mini-btn" onclick="copyFromField('d-reply',this)" title="英語をコピー">&#128203; コピー</button>
+            </div>
+            <div class="en-wrap">
+              <textarea class="reply-input-en" id="d-reply"></textarea>
+              <button class="btn btn-send send-float" id="btn-send-reply" onclick="sendReplyToEbay()">&#9993; eBayに送信</button>
+            </div>
           </div>
         </div>
         <div class="reply-actions">
           <div class="canned-panel" id="canned-panel"></div>
-          <button class="btn btn-trans" id="btn-translate-en" onclick="translateToEnglish()">日本語 → 英語</button>
-          <button class="btn btn-trans2" id="btn-translate-ja" onclick="translateToJapanese()">英語 → 日本語</button>
-          <button class="btn btn-send" id="btn-send-reply" onclick="sendReplyToEbay()">&#9993; eBayに送信</button>
-          <button class="btn btn-ghost" onclick="regenReply()">AI返信案</button>
-          <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">コピー</button>
-          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
         </div>
       </div>
     </div>
@@ -1087,13 +1131,29 @@ function copyText(text,el){
     setTimeout(function(){el.classList.remove('copied');},1500);
   });
 }
+// ===== 指定フォームの内容をコピー =====
+function copyFromField(fieldId, btn){
+  var el=document.getElementById(fieldId);
+  if(!el||!el.value.trim()){ return; }
+  var orig=btn.innerHTML;
+  navigator.clipboard.writeText(el.value).then(function(){
+    btn.innerHTML='&#10003; コピー済み';
+    btn.style.background='#dcfce7';btn.style.borderColor='#86efac';btn.style.color='#15803d';
+    setTimeout(function(){btn.innerHTML=orig;btn.style.background='';btn.style.borderColor='';btn.style.color='';},1500);
+  }).catch(function(){
+    el.select();document.execCommand('copy');
+    btn.innerHTML='&#10003; コピー済み';
+    setTimeout(function(){btn.innerHTML=orig;},1500);
+  });
+}
+
 // ===== 英語→日本語 翻訳（内容確認用） =====
 async function translateToJapanese(){
   var en=document.getElementById('d-reply').value.trim();
   if(!en){ alert('英語の返信文が空です'); return; }
   var btn=document.getElementById('btn-translate-ja');
   var orig=btn.innerHTML;
-  btn.innerHTML='翻訳中...';
+  btn.innerHTML='<span class="arrow-mark">&#8987;</span>';
   btn.disabled=true;
   try{
     var prompt='以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力し、説明や前置きは不要です。段落間の空行は1行までにしてください。\n\n'+en;
@@ -1103,10 +1163,10 @@ async function translateToJapanese(){
     var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim().replace(/\n{3,}/g,'\n\n');
     document.getElementById('d-input-ja').value=ja;
     if(currentIdx!==null&&messages[currentIdx]) messages[currentIdx].replyJa=ja;
-    btn.innerHTML='✓ 完了';
+    btn.innerHTML='<span class="arrow-mark">&#10003;</span>';
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1500);
   }catch(e){
-    btn.innerHTML='✗ 失敗';
+    btn.innerHTML='<span class="arrow-mark">&#10007;</span>';
     alert('翻訳エラー: '+e.message);
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
   }
@@ -1118,7 +1178,7 @@ async function translateToEnglish(){
   if(!ja){ alert('日本語の入力が空です'); return; }
   var btn=document.getElementById('btn-translate-en');
   var orig=btn.innerHTML;
-  btn.innerHTML='翻訳中...';
+  btn.innerHTML='<span class="arrow-mark">&#8987;</span>';
   btn.disabled=true;
   try{
     var manual=localStorage.getItem('ebay_manual')||'';
@@ -1132,10 +1192,14 @@ async function translateToEnglish(){
     var en=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
     en=en.replace(/\n{3,}/g,'\n\n');
     document.getElementById('d-reply').value=en;
-    btn.innerHTML='✓ 完了';
+    if(currentIdx!==null&&messages[currentIdx]){
+      messages[currentIdx].reply=en;
+      messages[currentIdx].replyJa=ja;
+    }
+    btn.innerHTML='<span class="arrow-mark">&#10003;</span>';
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1500);
   }catch(e){
-    btn.innerHTML='✗ 失敗';
+    btn.innerHTML='<span class="arrow-mark">&#10007;</span>';
     alert('翻訳エラー: '+e.message);
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
   }
@@ -1334,17 +1398,10 @@ async function sendReplyToEbay(){
   }
 }
 
+// 旧コピー関数（互換のため残す）
 function copyReply(){
-  navigator.clipboard.writeText(document.getElementById('d-reply').value).then(function(){
-    var m=messages[currentIdx];
-    if(m){m.replied=true;saveState(m);}
-    var btn=document.getElementById('btn-reply');
-    var copyBtn=document.getElementById('btn-copy-reply');
-    copyBtn.textContent='&#10003; コピー済み';copyBtn.classList.add('copied');
-    setTimeout(function(){copyBtn.textContent='返信文をコピー';copyBtn.classList.remove('copied');},1800);
-    var repliedBtn=document.getElementById('btn-replied');
-    if(repliedBtn){repliedBtn.textContent='&#10003; 返信済み';repliedBtn.classList.add('done');}
-  });
+  var el=document.getElementById('d-reply');
+  if(el) navigator.clipboard.writeText(el.value).catch(function(){});
 }
 
 // ===== 定型文 =====
@@ -1378,6 +1435,9 @@ async function generateReply(i){
   var jaEl=document.getElementById('d-reply-ja');
   sEl.className='reply-status status-generating';sEl.textContent='生成中...';
   rEl.value='返信案を生成中です...';
+  var aiBtn=document.getElementById('btn-ai-reply');
+  var aiOrig=aiBtn?aiBtn.innerHTML:'';
+  if(aiBtn){aiBtn.innerHTML='&#9203; 生成中...';aiBtn.disabled=true;}
   var manual=localStorage.getItem('ebay_manual')||'';
   var manualSection=manual?'\n\n【対応マニュアル（必ず厳守）】\n'+manual:'';
   var histText=(m.history||[]).map(function(h){return (h.from==='me'?'Ken':m.buyer)+': '+h.text;}).join('\n');
@@ -1421,8 +1481,10 @@ async function generateReply(i){
       sEl.className='reply-status status-done';sEl.textContent='生成済み';
       updateReplyHistorySelect();
     }
+    if(aiBtn){aiBtn.innerHTML=aiOrig;aiBtn.disabled=false;}
   }catch(e){
     if(currentIdx===i){rEl.value='エラー。再生成してください。';sEl.className='reply-status status-error';sEl.textContent='エラー';}
+    if(aiBtn){aiBtn.innerHTML=aiOrig;aiBtn.disabled=false;}
   }
 }
 function regenReply(){if(currentIdx===null) return;messages[currentIdx].status='pending';generateReply(currentIdx);}
