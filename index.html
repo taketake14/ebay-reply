@@ -1169,7 +1169,7 @@ async function loadBuyerDetail(buyer, idx){
       if(info.positivePercent) fb+='（好評価 '+Math.round(parseFloat(info.positivePercent))+'%）';
       rows+=row('評価数', fb);
     }
-    if(info.userCountryLabel) rows+=row('登録国', info.userCountryLabel);
+    if(info.userCountryLabel) rows+=row('アカウント国', info.userCountryLabel);
     if(info.registrationDate){
       var rd=new Date(info.registrationDate);
       var years=Math.floor((Date.now()-rd.getTime())/(365.25*86400000));
@@ -1178,13 +1178,22 @@ async function loadBuyerDetail(buyer, idx){
 
     if(info.purchased){
       rows+=row('氏名', info.name);
-      var addr=[info.addressLine1, info.addressLine2].filter(Boolean).join(' ');
-      rows+=row('住所', addr);
-      var cityLine=[info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' ');
-      rows+=row('市区/州', cityLine);
-      rows+=row('国', info.countryLabel||info.country);
+      // 配送先住所をまとめて表示（コピーしやすいよう1ブロック）
+      var full=[
+        [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
+        [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
+        info.countryLabel||info.country
+      ].filter(Boolean).join('\n');
+      if(full){
+        rows+='<div style="display:flex;gap:6px;padding:2px 0;font-size:12px;"><span style="color:var(--text3);min-width:68px;flex-shrink:0;">配送先</span>'
+          +'<span style="color:var(--text);word-break:break-all;white-space:pre-line;">'+esc(full)+'</span></div>';
+      }
       rows+=row('電話', info.phone);
-      rows+=row('メール', info.email);
+      if(info.email){
+        rows+='<div style="display:flex;gap:6px;padding:2px 0;font-size:12px;"><span style="color:var(--text3);min-width:68px;flex-shrink:0;">メール</span>'
+          +'<span style="color:var(--text);word-break:break-all;">'+esc(info.email)
+          +'<br><span style="font-size:10px;color:var(--text3);">※eBayの転送用アドレス（本物のアドレスはAPIで取得不可）</span></span></div>';
+      }
       rows+=row('注文日', info.orderDate?new Date(info.orderDate).toLocaleDateString('ja-JP'):'');
       rows+=row('発送期限', info.shipByDate?new Date(info.shipByDate).toLocaleDateString('ja-JP'):'');
       rows+=row('注文金額', info.total);
