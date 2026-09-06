@@ -546,6 +546,13 @@ function formatOrder(o) {
     countryLabel: countryName(addr.countryCode || ''),
     shipByDate: (li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate) || '',
     orderCount: 1,
+    salesRecordNo: o.salesRecordReference || '',
+    itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
+      ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
+    shippingCost: (o.pricingSummary && o.pricingSummary.deliveryCost)
+      ? (o.pricingSummary.deliveryCost.value + ' ' + o.pricingSummary.deliveryCost.currency) : '',
+    taxTotal: (o.pricingSummary && o.pricingSummary.tax)
+      ? (o.pricingSummary.tax.value + ' ' + o.pricingSummary.tax.currency) : '',
     total: (o.pricingSummary && o.pricingSummary.total)
       ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
   };
@@ -683,7 +690,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       marketplace: marketplaceName(pickMarketplaceId(o)),
       marketplaceRaw: pickMarketplaceId(o),
       listingSite: marketplaceName(pickListingMarketplaceId(o)),
-      salesRecordNo: (li.legacyReference && li.legacyReference.legacyItemId) || '',
+      salesRecordNo: o.salesRecordReference || '',
       name: ship.fullName || '',
       email: ship.email || '',
       phone: ship.primaryPhone && ship.primaryPhone.phoneNumber || '',
@@ -696,6 +703,12 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       countryLabel: countryName(addr.countryCode || ''),
       shipByDate: li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate || '',
       orderCount: mine.length,
+      itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
+        ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
+      shippingCost: (o.pricingSummary && o.pricingSummary.deliveryCost)
+        ? (o.pricingSummary.deliveryCost.value + ' ' + o.pricingSummary.deliveryCost.currency) : '',
+      taxTotal: (o.pricingSummary && o.pricingSummary.tax)
+        ? (o.pricingSummary.tax.value + ' ' + o.pricingSummary.tax.currency) : '',
       total: o.pricingSummary && o.pricingSummary.total
         ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
     };
