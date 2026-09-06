@@ -159,7 +159,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
 .h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
 
-.chat-area{padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;}
+.chat-area{padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;min-height:100px;}
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
@@ -193,7 +193,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .new-badge{font-size:11px;font-weight:600;color:#b54708;text-align:center;padding:3px 12px;margin:4px 0;background:#fffaeb;border:1px solid #fedf89;border-radius:20px;display:inline-block;align-self:center;letter-spacing:0.02em;}
 
 /* 返信エリア */
-.reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;}
+.reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;min-height:210px;}
 .reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;}
 .reply-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;}
 .reply-status{font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600;}
@@ -235,9 +235,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .reply-box{flex:1;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.75;color:var(--text);outline:none;white-space:pre-wrap;overflow-y:auto;min-height:0;}
 .reply-box:focus{border-color:var(--accent);}
 .reply-box.editable{border-color:var(--warn);}
-.reply-input-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
+.reply-input-ja{flex:1;min-height:48px;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
 .reply-input-ja:focus{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,0.15);}
-.reply-input-en{flex:1;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
+.reply-input-en{flex:1;min-height:48px;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
 .reply-input-en:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,0.12);}
 .btn-trans2{background:#0891b2;color:#fff;border:1px solid #0e7490;font-weight:700;}
 .btn-trans2:hover{background:#0e7490;}
@@ -2098,18 +2098,32 @@ document.addEventListener('mousedown',function(e){
     document.body.style.userSelect='none';
     e.preventDefault();
   });
+  // 返信エリアに必要な最小高さを実測（ヘッダー＋ラベル＋ボタン＋入力欄の最低高）
+  function calcMinReplyHeight(){
+    var top=document.querySelector('.reply-top');
+    var mid=document.querySelector('.reply-mid');
+    var label=document.querySelector('.reply-col-label');
+    var h=0;
+    if(top) h+=top.offsetHeight;
+    if(label) h+=label.offsetHeight;
+    // 変換ボタン列が収まる高さ（上下パディング込み）
+    if(mid) h+=mid.scrollHeight;
+    // reply-split の上下padding + 入力欄の最低表示分
+    h+=16+40;
+    return Math.max(h, 200);
+  }
+
   document.addEventListener('mousemove',function(e){
     if(!vDragging) return;
     var dy=e.clientY-vStartY;
 
-    // 返信エリアの最小高さ＝ヘッダー行＋入力欄＋ボタン類が収まる高さ
-    var MIN_REPLY = 230;
+    var MIN_REPLY = calcMinReplyHeight();
     var MIN_CHAT = 100;
 
-    // 上下どちらにもはみ出さないよう dy を制限
     var total = vStartChatH + vStartReplyH;
-    var maxDy = total - MIN_REPLY - vStartChatH;   // これ以上下げると返信欄が潰れる
-    var minDy = MIN_CHAT - vStartChatH;            // これ以上上げるとチャットが潰れる
+    var maxDy = total - MIN_REPLY - vStartChatH;
+    var minDy = MIN_CHAT - vStartChatH;
+    if(maxDy < minDy) maxDy = minDy;   // 領域が狭すぎる場合の保険
     if(dy > maxDy) dy = maxDy;
     if(dy < minDy) dy = minDy;
 
