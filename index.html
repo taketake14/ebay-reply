@@ -174,8 +174,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* --- バイヤー（左側）：白地＋細い枠で軽く --- */
 .bbl.theirs{background:#ffffff;color:#1e2939;border-radius:16px 16px 16px 4px;border:1px solid #e3e8ef;box-shadow:0 1px 2px rgba(16,24,40,0.04);}
 
-/* 新着：左に色帯を入れて主張しすぎず目立たせる */
-.bbl.theirs.new-msg{border-color:#e3e8ef;box-shadow:inset 3px 0 0 #f59e0b, 0 1px 2px rgba(16,24,40,0.04);}
+/* 新着マークは廃止（既読でも常時表示されて意味を成さないため） */
 .bbl-meta{font-size:10.5px;color:#98a2b3;padding:0 2px;font-family:var(--mono);display:flex;align-items:center;gap:4px;}
 .bbl-wrap.mine .bbl-meta{flex-direction:row-reverse;}
 
@@ -1244,7 +1243,7 @@ function renderChatBubbles(){
     var side=h.from==='me'?'mine':'theirs';
     var who=h.from==='me'?'Ken':m.buyer;
     // 新着バッジは「未返信 かつ 最後のメッセージがバイヤーから」の場合だけ
-    if(h.isNew && idx===lastIdx && idx>0 && h.from==='buyer' && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
+    // 新着バッジは廃止
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'" data-orig="'+esc(h.text)+'">'+esc(h.text)+'</div>'
       +'<div class="bbl-meta">'+esc(fmtTime(h.time))
@@ -2053,8 +2052,16 @@ document.addEventListener('mousedown',function(e){
       var replyArea=document.getElementById('reply-area');
       var chatCol=document.getElementById('chat-col');
       var rightPanel=document.getElementById('right-panel');
-      if(s.chatH&&chatArea){chatArea.style.flex='none';chatArea.style.height=s.chatH+'px';}
-      if(s.replyH&&replyArea){replyArea.style.flex='none';replyArea.style.height=s.replyH+'px';}
+      // 保存値が範囲外なら安全な値に補正（画面外に飛んだ状態から復帰できるように）
+      var MIN_REPLY=230, MIN_CHAT=100;
+      var ch=s.chatH, rh=s.replyH;
+      if(ch&&rh){
+        var tot=ch+rh;
+        if(rh<MIN_REPLY){ rh=MIN_REPLY; ch=Math.max(MIN_CHAT, tot-rh); }
+        if(ch<MIN_CHAT){ ch=MIN_CHAT; rh=Math.max(MIN_REPLY, tot-ch); }
+        chatArea.style.flex='none'; chatArea.style.height=ch+'px';
+        replyArea.style.flex='none'; replyArea.style.height=rh+'px';
+      }
       if(s.rightW&&rightPanel){rightPanel.style.flex='none';rightPanel.style.width=s.rightW+'px';}
       if(chatCol){chatCol.style.flex='1';chatCol.style.width='auto';}
     }catch(e){}
@@ -2094,12 +2101,22 @@ document.addEventListener('mousedown',function(e){
   document.addEventListener('mousemove',function(e){
     if(!vDragging) return;
     var dy=e.clientY-vStartY;
-    var newChatH=Math.max(80, vStartChatH+dy);
-    var newReplyH=Math.max(100, vStartReplyH-dy);
+
+    // 返信エリアの最小高さ＝ヘッダー行＋入力欄＋ボタン類が収まる高さ
+    var MIN_REPLY = 230;
+    var MIN_CHAT = 100;
+
+    // 上下どちらにもはみ出さないよう dy を制限
+    var total = vStartChatH + vStartReplyH;
+    var maxDy = total - MIN_REPLY - vStartChatH;   // これ以上下げると返信欄が潰れる
+    var minDy = MIN_CHAT - vStartChatH;            // これ以上上げるとチャットが潰れる
+    if(dy > maxDy) dy = maxDy;
+    if(dy < minDy) dy = minDy;
+
     chatArea.style.flex='none';
-    chatArea.style.height=newChatH+'px';
+    chatArea.style.height=(vStartChatH+dy)+'px';
     replyArea.style.flex='none';
-    replyArea.style.height=newReplyH+'px';
+    replyArea.style.height=(vStartReplyH-dy)+'px';
   });
   document.addEventListener('mouseup',function(){
     if(vDragging){
