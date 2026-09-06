@@ -452,6 +452,47 @@ async function getSellerSku(itemId) {
   }
 }
 
+// ===== マーケットプレイスID → 表示名 =====
+const MARKETPLACE_NAMES = {
+  EBAY_US:'ebay.com（アメリカ）',
+  EBAY_GB:'ebay.co.uk（イギリス）',
+  EBAY_DE:'ebay.de（ドイツ）',
+  EBAY_AU:'ebay.com.au（オーストラリア）',
+  EBAY_CA:'ebay.ca（カナダ）',
+  EBAY_FR:'ebay.fr（フランス）',
+  EBAY_IT:'ebay.it（イタリア）',
+  EBAY_ES:'ebay.es（スペイン）',
+  EBAY_AT:'ebay.at（オーストリア）',
+  EBAY_BE:'ebay.be（ベルギー）',
+  EBAY_CH:'ebay.ch（スイス）',
+  EBAY_IE:'ebay.ie（アイルランド）',
+  EBAY_NL:'ebay.nl（オランダ）',
+  EBAY_PL:'ebay.pl（ポーランド）',
+  EBAY_SG:'ebay.com.sg（シンガポール）',
+  EBAY_HK:'ebay.com.hk（香港）',
+  EBAY_MY:'ebay.com.my（マレーシア）',
+  EBAY_PH:'ebay.ph（フィリピン）',
+  EBAY_IN:'ebay.in（インド）',
+  EBAY_JP:'ebay.co.jp（日本）',
+  EBAY_MOTORS_US:'ebay Motors（アメリカ）',
+};
+function marketplaceName(id) {
+  if (!id) return '';
+  return MARKETPLACE_NAMES[id] || id;
+}
+
+// 注文オブジェクトからマーケットプレイスIDを探す（フィールド名が複数あり得る）
+function pickMarketplaceId(o) {
+  if (!o) return '';
+  const li = (o.lineItems && o.lineItems[0]) || {};
+  return o.marketplaceId
+    || li.listingMarketplaceId
+    || li.purchaseMarketplaceId
+    || (o.fulfillmentStartInstructions && o.fulfillmentStartInstructions[0]
+        && o.fulfillmentStartInstructions[0].marketplaceId)
+    || '';
+}
+
 // ===== 注文オブジェクトを表示用に整形 =====
 function formatOrder(o) {
   if (!o) return null;
@@ -463,6 +504,8 @@ function formatOrder(o) {
   return {
     orderId: o.orderId || '',
     orderDate: o.creationDate || '',
+    marketplace: marketplaceName(pickMarketplaceId(o)),
+    marketplaceRaw: pickMarketplaceId(o),
     name: ship.fullName || '',
     email: ship.email || '',
     phone: (ship.primaryPhone && ship.primaryPhone.phoneNumber) || '',
@@ -609,6 +652,8 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
     const info = {
       orderId: o.orderId || '',
       orderDate: o.creationDate || '',
+      marketplace: marketplaceName(pickMarketplaceId(o)),
+      marketplaceRaw: pickMarketplaceId(o),
       salesRecordNo: (li.legacyReference && li.legacyReference.legacyItemId) || '',
       name: ship.fullName || '',
       email: ship.email || '',
@@ -640,6 +685,7 @@ module.exports = {
   getSellerSku: getSellerSku,
   getBuyerOrderInfo: getBuyerOrderInfo,
   formatOrder: formatOrder,
+  marketplaceName: marketplaceName,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
   countryName: countryName,
