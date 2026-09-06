@@ -476,7 +476,7 @@ app.get('/api/ebay/item/:itemId', async (req, res) => {
 // ===== GetUser テスト（デバッグ用） =====
 app.get('/api/ebay/user/:username', async (req, res) => {
   try {
-    const info = await ebayApi.getUserInfo(req.params.username);
+    const info = await ebayApi.getUserInfo(req.params.username, req.query.fresh === '1');
     res.json({ ok: !!info, user: info });
   } catch (e) {
     res.json({ ok: false, error: e.message });
