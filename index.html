@@ -1170,7 +1170,11 @@ async function loadBuyerDetail(buyer, idx){
       rows+=row('評価数', fb);
     }
     if(info.userCountryLabel) rows+=row('登録国', info.userCountryLabel);
-    if(info.registrationDate) rows+=row('登録日', new Date(info.registrationDate).toLocaleDateString('ja-JP'));
+    if(info.registrationDate){
+      var rd=new Date(info.registrationDate);
+      var years=Math.floor((Date.now()-rd.getTime())/(365.25*86400000));
+      rows+=row('eBay歴', rd.toLocaleDateString('ja-JP')+'〜'+(years>0?'（'+years+'年）':''));
+    }
 
     if(info.purchased){
       rows+=row('氏名', info.name);
