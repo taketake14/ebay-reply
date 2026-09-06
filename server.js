@@ -507,6 +507,16 @@ app.get('/api/ebay/order-raw/:username', async (req, res) => {
   }
 });
 
+// ===== 公開プロフィールの取得テスト（デバッグ用） =====
+app.get('/api/ebay/location/:username', async (req, res) => {
+  try {
+    const r = await ebayApi.debugBuyerLocation(req.params.username);
+    res.json(r);
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== GetUser テスト（デバッグ用） =====
 app.get('/api/ebay/user/:username', async (req, res) => {
   try {
