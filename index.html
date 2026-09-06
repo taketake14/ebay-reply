@@ -169,38 +169,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl{position:relative;}
 
 /* --- 自分（右側・青） --- */
-.bbl.mine{background:#eff6ff;color:#0f172a;border-radius:16px 16px 4px 16px;border:2px solid #60a5fa;}
-/* しっぽ（枠色の三角） */
-.bbl.mine::after{content:'';position:absolute;right:-11px;bottom:-2px;
-  width:0;height:0;
-  border-left:12px solid #60a5fa;
-  border-top:4px solid transparent;
-  border-bottom:9px solid transparent;
-  border-bottom-left-radius:3px;}
-/* しっぽ（内側の背景色） */
-.bbl.mine::before{content:'';position:absolute;right:-6px;bottom:1px;z-index:1;
-  width:0;height:0;
-  border-left:8px solid #eff6ff;
-  border-top:3px solid transparent;
-  border-bottom:6px solid transparent;}
+.bbl.mine{background:#eff6ff;color:#0f172a;border-radius:16px 16px 3px 16px;border:1.5px solid #7fb3f0;}
+/* しっぽ：SVGで曲線を描き、枠と塗りを一体化（継ぎ目なし） */
+.bbl.mine::after{content:'';position:absolute;right:-13px;bottom:-1.5px;width:15px;height:17px;
+  background:no-repeat center/100% 100% url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 17'><path d='M0 0 C0 9 3 15 14 16.2 C6 16.2 0.5 12 0 3 Z' fill='%23eff6ff' stroke='%237fb3f0' stroke-width='1.5' stroke-linejoin='round'/></svg>");}
+/* 吹き出し本体との継ぎ目を隠す */
+.bbl.mine::before{content:'';position:absolute;right:-1.5px;bottom:0;width:4px;height:8px;background:#eff6ff;z-index:1;}
 
 /* --- バイヤー（左側・琥珀） --- */
-.bbl.theirs{background:#fffbf0;color:#1e293b;border-radius:16px 16px 16px 4px;border:2px solid #fbbf24;}
-.bbl.theirs::after{content:'';position:absolute;left:-11px;bottom:-2px;
-  width:0;height:0;
-  border-right:12px solid #fbbf24;
-  border-top:4px solid transparent;
-  border-bottom:9px solid transparent;
-  border-bottom-right-radius:3px;}
-.bbl.theirs::before{content:'';position:absolute;left:-6px;bottom:1px;z-index:1;
-  width:0;height:0;
-  border-right:8px solid #fffbf0;
-  border-top:3px solid transparent;
-  border-bottom:6px solid transparent;}
+.bbl.theirs{background:#fffbf0;color:#1e293b;border-radius:16px 16px 16px 3px;border:1.5px solid #f7c65c;}
+.bbl.theirs::after{content:'';position:absolute;left:-13px;bottom:-1.5px;width:15px;height:17px;
+  background:no-repeat center/100% 100% url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 17'><path d='M15 0 C15 9 12 15 1 16.2 C9 16.2 14.5 12 15 3 Z' fill='%23fffbf0' stroke='%23f7c65c' stroke-width='1.5' stroke-linejoin='round'/></svg>");}
+.bbl.theirs::before{content:'';position:absolute;left:-1.5px;bottom:0;width:4px;height:8px;background:#fffbf0;z-index:1;}
 
-/* 新着は枠を少し濃く */
-.bbl.theirs.new-msg{border-color:#f59e0b;}
-.bbl.theirs.new-msg::after{border-right-color:#f59e0b;}
+/* 新着はやや濃い枠 */
+.bbl.theirs.new-msg{border-color:#f0a92e;}
+.bbl.theirs.new-msg::after{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 17'><path d='M15 0 C15 9 12 15 1 16.2 C9 16.2 14.5 12 15 3 Z' fill='%23fffbf0' stroke='%23f0a92e' stroke-width='1.5' stroke-linejoin='round'/></svg>");}
 .bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);display:flex;align-items:center;gap:6px;}
 .bbl-wrap.mine .bbl-meta{flex-direction:row-reverse;}
 
@@ -304,6 +288,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-panel-row{display:flex;align-items:center;gap:9px;}
 .buyer-panel-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;}
 .sub-country{font-size:12px;font-weight:600;color:var(--text);}
+.sub-country-suffix{font-size:11px;font-weight:400;color:var(--text3);margin-left:3px;}
 .sub-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
 .sub-tag.sold{background:#fee2e2;color:#dc2626;border-color:#fecaca;font-weight:700;}
 
@@ -1497,7 +1482,8 @@ async function loadBuyerDetail(buyer, idx){
     var subEl=document.getElementById('buyer-panel-sub');
     if(subEl){
       if(info.purchased && (info.countryLabel||info.country)){
-        subEl.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>';
+        subEl.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)
+          +'<span class="sub-country-suffix">へ発送</span></span>';
       } else if(!info.purchased){
         subEl.innerHTML='<span class="sub-tag">未購入</span>';
       } else {
