@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const path = require('path');
 const ebayApi = require('./ebay-api');
 const app = express();
+let autoSyncRunning = false;
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -992,6 +993,12 @@ app.get('/api/state', (req, res) => {
 // ===== Googleスプレッドシートからメッセージ取得 =====
 app.get('/api/messages', async (req, res) => {
   try {
+    // 自動同期がシート書き込み中なら少し待つ（並び順の乱れ防止）
+    let waited = 0;
+    while (autoSyncRunning && waited < 5000) {
+      await new Promise(r => setTimeout(r, 250));
+      waited += 250;
+    }
     // 購入者リストはバックグラウンドで更新（待たない）
     refreshBuyerSet().catch(() => {});
     const sheetId = process.env.SHEET_ID;
@@ -1214,7 +1221,6 @@ app.get('/latest', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 // ===== eBayから定期自動同期（3分ごと） =====
-let autoSyncRunning = false;
 async function autoSyncFromEbay() {
   if (autoSyncRunning) return;
   autoSyncRunning = true;
