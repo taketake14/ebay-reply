@@ -676,6 +676,31 @@ async function getBuyerLocation(username) {
   }
 }
 
+// デバッグ：公開ページの取得状況を確認
+async function debugBuyerLocation(username) {
+  try {
+    const url = 'https://www.ebay.com/usr/' + encodeURIComponent(username);
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    const html = await res.text();
+    const idx = html.indexOf('Location');
+    return {
+      ok: true,
+      status: res.status,
+      htmlLength: html.length,
+      hasLocationWord: idx >= 0,
+      around: idx >= 0 ? html.substring(Math.max(0, idx - 100), idx + 300) : html.substring(0, 400),
+      parsed: await getBuyerLocation(username),
+    };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // ===== Trading API GetUser でバイヤー公開情報を取得 =====
 const userInfoCache = {};
 async function getUserInfo(username, skipCache) {
@@ -865,6 +890,7 @@ module.exports = {
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
   getBuyerLocation: getBuyerLocation,
+  debugBuyerLocation: debugBuyerLocation,
   countryName: countryName,
   countryNameEn: countryNameEn,
   getLastOrderDebug: getLastOrderDebug,
