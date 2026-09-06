@@ -262,9 +262,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .rp-section{border-bottom:1px solid var(--border);flex-shrink:0;}
 
 /* ===== 左パネル：コピーボタン ===== */
-.cp-btn{flex-shrink:0;width:22px;height:22px;padding:0;border:1px solid var(--border2);background:var(--bg2);border-radius:4px;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:0.55;transition:all 0.12s;}
-.cp-btn:hover{opacity:1;background:#eff6ff;border-color:var(--accent);}
-.cp-btn.done{background:#dcfce7;border-color:#86efac;opacity:1;}
+.cp-btn{flex-shrink:0;width:24px;height:24px;padding:0;border:1px solid transparent;background:transparent;border-radius:5px;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;opacity:0.45;transition:all 0.13s;}
+.cp-btn:hover{opacity:1;background:#eff6ff;border-color:#bfdbfe;color:var(--accent);}
+.cp-btn:active{transform:scale(0.92);}
+.cp-btn.done{background:#dcfce7;border-color:#86efac;color:#16a34a;opacity:1;}
+.cp-btn svg{display:block;}
+
+.buyer-panel-row{display:flex;align-items:center;gap:9px;}
 
 .prod-name-row{display:flex;align-items:flex-start;gap:6px;}
 .prod-name-row .prod-name{flex:1;min-width:0;}
@@ -518,7 +522,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
             <div class="prod-img-wrap" id="prod-img-wrap">&#128230;</div>
             <div class="prod-name-row">
               <div class="prod-name" id="prod-name">—</div>
-              <button class="cp-btn" id="cp-prod-name" title="商品名をコピー">&#128203;</button>
+              <button class="cp-btn" id="cp-prod-name" title="商品名をコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>
             </div>
             <div class="prod-kv" id="prod-kv"></div>
           </div>
@@ -533,7 +537,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <div class="rp-section-body" id="rp-body-buyer">
             <div class="buyer-panel-row">
               <div class="buyer-panel-avatar" id="buyer-avatar"></div>
-              <div><div class="buyer-panel-name" id="buyer-panel-name">—</div><div class="buyer-panel-sub" id="buyer-panel-sub"></div></div>
+              <div style="flex:1;min-width:0;">
+                <div class="buyer-panel-name" id="buyer-panel-name">—</div>
+                <div class="buyer-panel-sub" id="buyer-panel-sub"></div>
+              </div>
+              <button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー"></button>
             </div>
             <div class="buyer-links" id="buyer-links"></div>
           </div>
@@ -959,13 +967,13 @@ function renderChatDetail(){
       valHtml='<span class="kv-v"'+(opts.id?' id="'+opts.id+'"':'')+(opts.style?' style="'+opts.style+'"':'')+'>'+(opts.raw?value:esc(value))+'</span>';
     }
     var cp = opts.copy===false ? '' :
-      '<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(String(value))+'" title="コピー">&#128203;</button>';
+      '<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(String(value))+'" title="コピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>';
     return '<div class="prod-kv-row"><span class="kv-k">'+label+'</span>'+valHtml+cp+'</div>';
   }
 
   if(m.itemId) kvHtml+=kvRow('Item ID', m.itemId, {link:'https://www.ebay.com/itm/'+esc(m.itemId)});
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" id="prod-sku">—</span>'
-    +'<button class="cp-btn" id="cp-sku" title="SKUをコピー">&#128203;</button></div>';
+    +'<button class="cp-btn" id="cp-sku" title="SKUをコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">価格</span><span class="kv-v" id="prod-price">—</span></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
     +(m.sold
@@ -994,8 +1002,12 @@ function renderChatDetail(){
     ? ' <span style="background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:5px;vertical-align:middle;">SOLD</span>'
     : '';
   var buyerLink='<a href="https://www.ebay.com/usr/'+encodeURIComponent(m.buyer)+'" target="_blank" style="color:inherit;text-decoration:none;border-bottom:1px solid #93c5fd;">'+esc(m.buyer)+'</a>';
-  document.getElementById('buyer-panel-name').innerHTML=buyerLink+soldBadge
-    +'<button class="cp-btn" style="margin-left:5px;vertical-align:middle;" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(m.buyer)+'" title="バイヤー名をコピー">&#128203;</button>';
+  document.getElementById('buyer-panel-name').innerHTML=buyerLink+soldBadge;
+  var cpBuyer=document.getElementById('cp-buyer-name');
+  if(cpBuyer){
+    cpBuyer.innerHTML=COPY_ICON;
+    cpBuyer.onclick=function(){copyValue(m.buyer,this);};
+  }
   document.getElementById('buyer-panel-sub').textContent=m.sold?'購入済み':'未購入';
 
   // バイヤーリンク（商品パネルに注文番号があるので削除）
@@ -1273,13 +1285,14 @@ function copyText(text,el){
   });
 }
 // ===== 値を直接コピー =====
+var COPY_ICON='<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg>';
+var CHECK_ICON='<svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.5 3.5L13 5"/></svg>';
 function copyValue(val, btn){
   if(!val) return;
   navigator.clipboard.writeText(val).then(function(){
-    var orig=btn.innerHTML;
-    btn.innerHTML='&#10003;';
+    btn.innerHTML=CHECK_ICON;
     btn.classList.add('done');
-    setTimeout(function(){btn.innerHTML=orig;btn.classList.remove('done');},1200);
+    setTimeout(function(){btn.innerHTML=COPY_ICON;btn.classList.remove('done');},1200);
   }).catch(function(){});
 }
 
@@ -1290,7 +1303,7 @@ function updateMemoBar(memo){
   if(!bar||!txt) return;
   if(memo && memo.trim()){
     bar.classList.add('has-memo');
-    txt.textContent=memo.trim().replace(/\n/g,' ');
+    txt.textContent='メモ：'+memo.trim().replace(/\n/g,' ');
     bar.title=memo;
   } else {
     bar.classList.remove('has-memo');
@@ -1446,7 +1459,7 @@ async function loadBuyerDetail(buyer, idx){
       var vh = link
         ? '<a class="bd-v link" href="'+link+'" target="_blank">'+esc(val)+'</a>'
         : '<span class="bd-v">'+esc(val)+'</span>';
-      var cp = copy ? '<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(val)+'" title="コピー">&#128203;</button>' : '';
+      var cp = copy ? '<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(val)+'" title="コピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>' : '';
       return '<div class="bd-row"><span class="bd-k">'+k+'</span>'+vh+cp+'</div>';
     }
     function block(title, rows){
@@ -1489,11 +1502,16 @@ async function loadBuyerDetail(buyer, idx){
     if(info.orderCount) b2+=r('注文回数', info.orderCount+'件', false);
     html+=block('注文', b2);
 
-    // ③ 金額
+    // ③ 金額（eBayのオーダーページと同じ内訳）
     var b3='';
     if(info.itemSubtotal) b3+=r('商品代金', info.itemSubtotal, false);
     if(info.shippingCost) b3+=r('送料', info.shippingCost, false);
-    if(info.taxTotal) b3+=r('税/VAT', info.taxTotal, false);
+    // 税の内訳（VAT / GST / 州税など）
+    if(info.taxBreakdown && info.taxBreakdown.length>0){
+      info.taxBreakdown.forEach(function(t){ b3+=r(t.label, t.value, false); });
+    } else if(info.taxTotal){
+      b3+=r('税', info.taxTotal, false);
+    }
     if(info.total) b3+='<div class="bd-row bd-total"><span class="bd-k">合計</span><span class="bd-v">'+esc(info.total)+'</span></div>';
     html+=block('金額', b3);
 
@@ -1505,18 +1523,25 @@ async function loadBuyerDetail(buyer, idx){
       [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
       info.countryLabel||info.country
     ].filter(Boolean);
+    // コピー用は英語の正式国名（配送ラベル用）
+    var copyLines=[
+      [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
+      [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
+      info.countryEn||info.country
+    ].filter(Boolean);
     if(addrLines.length){
       var full=addrLines.join('\n');
+      var fullCopy=copyLines.join('\n');
       b4+='<div class="bd-row bd-addr"><span class="bd-k">配送先</span>'
         +'<span class="bd-v" style="white-space:pre-line;">'+esc(full)+'</span>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(full)+'" title="住所をコピー">&#128203;</button></div>';
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
     }
     b4+=r('電話', info.phone, true);
     if(info.email){
       b4+='<div class="bd-row"><span class="bd-k">メール</span>'
         +'<span class="bd-v" style="font-size:11px;">'+esc(info.email)
         +'<br><span class="bd-note">eBay転送用（実アドレスは取得不可）</span></span>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.email)+'" title="コピー">&#128203;</button></div>';
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.email)+'" title="コピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
     }
     html+=block('配送先', b4);
 
