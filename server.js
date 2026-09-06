@@ -542,15 +542,23 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
     } else if (debug) {
       order = await ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null);
     }
+    // APIで居住国が取れない場合は公開プロフィールから取得
+    let locationText = '';
+    if (!user || !user.country) {
+      locationText = await ebayApi.getBuyerLocation(uname).catch(() => '');
+    }
+
     const common = user ? {
       feedbackScore: user.feedbackScore || null,
       positivePercent: user.positivePercent || null,
       photoUrl: user.photoUrl || '',
       registrationDate: user.registrationDate || '',
       userCountry: user.country || '',
-      userCountryLabel: user.country ? ebayApi.countryName(user.country) : (user.site || ''),
+      userCountryLabel: user.country
+        ? ebayApi.countryName(user.country)
+        : (locationText || ''),
       ebaySite: user.site || '',
-    } : {};
+    } : (locationText ? { userCountryLabel: locationText } : {});
     const buyer = order
       ? Object.assign({}, order, common, { purchased: true })
       : (user ? Object.assign({ purchased: false }, common) : null);
