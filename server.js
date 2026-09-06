@@ -280,6 +280,7 @@ app.get('/api/sheet/dedupe', async (req, res) => {
 // ===== 購入者一覧をキャッシュ（SOLD判定用） =====
 let buyerOrderSet = new Set();
 let buyerSetUpdatedAt = 0;
+let orderByBuyer = {};   // username(lower) -> 注文オブジェクト（最新）
 async function refreshBuyerSet() {
   if (Date.now() - buyerSetUpdatedAt < 10 * 60 * 1000) return buyerOrderSet;
   try {
@@ -297,7 +298,14 @@ async function refreshBuyerSet() {
       const batch = od.orders || [];
       batch.forEach(o => {
         const u = (o.buyer && o.buyer.username) || '';
-        if (u) s.add(u.toLowerCase());
+        if (!u) return;
+        const lu = u.toLowerCase();
+        s.add(lu);
+        // 最新の注文だけ保持
+        const prev = orderByBuyer[lu];
+        if (!prev || new Date(o.creationDate || 0) > new Date(prev.creationDate || 0)) {
+          orderByBuyer[lu] = o;
+        }
       });
       if (batch.length < 200) break;
       offset += 200;
@@ -498,10 +506,16 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
   try {
     const debug = req.query.debug === '1';
     const uname = req.params.username;
-    const [order, user] = await Promise.all([
-      ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null),
-      ebayApi.getUserInfo(uname).catch(() => null),
-    ]);
+    // 軽いGetUserを先に取得。注文情報は購入者リストに載っている場合のみ取りに行く
+    const user = await ebayApi.getUserInfo(uname).catch(() => null);
+    const lu = String(uname).toLowerCase();
+    let order = null;
+    const cachedOrder = orderByBuyer[lu];
+    if (cachedOrder) {
+      order = ebayApi.formatOrder(cachedOrder);
+    } else if (debug) {
+      order = await ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null);
+    }
     const common = user ? {
       feedbackScore: user.feedbackScore || null,
       positivePercent: user.positivePercent || null,
@@ -956,12 +970,8 @@ app.get('/api/state', (req, res) => {
 // ===== Googleスプレッドシートからメッセージ取得 =====
 app.get('/api/messages', async (req, res) => {
   try {
-    // 購入者リストが未取得なら待ってから返す（SOLD表示のタイムラグ防止）
-    if (buyerOrderSet.size === 0) {
-      await refreshBuyerSet().catch(() => {});
-    } else {
-      refreshBuyerSet().catch(() => {});
-    }
+    // 購入者リストはバックグラウンドで更新（待たない）
+    refreshBuyerSet().catch(() => {});
     const sheetId = process.env.SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
     if (!sheetId || !apiKey) return res.json({ messages });
@@ -1160,9 +1170,12 @@ app.get('/api/messages', async (req, res) => {
       if (t.itemId && !ebayApi.getCachedItem(t.itemId)) topIds.push(t.itemId);
     }
     if (topIds.length > 0) {
-      Promise.all(topIds.slice(0, 20).map(id =>
-        ebayApi.getItemInfo(id).catch(() => null)
-      )).catch(() => {});
+      // 同時実行数を絞って順次取得（APIレート制限とレスポンス遅延を防ぐ）
+      (async () => {
+        for (const id of topIds.slice(0, 15)) {
+          await ebayApi.getItemInfo(id).catch(() => null);
+        }
+      })().catch(() => {});
     }
     res.json({ messages: threads });
   } catch (e) {
@@ -1228,7 +1241,7 @@ async function autoSyncFromEbay() {
 }
 
 // 起動直後に購入者リストを先読み（SOLD表示のタイムラグ解消）
-setTimeout(() => { refreshBuyerSet().catch(() => {}); }, 3000);
+setTimeout(() => { refreshBuyerSet().catch(() => {}); }, 1000);
 // 10分ごとに購入者リストを更新
 setInterval(() => { refreshBuyerSet().catch(() => {}); }, 10 * 60 * 1000);
 
