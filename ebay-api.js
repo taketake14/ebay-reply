@@ -454,10 +454,10 @@ async function getSellerSku(itemId) {
 
 // ===== Trading API GetUser でバイヤー公開情報を取得 =====
 const userInfoCache = {};
-async function getUserInfo(username) {
+async function getUserInfo(username, skipCache) {
   if (!username) return null;
   const key = String(username).toLowerCase();
-  if (userInfoCache[key] !== undefined) return userInfoCache[key];
+  if (!skipCache && userInfoCache[key] !== undefined) return userInfoCache[key];
   try {
     const token = await getAccessToken();
     const xml = '<?xml version="1.0" encoding="utf-8"?>'
@@ -488,10 +488,11 @@ async function getUserInfo(username) {
       registrationDate: pick('RegistrationDate') || '',
       photoUrl: pick('PhotoDisplayURL') || '',
       status: pick('Status') || '',
+      _ack: pick('Ack') || '',
+      _err: pick('LongMessage') || pick('ShortMessage') || '',
+      _httpStatus: res.status,
+      _raw: (!pick('FeedbackScore') && !pick('Country')) ? t.substring(0, 600) : undefined,
     };
-    if (!info.feedbackScore && !info.country) {
-      console.log('[getUserInfo] 空 user=' + username + ' resp=' + t.substring(0, 250));
-    }
     userInfoCache[key] = info;
     return info;
   } catch (e) {
