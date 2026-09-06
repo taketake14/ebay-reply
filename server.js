@@ -508,7 +508,8 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
       photoUrl: user.photoUrl || '',
       registrationDate: user.registrationDate || '',
       userCountry: user.country || '',
-      userCountryLabel: user.country ? ebayApi.countryName(user.country) : '',
+      userCountryLabel: user.country ? ebayApi.countryName(user.country) : (user.site || ''),
+      ebaySite: user.site || '',
     } : {};
     const buyer = order
       ? Object.assign({}, order, common, { purchased: true })
