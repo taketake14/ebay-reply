@@ -481,6 +481,28 @@ app.get('/api/ebay/item/:itemId', async (req, res) => {
   }
 });
 
+// ===== 注文の生データ確認（デバッグ用） =====
+app.get('/api/ebay/order-raw/:username', async (req, res) => {
+  try {
+    const lu = String(req.params.username).toLowerCase();
+    const o = orderByBuyer[lu];
+    if (!o) return res.json({ ok: false, error: 'この購入者の注文がキャッシュにありません', cached: Object.keys(orderByBuyer).length });
+    const li = (o.lineItems && o.lineItems[0]) || {};
+    res.json({
+      ok: true,
+      topLevelKeys: Object.keys(o),
+      lineItemKeys: Object.keys(li),
+      marketplaceId: o.marketplaceId || '(なし)',
+      listingMarketplaceId: li.listingMarketplaceId || '(なし)',
+      purchaseMarketplaceId: li.purchaseMarketplaceId || '(なし)',
+      sellerId: o.sellerId || '',
+      orderId: o.orderId,
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== GetUser テスト（デバッグ用） =====
 app.get('/api/ebay/user/:username', async (req, res) => {
   try {
