@@ -269,6 +269,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .cp-btn svg{display:block;}
 
 .buyer-panel-row{display:flex;align-items:center;gap:9px;}
+.buyer-panel-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;}
+.sub-country{font-size:12px;font-weight:600;color:var(--text);}
+.sub-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
+.sub-tag.sold{background:#fee2e2;color:#dc2626;border-color:#fecaca;font-weight:700;}
 
 .prod-name-row{display:flex;align-items:flex-start;gap:6px;}
 .prod-name-row .prod-name{flex:1;min-width:0;}
@@ -339,7 +343,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-panel-row{display:flex;align-items:center;gap:10px;}
 .buyer-panel-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
 .buyer-panel-name{font-size:14px;font-weight:600;color:var(--text);}
-.buyer-panel-sub{font-size:12px;color:var(--text2);}
+
 .buyer-links{display:flex;flex-direction:column;gap:6px;}
 .buyer-link-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);text-decoration:none;color:var(--accent);font-size:11px;font-weight:500;}
 .buyer-link-chip:hover{background:#eff6ff;border-color:var(--accent);}
@@ -1008,7 +1012,9 @@ function renderChatDetail(){
     cpBuyer.innerHTML=COPY_ICON;
     cpBuyer.onclick=function(){copyValue(m.buyer,this);};
   }
-  document.getElementById('buyer-panel-sub').textContent=m.sold?'購入済み':'未購入';
+  document.getElementById('buyer-panel-sub').innerHTML=m.sold
+    ? '<span class="sub-tag sold">購入済み</span>'
+    : '<span class="sub-tag">未購入</span>';
 
   // バイヤーリンク（商品パネルに注文番号があるので削除）
   var linksHtml='';
@@ -1446,6 +1452,17 @@ async function loadBuyerDetail(buyer, idx){
       return;
     }
 
+    // バイヤー名の下に配送先の国を表示（スクロール不要で把握できる）
+    var subEl=document.getElementById('buyer-panel-sub');
+    if(subEl){
+      var parts=[];
+      if(info.purchased && (info.countryLabel||info.country)){
+        parts.push('<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>');
+      }
+      parts.push(info.purchased?'<span class="sub-tag sold">購入済み</span>':'<span class="sub-tag">未購入</span>');
+      subEl.innerHTML=parts.join(' ');
+    }
+
     // アイコン画像
     if(info.photoUrl){
       var av=document.getElementById('buyer-avatar');
@@ -1469,7 +1486,82 @@ async function loadBuyerDetail(buyer, idx){
 
     var html='';
 
-    // ① バイヤー基本情報
+    // 未購入バイヤーはバイヤー情報のみ
+    if(!info.purchased){
+      var bx='';
+      if(info.feedbackScore!==null&&info.feedbackScore!==undefined&&info.feedbackScore!==''){
+        var fbx=info.feedbackScore;
+        if(info.positivePercent) fbx+='（好評価 '+Math.round(parseFloat(info.positivePercent))+'%）';
+        bx+=r('評価数', fbx, false);
+      }
+      if(info.registrationDate){
+        var rdx=new Date(info.registrationDate);
+        var yx=Math.floor((Date.now()-rdx.getTime())/(365.25*86400000));
+        bx+=r('eBay歴', rdx.toLocaleDateString('ja-JP')+(yx>0?'（'+yx+'年）':''), false);
+      }
+      html+=block('バイヤー情報', bx);
+      html+='<div class="bd-empty">購入履歴なし（未購入バイヤー）</div>';
+      el2.innerHTML=html;
+      return;
+    }
+
+    // ① 注文
+    var b2='';
+    if(info.orderId){
+      b2+=r('オーダーID', info.orderId, true,
+        'https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId));
+    }
+    if(info.salesRecordNo) b2+=r('レコードNo', info.salesRecordNo, true);
+    if(info.orderDate) b2+=r('注文日', new Date(info.orderDate).toLocaleDateString('ja-JP'), false);
+    if(info.shipByDate) b2+=r('発送期限', new Date(info.shipByDate).toLocaleDateString('ja-JP'), false);
+    if(info.marketplace) b2+=r('購入サイト', info.marketplace, false);
+    html+=block('注文', b2);
+
+    // ② 金額（eBayのオーダーページと同じ内訳）
+    var b3='';
+    if(info.itemSubtotal) b3+=r('商品代金', info.itemSubtotal, false);
+    if(info.shippingCost) b3+=r('送料', info.shippingCost, false);
+    if(info.taxBreakdown && info.taxBreakdown.length>0){
+      info.taxBreakdown.forEach(function(t){ b3+=r(t.label, t.value, false); });
+    } else if(info.taxTotal){
+      b3+=r('税', info.taxTotal, false);
+    }
+    if(info.total) b3+='<div class="bd-row bd-total"><span class="bd-k">合計</span><span class="bd-v">'+esc(info.total)+'</span></div>';
+    html+=block('金額', b3);
+
+    // ③ 配送先
+    var b4='';
+    b4+=r('氏名', info.name, true);
+    var addrLines=[
+      [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
+      [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
+      info.countryLabel||info.country
+    ].filter(Boolean);
+    var copyLines=[
+      [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
+      [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
+      info.countryEn||info.country
+    ].filter(Boolean);
+    if(addrLines.length){
+      var full=addrLines.join('\n');
+      var fullCopy=copyLines.join('\n');
+      b4+='<div class="bd-row bd-addr"><span class="bd-k">配送先</span>'
+        +'<span class="bd-v" style="white-space:pre-line;">'+esc(full)+'</span>'
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）">'+COPY_ICON+'</button></div>';
+    }
+    b4+=r('電話', info.phone, true);
+    if(info.email){
+      b4+='<div class="bd-row"><span class="bd-k">メール</span>'
+        +'<span class="bd-v" style="font-size:11px;">'+esc(info.email)
+        +'<br><span class="bd-note">eBay転送用（実アドレスは取得不可）</span></span>'
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.email)+'" title="コピー">'+COPY_ICON+'</button></div>';
+    } else {
+      b4+='<div class="bd-row"><span class="bd-k">メール</span>'
+        +'<span class="bd-v bd-note">期限切れのため取得不可（注文から一定期間で削除されます）</span></div>';
+    }
+    html+=block('配送先', b4);
+
+    // ④ バイヤー情報
     var b1='';
     if(info.feedbackScore!==null&&info.feedbackScore!==undefined&&info.feedbackScore!==''){
       var fb=info.feedbackScore;
@@ -1481,69 +1573,8 @@ async function loadBuyerDetail(buyer, idx){
       var years=Math.floor((Date.now()-rd.getTime())/(365.25*86400000));
       b1+=r('eBay歴', rd.toLocaleDateString('ja-JP')+(years>0?'（'+years+'年）':''), false);
     }
-    if(info.marketplace) b1+=r('購入サイト', info.marketplace, false);
+    if(info.orderCount) b1+=r('注文回数', info.orderCount+'件', false);
     html+=block('バイヤー情報', b1);
-
-    if(!info.purchased){
-      html+='<div class="bd-empty">購入履歴なし（未購入バイヤー）</div>';
-      el2.innerHTML=html;
-      return;
-    }
-
-    // ② 注文情報
-    var b2='';
-    if(info.orderId){
-      b2+=r('オーダーID', info.orderId, true,
-        'https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId));
-    }
-    if(info.salesRecordNo) b2+=r('レコードNo', info.salesRecordNo, true);
-    if(info.orderDate) b2+=r('注文日', new Date(info.orderDate).toLocaleDateString('ja-JP'), false);
-    if(info.shipByDate) b2+=r('発送期限', new Date(info.shipByDate).toLocaleDateString('ja-JP'), false);
-    if(info.orderCount) b2+=r('注文回数', info.orderCount+'件', false);
-    html+=block('注文', b2);
-
-    // ③ 金額（eBayのオーダーページと同じ内訳）
-    var b3='';
-    if(info.itemSubtotal) b3+=r('商品代金', info.itemSubtotal, false);
-    if(info.shippingCost) b3+=r('送料', info.shippingCost, false);
-    // 税の内訳（VAT / GST / 州税など）
-    if(info.taxBreakdown && info.taxBreakdown.length>0){
-      info.taxBreakdown.forEach(function(t){ b3+=r(t.label, t.value, false); });
-    } else if(info.taxTotal){
-      b3+=r('税', info.taxTotal, false);
-    }
-    if(info.total) b3+='<div class="bd-row bd-total"><span class="bd-k">合計</span><span class="bd-v">'+esc(info.total)+'</span></div>';
-    html+=block('金額', b3);
-
-    // ④ 配送先
-    var b4='';
-    b4+=r('氏名', info.name, true);
-    var addrLines=[
-      [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
-      [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
-      info.countryLabel||info.country
-    ].filter(Boolean);
-    // コピー用は英語の正式国名（配送ラベル用）
-    var copyLines=[
-      [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
-      [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
-      info.countryEn||info.country
-    ].filter(Boolean);
-    if(addrLines.length){
-      var full=addrLines.join('\n');
-      var fullCopy=copyLines.join('\n');
-      b4+='<div class="bd-row bd-addr"><span class="bd-k">配送先</span>'
-        +'<span class="bd-v" style="white-space:pre-line;">'+esc(full)+'</span>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
-    }
-    b4+=r('電話', info.phone, true);
-    if(info.email){
-      b4+='<div class="bd-row"><span class="bd-k">メール</span>'
-        +'<span class="bd-v" style="font-size:11px;">'+esc(info.email)
-        +'<br><span class="bd-note">eBay転送用（実アドレスは取得不可）</span></span>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.email)+'" title="コピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
-    }
-    html+=block('配送先', b4);
 
     el2.innerHTML=html;
   }
