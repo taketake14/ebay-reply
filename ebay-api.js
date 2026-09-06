@@ -452,6 +452,34 @@ async function getSellerSku(itemId) {
   }
 }
 
+// ===== 注文オブジェクトを表示用に整形 =====
+function formatOrder(o) {
+  if (!o) return null;
+  const ship = (o.fulfillmentStartInstructions && o.fulfillmentStartInstructions[0]
+    && o.fulfillmentStartInstructions[0].shippingStep
+    && o.fulfillmentStartInstructions[0].shippingStep.shipTo) || {};
+  const addr = ship.contactAddress || {};
+  const li = (o.lineItems && o.lineItems[0]) || {};
+  return {
+    orderId: o.orderId || '',
+    orderDate: o.creationDate || '',
+    name: ship.fullName || '',
+    email: ship.email || '',
+    phone: (ship.primaryPhone && ship.primaryPhone.phoneNumber) || '',
+    addressLine1: addr.addressLine1 || '',
+    addressLine2: addr.addressLine2 || '',
+    city: addr.city || '',
+    stateOrProvince: addr.stateOrProvince || '',
+    postalCode: addr.postalCode || '',
+    country: addr.countryCode || '',
+    countryLabel: countryName(addr.countryCode || ''),
+    shipByDate: (li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate) || '',
+    orderCount: 1,
+    total: (o.pricingSummary && o.pricingSummary.total)
+      ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
+  };
+}
+
 // ===== Trading API GetUser でバイヤー公開情報を取得 =====
 const userInfoCache = {};
 async function getUserInfo(username, skipCache) {
@@ -611,6 +639,7 @@ module.exports = {
   getCachedItem: getCachedItem,
   getSellerSku: getSellerSku,
   getBuyerOrderInfo: getBuyerOrderInfo,
+  formatOrder: formatOrder,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
   countryName: countryName,
