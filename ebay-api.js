@@ -641,6 +641,41 @@ function formatOrder(o) {
   };
 }
 
+// ===== eBay公開プロフィールから所在国を取得 =====
+const profileCache = {};
+async function getBuyerLocation(username) {
+  if (!username) return '';
+  const key = String(username).toLowerCase();
+  if (profileCache[key] !== undefined) return profileCache[key];
+  try {
+    const res = await fetch('https://www.ebay.com/usr/' + encodeURIComponent(username), {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+    });
+    if (!res.ok) { profileCache[key] = ''; return ''; }
+    const html = await res.text();
+    // 「Location: Brazil」のような記述を探す
+    let loc = '';
+    const patterns = [
+      /Location:\s*<[^>]*>\s*([^<]{2,40})</i,
+      /Location:\s*([A-Za-z][A-Za-z .'-]{1,39})/,
+      /"location"\s*:\s*"([^"]{2,40})"/i,
+    ];
+    for (const p of patterns) {
+      const m = html.match(p);
+      if (m && m[1]) { loc = m[1].trim(); break; }
+    }
+    profileCache[key] = loc;
+    return loc;
+  } catch (e) {
+    console.error('getBuyerLocation error:', e.message);
+    profileCache[key] = '';
+    return '';
+  }
+}
+
 // ===== Trading API GetUser でバイヤー公開情報を取得 =====
 const userInfoCache = {};
 async function getUserInfo(username, skipCache) {
@@ -678,9 +713,12 @@ async function getUserInfo(username, skipCache) {
       India:'IN', Malaysia:'MY', Philippines:'PH', Japan:'JP', CanadaFrench:'CA',
     };
     const rawSite = pick('RegistrationSite') || pick('Site') || '';
+    // 居住国は RegistrationAddress からのみ取得する。
+    // 登録サイト（ebay.com等）から国を推測すると誤情報になるので使わない。
+    const regAddr = pick('RegistrationAddress');
     const country = pick('Country')
-      || (pick('RegistrationAddress') ? (pick('RegistrationAddress').match(/<Country>([^<]+)<\/Country>/) || [])[1] : '')
-      || siteToCountry[rawSite] || '';
+      || (regAddr ? ((regAddr.match(/<Country>([^<]+)<\/Country>/) || [])[1] || '') : '')
+      || '';
 
     const info = {
       feedbackScore: pick('FeedbackScore') || '',
@@ -826,6 +864,7 @@ module.exports = {
   marketplaceName: marketplaceName,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
+  getBuyerLocation: getBuyerLocation,
   countryName: countryName,
   countryNameEn: countryNameEn,
   getLastOrderDebug: getLastOrderDebug,
