@@ -330,6 +330,30 @@ function countryName(code) {
   return COUNTRY_NAMES[c] ? COUNTRY_NAMES[c] + '（' + c + '）' : c;
 }
 
+// 英語の正式国名（配送先コピー用）
+const COUNTRY_EN = {
+  US:'United States', CA:'Canada', GB:'United Kingdom', AU:'Australia', DE:'Germany',
+  FR:'France', IT:'Italy', ES:'Spain', NL:'Netherlands', BE:'Belgium', CH:'Switzerland',
+  AT:'Austria', SE:'Sweden', NO:'Norway', DK:'Denmark', FI:'Finland', PL:'Poland',
+  PT:'Portugal', IE:'Ireland', CZ:'Czech Republic', GR:'Greece', HU:'Hungary',
+  RO:'Romania', BG:'Bulgaria', HR:'Croatia', SK:'Slovakia', SI:'Slovenia',
+  EE:'Estonia', LV:'Latvia', LT:'Lithuania', LU:'Luxembourg', MT:'Malta',
+  CY:'Cyprus', IS:'Iceland', JP:'Japan', CN:'China', KR:'South Korea', TW:'Taiwan',
+  HK:'Hong Kong', SG:'Singapore', MY:'Malaysia', TH:'Thailand', ID:'Indonesia',
+  PH:'Philippines', VN:'Vietnam', IN:'India', NZ:'New Zealand', BR:'Brazil',
+  MX:'Mexico', AR:'Argentina', CL:'Chile', CO:'Colombia', PE:'Peru',
+  VE:'Venezuela', EC:'Ecuador', UY:'Uruguay', PY:'Paraguay', BO:'Bolivia',
+  CR:'Costa Rica', PA:'Panama', GT:'Guatemala', DO:'Dominican Republic',
+  PR:'Puerto Rico', RU:'Russia', UA:'Ukraine', TR:'Turkey', IL:'Israel',
+  SA:'Saudi Arabia', AE:'United Arab Emirates', QA:'Qatar', KW:'Kuwait',
+  ZA:'South Africa', EG:'Egypt', NG:'Nigeria', KE:'Kenya', MA:'Morocco',
+};
+function countryNameEn(code) {
+  if (!code) return '';
+  const c = String(code).toUpperCase();
+  return COUNTRY_EN[c] || c;
+}
+
 // ===== バイヤーの公開情報（フィードバック数・国）を取得 =====
 const buyerPublicCache = {};
 async function getBuyerPublicInfo(username) {
@@ -520,6 +544,52 @@ function pickListingMarketplaceId(o) {
   return li.listingMarketplaceId || '';
 }
 
+// ===== 注文の税金を集計（VAT / GST / 州税など全種） =====
+function sumOrderTaxes(o) {
+  const out = { total: 0, currency: '', items: [] };
+  if (!o) return out;
+
+  function add(amount, type) {
+    if (!amount || !amount.value) return;
+    const v = parseFloat(amount.value);
+    if (isNaN(v) || v === 0) return;
+    out.total += v;
+    if (!out.currency) out.currency = amount.currency || '';
+    const label = type || 'TAX';
+    const found = out.items.find(x => x.type === label);
+    if (found) found.value += v;
+    else out.items.push({ type: label, value: v, currency: amount.currency || '' });
+  }
+
+  // 明細行ごとの税
+  (o.lineItems || []).forEach(li => {
+    (li.taxes || []).forEach(t => add(t.amount, t.taxType));
+    (li.ebayCollectAndRemitTaxes || []).forEach(t => add(t.amount, t.taxType));
+  });
+  // 注文全体のeBay代理徴収税
+  if (Array.isArray(o.ebayCollectAndRemitTax)) {
+    o.ebayCollectAndRemitTax.forEach(t => add(t.amount, t.taxType));
+  } else if (o.ebayCollectAndRemitTax && o.ebayCollectAndRemitTax.amount) {
+    add(o.ebayCollectAndRemitTax.amount, o.ebayCollectAndRemitTax.taxType);
+  }
+  return out;
+}
+
+// 税種別を日本語ラベルに
+const TAX_LABELS = {
+  VAT: 'VAT（付加価値税）',
+  GST: 'GST（物品サービス税）',
+  STATE_SALES_TAX: '州税',
+  SALES_TAX: '売上税',
+  PROVINCE_SALES_TAX: '州税',
+  IMPORT_TAX: '輸入税',
+  ELECTRONIC_WASTE_RECYCLING_FEE: '電子廃棄物リサイクル料',
+};
+function taxLabel(type) {
+  if (!type) return '税';
+  return TAX_LABELS[type] || type;
+}
+
 // ===== 注文オブジェクトを表示用に整形 =====
 function formatOrder(o) {
   if (!o) return null;
@@ -544,6 +614,7 @@ function formatOrder(o) {
     postalCode: addr.postalCode || '',
     country: addr.countryCode || '',
     countryLabel: countryName(addr.countryCode || ''),
+    countryEn: countryNameEn(addr.countryCode || ''),
     shipByDate: (li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate) || '',
     orderCount: 1,
     salesRecordNo: o.salesRecordReference || '',
@@ -551,8 +622,20 @@ function formatOrder(o) {
       ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
     shippingCost: (o.pricingSummary && o.pricingSummary.deliveryCost)
       ? (o.pricingSummary.deliveryCost.value + ' ' + o.pricingSummary.deliveryCost.currency) : '',
-    taxTotal: (o.pricingSummary && o.pricingSummary.tax)
-      ? (o.pricingSummary.tax.value + ' ' + o.pricingSummary.tax.currency) : '',
+    taxTotal: (function(){
+      const ps = o.pricingSummary || {};
+      if (ps.tax && ps.tax.value && parseFloat(ps.tax.value) > 0) {
+        return ps.tax.value + ' ' + (ps.tax.currency || '');
+      }
+      const t = sumOrderTaxes(o);
+      return t.total > 0 ? (t.total.toFixed(2) + ' ' + t.currency) : '';
+    })(),
+    taxBreakdown: (function(){
+      const t = sumOrderTaxes(o);
+      return t.items.map(function(x){
+        return { label: taxLabel(x.type), value: x.value.toFixed(2) + ' ' + x.currency };
+      });
+    })(),
     total: (o.pricingSummary && o.pricingSummary.total)
       ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
   };
@@ -701,14 +784,27 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       postalCode: addr.postalCode || '',
       country: addr.countryCode || '',
       countryLabel: countryName(addr.countryCode || ''),
+      countryEn: countryNameEn(addr.countryCode || ''),
       shipByDate: li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate || '',
       orderCount: mine.length,
       itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
         ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
       shippingCost: (o.pricingSummary && o.pricingSummary.deliveryCost)
         ? (o.pricingSummary.deliveryCost.value + ' ' + o.pricingSummary.deliveryCost.currency) : '',
-      taxTotal: (o.pricingSummary && o.pricingSummary.tax)
-        ? (o.pricingSummary.tax.value + ' ' + o.pricingSummary.tax.currency) : '',
+      taxTotal: (function(){
+        const ps = o.pricingSummary || {};
+        if (ps.tax && ps.tax.value && parseFloat(ps.tax.value) > 0) {
+          return ps.tax.value + ' ' + (ps.tax.currency || '');
+        }
+        const t = sumOrderTaxes(o);
+        return t.total > 0 ? (t.total.toFixed(2) + ' ' + t.currency) : '';
+      })(),
+      taxBreakdown: (function(){
+        const t = sumOrderTaxes(o);
+        return t.items.map(function(x){
+          return { label: taxLabel(x.type), value: x.value.toFixed(2) + ' ' + x.currency };
+        });
+      })(),
       total: o.pricingSummary && o.pricingSummary.total
         ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
     };
@@ -731,6 +827,7 @@ module.exports = {
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
   countryName: countryName,
+  countryNameEn: countryNameEn,
   getLastOrderDebug: getLastOrderDebug,
   getAuthUrl: getAuthUrl,
   exchangeCodeForTokens: exchangeCodeForTokens,
