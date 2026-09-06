@@ -1490,9 +1490,13 @@ async function loadBuyerDetail(buyer, idx){
     var subEl=document.getElementById('buyer-panel-sub');
     if(subEl){
       if(info.purchased && (info.countryLabel||info.country)){
+        // 購入者：配送先の国
         subEl.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>';
       } else if(!info.purchased){
-        subEl.innerHTML='<span class="sub-tag">未購入</span>';
+        // 未購入：アカウント登録国
+        var uc=info.userCountryLabel||info.userCountry||'';
+        subEl.innerHTML=(uc?'<span class="sub-country">&#127758; '+esc(uc)+'</span> ':'')
+          +'<span class="sub-tag">未購入</span>';
       } else {
         subEl.innerHTML='';
       }
@@ -1533,6 +1537,9 @@ async function loadBuyerDetail(buyer, idx){
         var rdx=new Date(info.registrationDate);
         var yx=Math.floor((Date.now()-rdx.getTime())/(365.25*86400000));
         bx+=r('eBay歴', rdx.toLocaleDateString('ja-JP')+(yx>0?'（'+yx+'年）':''), false);
+      }
+      if(info.userCountryLabel||info.userCountry){
+        bx+=r('所在国', info.userCountryLabel||info.userCountry, false);
       }
       html+=block('バイヤー情報', bx);
       html+='<div class="bd-empty">購入履歴なし（未購入バイヤー）</div>';
@@ -1609,6 +1616,12 @@ async function loadBuyerDetail(buyer, idx){
       b1+=r('eBay歴', rd.toLocaleDateString('ja-JP')+(years>0?'（'+years+'年）':''), false);
     }
     if(info.orderCount) b1+=r('注文回数', info.orderCount+'件', false);
+    // 所在国（配送先と異なる場合に気づけるよう表示）
+    if(info.userCountryLabel||info.userCountry){
+      var uc2=info.userCountryLabel||info.userCountry;
+      var diff = info.country && info.userCountry && info.country!==info.userCountry;
+      b1+=r('所在国', uc2+(diff?'　※配送先と異なります':''), false);
+    }
     html+=block('バイヤー情報', b1);
 
     el2.innerHTML=html;
