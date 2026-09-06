@@ -1746,30 +1746,41 @@ window.addEventListener('load',function(){
   }
   window.loadFromSheet = loadFromSheet; // グローバルに公開
   loadFromSheet();
-  // ===== 自動更新（60秒ごとにシートを読み直す） =====
+  // ===== 自動更新（90秒ごと・新着がある時だけ画面を更新） =====
+  var autoRefreshBusy=false;
   setInterval(async function(){
+    if(autoRefreshBusy) return;
+    // チャットを開いている間は更新しない（誤操作・ちらつき防止）
+    var chatOpen=document.getElementById('screen-chat').style.display!=='none';
+    if(chatOpen) return;
+    // 何かを選択中（一括操作中）も更新しない
+    if(checkedIds && checkedIds.size>0) return;
+
+    autoRefreshBusy=true;
     try{
-      // チャットを開いている会話を覚えておく
-      var openConv=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].conversationId:null;
-      var openBuyer=(currentIdx!==null&&messages[currentIdx])?messages[currentIdx].buyer:null;
-      var beforeCount=messages.length;
+      var r=await fetch('/api/messages');
+      var d=await r.json();
+      var list=d.messages||[];
+      if(list.length===0){ autoRefreshBusy=false; return; }
 
-      await loadFromSheet();
+      // 新着があるかだけ先に判定（無ければ再描画しない＝点滅しない）
+      var newestNew=list[0];
+      var newestCur=messages[0];
+      var isSame = newestCur
+        && newestNew.conversationId===newestCur.conversationId
+        && newestNew.timestamp===newestCur.timestamp
+        && list.length===messages.length;
+      if(isSame){ autoRefreshBusy=false; return; }
 
-      // 開いていた会話の位置を追い直す（ズレ防止）
-      if(currentIdx!==null){
-        var ni=-1;
-        if(openConv) ni=messages.findIndex(function(x){return x.conversationId===openConv;});
-        if(ni<0&&openBuyer) ni=messages.findIndex(function(x){return x.buyer===openBuyer;});
-        if(ni>=0){
-          currentIdx=ni;
-          // 開いている画面も最新に更新
-          if(document.getElementById('screen-chat').style.display!=='none') renderChatDetail();
-        }
-      }
-      // loadFromSheet内でrenderList()が走るのでカウントは自動更新される
+      // 新着あり → データを差し替えて再描画
+      messages=list.map(function(m){
+        var jst=toJST(m.timestamp);
+        return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+      });
+      renderList();
     }catch(e){}
-  },60000);
+    autoRefreshBusy=false;
+  },90000);
   var saved=localStorage.getItem('ebay_manual');
   if(saved) document.getElementById('manual-text').value=saved;
   reorderHeaderDOM();
