@@ -1169,7 +1169,7 @@ async function loadBuyerDetail(buyer, idx){
       if(info.positivePercent) fb+='（好評価 '+Math.round(parseFloat(info.positivePercent))+'%）';
       rows+=row('評価数', fb);
     }
-    if(info.userCountryLabel) rows+=row('アカウント国', info.userCountryLabel);
+    // アカウント国は配送先と紛らわしいため非表示
     if(info.registrationDate){
       var rd=new Date(info.registrationDate);
       var years=Math.floor((Date.now()-rd.getTime())/(365.25*86400000));
@@ -1177,6 +1177,7 @@ async function loadBuyerDetail(buyer, idx){
     }
 
     if(info.purchased){
+      if(info.marketplace) rows+=row('購入サイト', info.marketplace);
       rows+=row('氏名', info.name);
       // 配送先住所をまとめて表示（コピーしやすいよう1ブロック）
       var full=[
