@@ -191,6 +191,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .reply-input-ja:focus{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,0.15);}
 .reply-input-en{flex:1;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
 .reply-input-en:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,0.12);}
+.btn-trans2{background:#0891b2;color:#fff;border:1px solid #0e7490;font-weight:700;}
+.btn-trans2:hover{background:#0e7490;}
+.btn-trans2:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
 .btn-trans{background:#7c3aed;color:#fff;border:1px solid #6d28d9;font-weight:700;}
 .btn-trans:hover{background:#6d28d9;}
 .btn-trans:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
@@ -494,7 +497,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         </div>
         <div class="reply-actions">
           <div class="canned-panel" id="canned-panel"></div>
-          <button class="btn btn-trans" id="btn-translate-en" onclick="translateToEnglish()">→ 英訳</button>
+          <button class="btn btn-trans" id="btn-translate-en" onclick="translateToEnglish()">日本語 → 英語</button>
+          <button class="btn btn-trans2" id="btn-translate-ja" onclick="translateToJapanese()">英語 → 日本語</button>
           <button class="btn btn-send" id="btn-send-reply" onclick="sendReplyToEbay()">&#9993; eBayに送信</button>
           <button class="btn btn-ghost" onclick="regenReply()">AI返信案</button>
           <button class="btn btn-primary" id="btn-copy-reply" onclick="copyReply()">コピー</button>
@@ -901,6 +905,7 @@ function renderChatDetail(){
   document.getElementById('d-input-ja').value='';
   if(m.reply){
     document.getElementById('d-reply').value=m.reply;
+    if(m.replyJa) document.getElementById('d-input-ja').value=m.replyJa;
     var s=document.getElementById('d-status');s.className='reply-status status-done';s.textContent='生成済み';
   } else {
     document.getElementById('d-reply').value='';
@@ -1082,6 +1087,31 @@ function copyText(text,el){
     setTimeout(function(){el.classList.remove('copied');},1500);
   });
 }
+// ===== 英語→日本語 翻訳（内容確認用） =====
+async function translateToJapanese(){
+  var en=document.getElementById('d-reply').value.trim();
+  if(!en){ alert('英語の返信文が空です'); return; }
+  var btn=document.getElementById('btn-translate-ja');
+  var orig=btn.innerHTML;
+  btn.innerHTML='翻訳中...';
+  btn.disabled=true;
+  try{
+    var prompt='以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力し、説明や前置きは不要です。段落間の空行は1行までにしてください。\n\n'+en;
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    var data=await res.json();
+    var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim().replace(/\n{3,}/g,'\n\n');
+    document.getElementById('d-input-ja').value=ja;
+    if(currentIdx!==null&&messages[currentIdx]) messages[currentIdx].replyJa=ja;
+    btn.innerHTML='✓ 完了';
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1500);
+  }catch(e){
+    btn.innerHTML='✗ 失敗';
+    alert('翻訳エラー: '+e.message);
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
+  }
+}
+
 // ===== 日本語→英語 翻訳 =====
 async function translateToEnglish(){
   var ja=document.getElementById('d-input-ja').value.trim();
@@ -1355,15 +1385,39 @@ async function generateReply(i){
   var prompt='あなたはeBay輸出セラーのメッセージ返信アシスタントです。'+manualSection+histSection
     +'\nバイヤー名: '+m.buyer+'\n商品: '+(m.item||'不明')+'\n購入状況: '+(m.sold?'購入済み (SOLD)':'問い合わせのみ（未購入）')
     +'\n新着メッセージ: '+m.msg
-    +'\n【出力ルール】\n- 英語返信文のみ出力（説明・前置き・件名不要）\n- 約束できないことは約束しない\n- 確認が必要な事項は「確認してから回答する」旨を伝える\n- 過去のやり取りがある場合はその文脈を考慮する\n- 丁寧かつ簡潔に';
+    +'\n\n【出力ルール】'
+    +'\n- 英語の返信文と、その日本語訳を出力する'
+    +'\n- 必ず次の形式で出力（他の説明・前置き・件名は不要）:'
+    +'\n===EN==='
+    +'\n（英語の返信文）'
+    +'\n===JA==='
+    +'\n（上の英文の日本語訳）'
+    +'\n- 約束できないことは約束しない'
+    +'\n- 確認が必要な事項は「確認してから回答する」旨を伝える'
+    +'\n- 過去のやり取りがある場合はその文脈を考慮する'
+    +'\n- 丁寧かつ簡潔に'
+    +'\n- 段落間の空行は1行まで';
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:600,messages:[{role:'user',content:prompt}]})});
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
-    var text=(data.content&&data.content[0]&&data.content[0].text)||'エラーが発生しました。再生成してください。';
+    var raw=(data.content&&data.content[0]&&data.content[0].text)||'';
+    if(!raw){ throw new Error('empty'); }
+
+    // ===EN=== / ===JA=== で分割
+    var en=raw, ja='';
+    var mEn=raw.match(/===EN===\s*([\s\S]*?)\s*===JA===/);
+    var mJa=raw.match(/===JA===\s*([\s\S]*)$/);
+    if(mEn) en=mEn[1].trim();
+    if(mJa) ja=mJa[1].trim();
+    en=en.replace(/\n{3,}/g,'\n\n');
+    ja=ja.replace(/\n{3,}/g,'\n\n');
+
     if(m.reply) m.replyHistory.push(m.reply);
-    m.reply=text;m.status='done';
+    m.reply=en; m.replyJa=ja; m.status='done';
     if(currentIdx===i){
-      rEl.value=text.replace(/\n{3,}/g,'\n\n');
+      rEl.value=en;
+      var jaInput=document.getElementById('d-input-ja');
+      if(jaInput) jaInput.value=ja;
       sEl.className='reply-status status-done';sEl.textContent='生成済み';
       updateReplyHistorySelect();
     }
