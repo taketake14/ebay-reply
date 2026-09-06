@@ -522,6 +522,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="すべての吹き出しを日本語に翻訳">🇯🇵 全文を日本語に</button>
       <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグを付ける</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
+      <button class="s2-btn" onclick="resetLayout()" title="チャットと返信欄の高さを初期状態に戻す">&#8635; 表示リセット</button>
       <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()" style="display:none;"></button>
 
     </div>
@@ -1337,6 +1338,19 @@ function updateMemoBar(memo){
 }
 
 // メモ欄までスクロールしてフォーカス
+// レイアウトを初期状態に戻す
+function resetLayout(){
+  try{ localStorage.removeItem('ebay_resize'); }catch(e){}
+  var ca=document.getElementById('chat-area');
+  var ra=document.getElementById('reply-area');
+  var cc=document.getElementById('chat-col');
+  var rp=document.getElementById('right-panel');
+  if(ca){ ca.style.flex='1.8'; ca.style.height='auto'; }
+  if(ra){ ra.style.flex='1'; ra.style.height='auto'; }
+  if(cc){ cc.style.flex='1'; cc.style.width='auto'; }
+  if(rp){ rp.style.flex='none'; rp.style.width='260px'; }
+}
+
 function jumpToMemo(){
   var sec=document.getElementById('rp-section-memo');
   var body=document.getElementById('rp-body-memo');
@@ -2052,13 +2066,17 @@ document.addEventListener('mousedown',function(e){
       var replyArea=document.getElementById('reply-area');
       var chatCol=document.getElementById('chat-col');
       var rightPanel=document.getElementById('right-panel');
-      // 保存値が範囲外なら安全な値に補正（画面外に飛んだ状態から復帰できるように）
-      var MIN_REPLY=230, MIN_CHAT=100;
+      // 保存値を現在の画面サイズに必ず収める
+      var MIN_REPLY=210, MIN_CHAT=100;
       var ch=s.chatH, rh=s.replyH;
-      if(ch&&rh){
-        var tot=ch+rh;
-        if(rh<MIN_REPLY){ rh=MIN_REPLY; ch=Math.max(MIN_CHAT, tot-rh); }
-        if(ch<MIN_CHAT){ ch=MIN_CHAT; rh=Math.max(MIN_REPLY, tot-ch); }
+      var main=document.querySelector('.s2-main');
+      var avail=main?main.getBoundingClientRect().height:0;
+      if(ch&&rh&&avail>60){
+        // 画面に収まる範囲へ強制的に収める
+        if(rh>avail-MIN_CHAT) rh=avail-MIN_CHAT;
+        if(rh<MIN_REPLY) rh=MIN_REPLY;
+        ch=avail-rh;
+        if(ch<MIN_CHAT){ ch=MIN_CHAT; rh=Math.max(MIN_REPLY, avail-ch); }
         chatArea.style.flex='none'; chatArea.style.height=ch+'px';
         replyArea.style.flex='none'; replyArea.style.height=rh+'px';
       }
@@ -2082,6 +2100,28 @@ document.addEventListener('mousedown',function(e){
   }
   // チャット画面を開くたびに復元
   window.restoreResize=restoreResize;
+
+  // ウィンドウサイズ変更時に、はみ出していれば自動補正
+  var resizeTimer=null;
+  window.addEventListener('resize',function(){
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(function(){
+      var main=document.querySelector('.s2-main');
+      var ca=document.getElementById('chat-area');
+      var ra=document.getElementById('reply-area');
+      if(!main||!ca||!ra) return;
+      var avail=main.getBoundingClientRect().height;
+      if(avail<60) return;
+      var rh=ra.getBoundingClientRect().height;
+      var ch=ca.getBoundingClientRect().height;
+      // 合計が画面を超えている、または返信欄が潰れている場合は補正
+      if(ch+rh>avail+4 || rh<200){
+        var newRh=Math.min(Math.max(rh,210), avail-100);
+        ca.style.flex='none'; ca.style.height=(avail-newRh)+'px';
+        ra.style.flex='none'; ra.style.height=newRh+'px';
+      }
+    },200);
+  });
 
   // 縦リサイザー（チャット↕返信）
   var vRes=document.getElementById('v-resizer');
