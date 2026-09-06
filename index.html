@@ -159,41 +159,39 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
 .h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
 
-.chat-area{padding:16px 20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;background:var(--bg3);}
+.chat-area{padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;}
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
-.bbl{max-width:74%;padding:10px 14px;font-size:14px;line-height:1.7;word-break:break-word;white-space:pre-wrap;}
+.bbl{max-width:74%;padding:11px 15px;font-size:14px;line-height:1.72;word-break:break-word;white-space:pre-wrap;letter-spacing:0.005em;}
 /* 自分の吹き出し：極薄白ベース＋アクセントの濃い枠線 */
 /* ===== 吹き出し：自分＝青 / バイヤー＝琥珀 ===== */
 .bbl{position:relative;}
 
-/* --- 自分（右側・青） --- */
-.bbl.mine{background:#eff6ff;color:#0f172a;border-radius:16px 16px 4px 16px;border:1.5px solid #7fb3f0;}
+/* --- 自分（右側）：塗りつぶしで存在感を出す --- */
+.bbl.mine{background:#e8effa;color:#1a2540;border-radius:16px 16px 4px 16px;border:none;}
 
-/* --- バイヤー（左側・琥珀） --- */
-.bbl.theirs{background:#fffbf0;color:#1e293b;border-radius:16px 16px 16px 4px;border:1.5px solid #f7c65c;}
+/* --- バイヤー（左側）：白地＋細い枠で軽く --- */
+.bbl.theirs{background:#ffffff;color:#1e2939;border-radius:16px 16px 16px 4px;border:1px solid #e3e8ef;box-shadow:0 1px 2px rgba(16,24,40,0.04);}
 
-/* 新着はやや濃い枠 */
-.bbl.theirs.new-msg{border-color:#f0a92e;}
-.bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);display:flex;align-items:center;gap:6px;}
+/* 新着：左に色帯を入れて主張しすぎず目立たせる */
+.bbl.theirs.new-msg{border-color:#e3e8ef;box-shadow:inset 3px 0 0 #f59e0b, 0 1px 2px rgba(16,24,40,0.04);}
+.bbl-meta{font-size:10.5px;color:#98a2b3;padding:0 2px;font-family:var(--mono);display:flex;align-items:center;gap:4px;}
 .bbl-wrap.mine .bbl-meta{flex-direction:row-reverse;}
 
 /* 吹き出しごとの翻訳ボタン */
-.bbl-tr-btn{font-size:11px;font-weight:600;padding:2px 9px;border-radius:11px;border:1px solid #cbd5e1;background:#fff;color:#64748b;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.13s;}
-.bbl-tr-btn:hover{background:#f1f5f9;border-color:#94a3b8;color:#334155;}
-.bbl-tr-btn:active{transform:scale(0.95);}
-.bbl-tr-btn.on{background:#475569;border-color:#475569;color:#fff;}
-.bbl-tr-btn.on:hover{background:#334155;border-color:#334155;}
-.bbl-tr-btn:disabled{opacity:0.6;cursor:wait;}
+/* 翻訳ボタン：メタ情報に馴染む控えめなテキストボタン */
+.bbl-tr-btn{font-size:11px;font-weight:500;padding:1px 7px;border-radius:4px;border:none;background:transparent;color:#98a2b3;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.12s;}
+.bbl-tr-btn:hover{background:#f2f4f7;color:#475467;}
+.bbl-tr-btn.on{background:#f2f4f7;color:#475467;font-weight:600;}
+.bbl-tr-btn:disabled{opacity:0.5;cursor:wait;}
 
 /* 翻訳文の表示 */
-.bbl-ja{max-width:74%;margin-top:4px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;}
-/* バイヤーの訳＝琥珀系 */
-.bbl-wrap.theirs .bbl-ja{background:#fffdf5;border:1px solid #fae5b0;border-left:3px solid #f0a92e;color:#78632e;}
-/* 自分の訳＝ブルー系 */
-.bbl-wrap.mine .bbl-ja{background:#f7fbff;border:1px solid #c3ddf7;border-right:3px solid #7fb3f0;color:#3c5a7a;}
-.new-badge{font-size:12px;font-weight:700;color:#1d4ed8;text-align:center;padding:5px 12px;margin:6px 0;background:#dbeafe;border-radius:6px;display:inline-block;align-self:center;}
+/* 訳文：原文の付属情報として一段引いた見せ方（枠なし・細いライン1本） */
+.bbl-ja{max-width:74%;margin-top:5px;padding:2px 0 2px 11px;border-radius:0;font-size:12.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:#5b6478;background:none;border:none;}
+.bbl-wrap.theirs .bbl-ja{border-left:2px solid #d5dbe5;}
+.bbl-wrap.mine .bbl-ja{padding:2px 11px 2px 0;border-left:none;border-right:2px solid #b9c6de;text-align:left;}
+.new-badge{font-size:11px;font-weight:600;color:#b54708;text-align:center;padding:3px 12px;margin:4px 0;background:#fffaeb;border:1px solid #fedf89;border-radius:20px;display:inline-block;align-self:center;letter-spacing:0.02em;}
 
 /* 返信エリア */
 .reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;}
