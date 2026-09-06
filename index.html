@@ -168,7 +168,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl.mine{background:#ffffff;color:#1e293b;border-radius:16px 16px 4px 16px;border:2px solid #93c5fd;}
 .bbl.theirs{background:var(--bg2);color:var(--text);border-radius:16px 16px 16px 4px;border:1px solid var(--border);box-shadow:var(--shadow);}
 .bbl.theirs.new-msg{border-color:var(--orange);box-shadow:0 0 0 3px var(--orange-light);}
-.bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);}
+.bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);display:flex;align-items:center;gap:6px;}
+.bbl-wrap.mine .bbl-meta{flex-direction:row-reverse;}
+
+/* 吹き出しごとの翻訳ボタン */
+.bbl-tr-btn{font-size:10px;padding:1px 7px;border-radius:4px;border:1px solid var(--border2);background:var(--bg2);color:var(--text3);cursor:pointer;font-family:var(--sans);line-height:1.5;white-space:nowrap;}
+.bbl-tr-btn:hover{background:#eff6ff;border-color:var(--accent);color:var(--accent);}
+.bbl-tr-btn.on{background:#fef3c7;border-color:#fbbf24;color:#b45309;}
+.bbl-tr-btn:disabled{opacity:0.5;cursor:wait;}
+
+/* 翻訳文の表示 */
+.bbl-ja{max-width:74%;margin-top:4px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #f59e0b;border-radius:8px;font-size:13px;line-height:1.7;color:#57534e;white-space:pre-wrap;word-break:break-word;}
+.bbl-wrap.mine .bbl-ja{border-left:1px solid #fde68a;border-right:3px solid #f59e0b;}
 .new-badge{font-size:12px;font-weight:700;color:#1d4ed8;text-align:center;padding:5px 12px;margin:6px 0;background:#dbeafe;border-radius:6px;display:inline-block;align-self:center;}
 
 /* 返信エリア */
@@ -437,7 +448,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="s2-buyer-name" id="d-name">—</div>
     <div class="s2-header-tags" id="d-header-tags"></div>
     <div class="s2-header-actions">
-      <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="メッセージを日本語訳表示">🇯🇵 日本語訳</button>
+      <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="すべての吹き出しを日本語に翻訳">🇯🇵 全文を日本語に</button>
       <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグを付ける</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
       <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()" style="display:none;"></button>
@@ -966,71 +977,126 @@ function updateStarBtn(){
   btn.classList.toggle('on',m.starred);
 }
 
+// ===== チャット翻訳（Claude API・吹き出し単位） =====
 var chatTranslateMode = false;
-// 元のテキストを保存する Map
-var originalTexts = new Map();
+// 翻訳結果のキャッシュ（本文 → 日本語訳）。同じ文は再翻訳しない
+var translationCache = {};
+// ブラウザに保存して再訪時も再翻訳しない
+try{
+  var savedTr=localStorage.getItem('ebay_translations');
+  if(savedTr) translationCache=JSON.parse(savedTr);
+}catch(e){}
+function saveTranslationCache(){
+  try{
+    var keys=Object.keys(translationCache);
+    // 増えすぎたら古いものから削る（最大500件）
+    if(keys.length>500){
+      var trimmed={};
+      keys.slice(-500).forEach(function(k){trimmed[k]=translationCache[k];});
+      translationCache=trimmed;
+    }
+    localStorage.setItem('ebay_translations',JSON.stringify(translationCache));
+  }catch(e){}
+}
 
-function toggleChatTranslate(){
+// 単一テキストをClaudeで翻訳
+async function translateText(text){
+  if(!text || !text.trim()) return '';
+  var key = text.trim();
+  if(translationCache[key]) return translationCache[key];
+
+  var prompt='次の文章を自然な日本語に翻訳してください。翻訳文だけを出力し、説明・前置き・原文の再掲は一切不要です。'
+    +'原文が既に日本語の場合はそのまま出力してください。改行は原文の構造を保ってください。\n\n'+text;
+
+  var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
+  var data=await res.json();
+  var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+  if(ja){ translationCache[key]=ja; saveTranslationCache(); }
+  return ja;
+}
+
+// 吹き出し1件を翻訳して下に表示
+async function translateBubble(idx, btn){
+  if(currentIdx===null) return;
+  var wrap=btn.closest('.bbl-wrap');
+  if(!wrap) return;
+  var bbl=wrap.querySelector('.bbl');
+  if(!bbl) return;
+
+  var existing=wrap.querySelector('.bbl-ja');
+  if(existing){
+    // すでに表示済みなら消す（トグル）
+    existing.remove();
+    btn.textContent='訳';
+    btn.classList.remove('on');
+    return;
+  }
+
+  var orig=bbl.getAttribute('data-orig') || bbl.textContent;
+  btn.textContent='...';
+  btn.disabled=true;
+  try{
+    var ja=await translateText(orig);
+    if(ja){
+      var div=document.createElement('div');
+      div.className='bbl-ja';
+      div.textContent=ja;
+      bbl.parentElement.insertBefore(div, btn.parentElement);
+      btn.textContent='原文';
+      btn.classList.add('on');
+    } else {
+      btn.textContent='訳';
+    }
+  }catch(e){
+    btn.textContent='✕';
+    setTimeout(function(){btn.textContent='訳';},1500);
+  }
+  btn.disabled=false;
+}
+
+// 全体翻訳のトグル
+async function toggleChatTranslate(){
+  if(currentIdx===null) return;
   chatTranslateMode = !chatTranslateMode;
   var btn = document.getElementById('btn-translate');
   var chatArea = document.getElementById('chat-area');
-  if(chatTranslateMode){
-    btn.style.background='var(--navy)';btn.style.color='#fff';btn.style.borderColor='var(--navy)';
-    btn.textContent='🇯🇵 翻訳中...';
-    translateBubblesWithGoogle(chatArea, function(){
-      btn.textContent='🇯🇵 日本語表示中（クリックで戻す）';
-    });
-  } else {
+
+  if(!chatTranslateMode){
+    // 全部の訳を消す
+    chatArea.querySelectorAll('.bbl-ja').forEach(function(e){e.remove();});
+    chatArea.querySelectorAll('.bbl-tr-btn').forEach(function(b){b.textContent='訳';b.classList.remove('on');});
     btn.style.background='';btn.style.color='';btn.style.borderColor='';
-    btn.textContent='🇯🇵 日本語訳';
-    restoreOriginalTexts(chatArea);
+    btn.textContent='🇯🇵 全文を日本語に';
+    return;
   }
-}
 
-// Google翻訳のURLを使ったテキスト置換翻訳
-function translateBubblesWithGoogle(container, callback){
-  // バブル内の英文テキストノードを収集
-  var bubbles = container.querySelectorAll('.bbl');
-  var texts = [];
-  bubbles.forEach(function(bbl, i){
-    var orig = bbl.textContent;
-    originalTexts.set(i, {el: bbl, text: orig});
-    texts.push(orig);
-  });
-  if(texts.length === 0){ if(callback) callback(); return; }
+  btn.style.background='var(--navy)';btn.style.color='#fff';btn.style.borderColor='var(--navy)';
+  var wraps=Array.from(chatArea.querySelectorAll('.bbl-wrap'));
+  var total=wraps.length, done=0;
 
-  // Google翻訳の非公式APIで一括翻訳
-  var combined = texts.join('\n|||SPLIT|||\n');
-  var url = 'https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ja&dt=t&q=' + encodeURIComponent(combined);
-
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      // レスポンスからテキストを結合
-      var translated = '';
-      if(data && data[0]){
-        data[0].forEach(function(part){ if(part && part[0]) translated += part[0]; });
+  for(var i=0;i<wraps.length;i++){
+    if(!chatTranslateMode) break;  // 途中で解除されたら中断
+    var w=wraps[i];
+    if(w.querySelector('.bbl-ja')){ done++; continue; }  // 訳済みは飛ばす
+    var bbl=w.querySelector('.bbl');
+    if(!bbl) continue;
+    var orig=bbl.getAttribute('data-orig') || bbl.textContent;
+    btn.textContent='🇯🇵 翻訳中 '+(done+1)+'/'+total;
+    try{
+      var ja=await translateText(orig);
+      if(ja && chatTranslateMode){
+        var div=document.createElement('div');
+        div.className='bbl-ja';
+        div.textContent=ja;
+        var trBtn=w.querySelector('.bbl-tr-btn');
+        bbl.parentElement.insertBefore(div, trBtn?trBtn.parentElement:null);
+        if(trBtn){trBtn.textContent='原文';trBtn.classList.add('on');}
       }
-      var parts = translated.split('|||SPLIT|||');
-      originalTexts.forEach(function(val, i){
-        if(parts[i] !== undefined){
-          val.el.textContent = parts[i].trim();
-        }
-      });
-      if(callback) callback();
-    })
-    .catch(function(e){
-      // エラー時はそのまま
-      console.warn('翻訳エラー:', e);
-      if(callback) callback();
-    });
-}
-
-function restoreOriginalTexts(container){
-  originalTexts.forEach(function(val){
-    val.el.textContent = val.text;
-  });
-  originalTexts.clear();
+    }catch(e){}
+    done++;
+  }
+  if(chatTranslateMode) btn.textContent='🇯🇵 日本語表示中（クリックで戻す）';
 }
 
 function fmtTime(t){
@@ -1042,6 +1108,13 @@ function fmtTime(t){
 
 function renderChatBubbles(){
   if(currentIdx===null) return;
+  // 再描画時は翻訳表示を解除（吹き出しが作り直されるため）
+  var trBtn=document.getElementById('btn-translate');
+  if(trBtn && chatTranslateMode){
+    chatTranslateMode=false;
+    trBtn.style.background='';trBtn.style.color='';trBtn.style.borderColor='';
+    trBtn.textContent='🇯🇵 全文を日本語に';
+  }
   var m=messages[currentIdx];
   var el=document.getElementById('chat-area');
   var html='';
@@ -1071,8 +1144,10 @@ function renderChatBubbles(){
     // 新着バッジは「未返信 かつ 最後のメッセージがバイヤーから」の場合だけ
     if(h.isNew && idx===lastIdx && idx>0 && h.from==='buyer' && !m.replied) html+='<div class="new-badge">&#8595; 新着メッセージ</div>';
     html+='<div class="bbl-wrap '+side+'">'
-      +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'">'+esc(h.text)+'</div>'
-      +'<div class="bbl-meta">'+esc(fmtTime(h.time))+'</div>'
+      +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'" data-orig="'+esc(h.text)+'">'+esc(h.text)+'</div>'
+      +'<div class="bbl-meta">'+esc(fmtTime(h.time))
+        +'<button class="bbl-tr-btn" onclick="translateBubble('+idx+',this)" title="この吹き出しを日本語に">訳</button>'
+      +'</div>'
       +'</div>';
   });
   el.innerHTML=html;
