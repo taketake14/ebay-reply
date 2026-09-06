@@ -159,7 +159,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
 .h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
 
-.chat-area{padding:16px 32px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;background:var(--bg3);}
+.chat-area{padding:16px 20px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;background:var(--bg3);}
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
@@ -169,34 +169,30 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl{position:relative;}
 
 /* --- 自分（右側・青） --- */
-.bbl.mine{background:#eff6ff;color:#0f172a;border-radius:16px 16px 3px 16px;border:1.5px solid #7fb3f0;}
-/* しっぽ：SVGで曲線を描き、枠と塗りを一体化（継ぎ目なし） */
-.bbl.mine::after{content:'';position:absolute;right:-13px;bottom:-1.5px;width:15px;height:17px;
-  background:no-repeat center/100% 100% url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 17'><path d='M0 0 C0 9 3 15 14 16.2 C6 16.2 0.5 12 0 3 Z' fill='%23eff6ff' stroke='%237fb3f0' stroke-width='1.5' stroke-linejoin='round'/></svg>");}
-/* 吹き出し本体との継ぎ目を隠す */
-.bbl.mine::before{content:'';position:absolute;right:-1.5px;bottom:0;width:4px;height:8px;background:#eff6ff;z-index:1;}
+.bbl.mine{background:#eff6ff;color:#0f172a;border-radius:16px 16px 4px 16px;border:1.5px solid #7fb3f0;}
 
 /* --- バイヤー（左側・琥珀） --- */
-.bbl.theirs{background:#fffbf0;color:#1e293b;border-radius:16px 16px 16px 3px;border:1.5px solid #f7c65c;}
-.bbl.theirs::after{content:'';position:absolute;left:-13px;bottom:-1.5px;width:15px;height:17px;
-  background:no-repeat center/100% 100% url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 17'><path d='M15 0 C15 9 12 15 1 16.2 C9 16.2 14.5 12 15 3 Z' fill='%23fffbf0' stroke='%23f7c65c' stroke-width='1.5' stroke-linejoin='round'/></svg>");}
-.bbl.theirs::before{content:'';position:absolute;left:-1.5px;bottom:0;width:4px;height:8px;background:#fffbf0;z-index:1;}
+.bbl.theirs{background:#fffbf0;color:#1e293b;border-radius:16px 16px 16px 4px;border:1.5px solid #f7c65c;}
 
 /* 新着はやや濃い枠 */
 .bbl.theirs.new-msg{border-color:#f0a92e;}
-.bbl.theirs.new-msg::after{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 15 17'><path d='M15 0 C15 9 12 15 1 16.2 C9 16.2 14.5 12 15 3 Z' fill='%23fffbf0' stroke='%23f0a92e' stroke-width='1.5' stroke-linejoin='round'/></svg>");}
 .bbl-meta{font-size:11px;color:var(--text2);padding:0 4px;font-family:var(--mono);display:flex;align-items:center;gap:6px;}
 .bbl-wrap.mine .bbl-meta{flex-direction:row-reverse;}
 
 /* 吹き出しごとの翻訳ボタン */
-.bbl-tr-btn{font-size:10px;padding:1px 7px;border-radius:4px;border:1px solid var(--border2);background:var(--bg2);color:var(--text3);cursor:pointer;font-family:var(--sans);line-height:1.5;white-space:nowrap;}
-.bbl-tr-btn:hover{background:#eff6ff;border-color:var(--accent);color:var(--accent);}
-.bbl-tr-btn.on{background:#fef3c7;border-color:#fbbf24;color:#b45309;}
-.bbl-tr-btn:disabled{opacity:0.5;cursor:wait;}
+.bbl-tr-btn{font-size:11px;font-weight:600;padding:2px 9px;border-radius:11px;border:1px solid #cbd5e1;background:#fff;color:#64748b;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.13s;}
+.bbl-tr-btn:hover{background:#f1f5f9;border-color:#94a3b8;color:#334155;}
+.bbl-tr-btn:active{transform:scale(0.95);}
+.bbl-tr-btn.on{background:#475569;border-color:#475569;color:#fff;}
+.bbl-tr-btn.on:hover{background:#334155;border-color:#334155;}
+.bbl-tr-btn:disabled{opacity:0.6;cursor:wait;}
 
 /* 翻訳文の表示 */
-.bbl-ja{max-width:74%;margin-top:4px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-left:3px solid #f59e0b;border-radius:8px;font-size:13px;line-height:1.7;color:#57534e;white-space:pre-wrap;word-break:break-word;}
-.bbl-wrap.mine .bbl-ja{border-left:1px solid #fde68a;border-right:3px solid #f59e0b;}
+.bbl-ja{max-width:74%;margin-top:4px;padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.7;white-space:pre-wrap;word-break:break-word;}
+/* バイヤーの訳＝琥珀系 */
+.bbl-wrap.theirs .bbl-ja{background:#fffdf5;border:1px solid #fae5b0;border-left:3px solid #f0a92e;color:#78632e;}
+/* 自分の訳＝ブルー系 */
+.bbl-wrap.mine .bbl-ja{background:#f7fbff;border:1px solid #c3ddf7;border-right:3px solid #7fb3f0;color:#3c5a7a;}
 .new-badge{font-size:12px;font-weight:700;color:#1d4ed8;text-align:center;padding:5px 12px;margin:6px 0;background:#dbeafe;border-radius:6px;display:inline-block;align-self:center;}
 
 /* 返信エリア */
@@ -288,7 +284,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-panel-row{display:flex;align-items:center;gap:9px;}
 .buyer-panel-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;}
 .sub-country{font-size:12px;font-weight:600;color:var(--text);}
-.sub-country-suffix{font-size:11px;font-weight:400;color:var(--text3);margin-left:3px;}
 .sub-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
 .sub-tag.sold{background:#fee2e2;color:#dc2626;border-color:#fecaca;font-weight:700;}
 
@@ -1137,7 +1132,7 @@ async function translateBubble(idx, btn){
   if(existing){
     // すでに表示済みなら消す（トグル）
     existing.remove();
-    btn.textContent='訳';
+    btn.textContent='日本語';
     btn.classList.remove('on');
     return;
   }
@@ -1152,14 +1147,14 @@ async function translateBubble(idx, btn){
       div.className='bbl-ja';
       div.textContent=ja;
       bbl.parentElement.insertBefore(div, btn.parentElement);
-      btn.textContent='原文';
+      btn.textContent='原文に戻す';
       btn.classList.add('on');
     } else {
-      btn.textContent='訳';
+      btn.textContent='日本語';
     }
   }catch(e){
     btn.textContent='✕';
-    setTimeout(function(){btn.textContent='訳';},1500);
+    setTimeout(function(){btn.textContent='日本語';},1500);
   }
   btn.disabled=false;
 }
@@ -1174,7 +1169,7 @@ async function toggleChatTranslate(){
   if(!chatTranslateMode){
     // 全部の訳を消す
     chatArea.querySelectorAll('.bbl-ja').forEach(function(e){e.remove();});
-    chatArea.querySelectorAll('.bbl-tr-btn').forEach(function(b){b.textContent='訳';b.classList.remove('on');});
+    chatArea.querySelectorAll('.bbl-tr-btn').forEach(function(b){b.textContent='日本語';b.classList.remove('on');});
     btn.style.background='';btn.style.color='';btn.style.borderColor='';
     btn.textContent='🇯🇵 全文を日本語に';
     return;
@@ -1200,7 +1195,7 @@ async function toggleChatTranslate(){
         div.textContent=ja;
         var trBtn=w.querySelector('.bbl-tr-btn');
         bbl.parentElement.insertBefore(div, trBtn?trBtn.parentElement:null);
-        if(trBtn){trBtn.textContent='原文';trBtn.classList.add('on');}
+        if(trBtn){trBtn.textContent='原文に戻す';trBtn.classList.add('on');}
       }
     }catch(e){}
     done++;
@@ -1255,7 +1250,7 @@ function renderChatBubbles(){
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'" data-orig="'+esc(h.text)+'">'+esc(h.text)+'</div>'
       +'<div class="bbl-meta">'+esc(fmtTime(h.time))
-        +'<button class="bbl-tr-btn" onclick="translateBubble('+idx+',this)" title="この吹き出しを日本語に">訳</button>'
+        +'<button class="bbl-tr-btn" onclick="translateBubble('+idx+',this)" title="この吹き出しを日本語に">日本語</button>'
       +'</div>'
       +'</div>';
   });
@@ -1482,8 +1477,7 @@ async function loadBuyerDetail(buyer, idx){
     var subEl=document.getElementById('buyer-panel-sub');
     if(subEl){
       if(info.purchased && (info.countryLabel||info.country)){
-        subEl.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)
-          +'<span class="sub-country-suffix">へ発送</span></span>';
+        subEl.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>';
       } else if(!info.purchased){
         subEl.innerHTML='<span class="sub-tag">未購入</span>';
       } else {
