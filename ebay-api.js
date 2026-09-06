@@ -481,17 +481,30 @@ async function getUserInfo(username, skipCache) {
       const m = t.match(new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>'));
       return m ? m[1].trim() : '';
     };
+    // 国はいくつかのタグに入る可能性があるので順に探す
+    const siteToCountry = {
+      US:'US', UK:'GB', Australia:'AU', Canada:'CA', Germany:'DE', France:'FR',
+      Italy:'IT', Spain:'ES', Netherlands:'NL', Austria:'AT', Belgium:'BE',
+      Switzerland:'CH', Ireland:'IE', Poland:'PL', Singapore:'SG', HongKong:'HK',
+      India:'IN', Malaysia:'MY', Philippines:'PH', Japan:'JP', CanadaFrench:'CA',
+    };
+    const rawSite = pick('RegistrationSite') || pick('Site') || '';
+    const country = pick('Country')
+      || (pick('RegistrationAddress') ? (pick('RegistrationAddress').match(/<Country>([^<]+)<\/Country>/) || [])[1] : '')
+      || siteToCountry[rawSite] || '';
+
     const info = {
       feedbackScore: pick('FeedbackScore') || '',
       positivePercent: pick('PositiveFeedbackPercent') || '',
-      country: pick('Country') || '',
+      country: country || '',
+      site: rawSite,
       registrationDate: pick('RegistrationDate') || '',
       photoUrl: pick('PhotoDisplayURL') || '',
       status: pick('Status') || '',
+      feedbackPrivate: pick('FeedbackPrivate') === 'true',
       _ack: pick('Ack') || '',
       _err: pick('LongMessage') || pick('ShortMessage') || '',
       _httpStatus: res.status,
-      _raw: (!pick('FeedbackScore') && !pick('Country')) ? t.substring(0, 600) : undefined,
     };
     userInfoCache[key] = info;
     return info;
