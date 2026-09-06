@@ -475,6 +475,25 @@ const MARKETPLACE_NAMES = {
   EBAY_IN:'ebay.in（インド）',
   EBAY_JP:'ebay.co.jp（日本）',
   EBAY_MOTORS_US:'ebay Motors（アメリカ）',
+  EBAY_CZ:'ebay.cz（チェコ）',
+  EBAY_DK:'ebay.dk（デンマーク）',
+  EBAY_FI:'ebay.fi（フィンランド）',
+  EBAY_GR:'ebay.gr（ギリシャ）',
+  EBAY_HU:'ebay.hu（ハンガリー）',
+  EBAY_IL:'ebay.co.il（イスラエル）',
+  EBAY_NO:'ebay.no（ノルウェー）',
+  EBAY_NZ:'ebay.co.nz（ニュージーランド）',
+  EBAY_PE:'ebay.com.pe（ペルー）',
+  EBAY_PR:'ebay.com（プエルトリコ）',
+  EBAY_PT:'ebay.pt（ポルトガル）',
+  EBAY_RU:'ebay.ru（ロシア）',
+  EBAY_SE:'ebay.se（スウェーデン）',
+  EBAY_ZA:'ebay.co.za（南アフリカ）',
+  EBAY_TW:'ebay.com.tw（台湾）',
+  EBAY_TH:'ebay.co.th（タイ）',
+  EBAY_VN:'ebay.vn（ベトナム）',
+  EBAY_ID:'ebay.co.id（インドネシア）',
+  EBAY_CN:'ebay.cn（中国）',
 };
 function marketplaceName(id) {
   if (!id) return '';
@@ -482,15 +501,23 @@ function marketplaceName(id) {
 }
 
 // 注文オブジェクトからマーケットプレイスIDを探す（フィールド名が複数あり得る）
+// バイヤーが「購入した」サイトを取得（出品サイトとは別物）
 function pickMarketplaceId(o) {
   if (!o) return '';
   const li = (o.lineItems && o.lineItems[0]) || {};
-  return o.marketplaceId
+  // purchaseMarketplaceId = 実際に購入されたサイト（例: EBAY_IT）
+  // listingMarketplaceId  = 出品したサイト（例: EBAY_US）
+  return li.purchaseMarketplaceId
+    || o.marketplaceId
     || li.listingMarketplaceId
-    || li.purchaseMarketplaceId
-    || (o.fulfillmentStartInstructions && o.fulfillmentStartInstructions[0]
-        && o.fulfillmentStartInstructions[0].marketplaceId)
     || '';
+}
+
+// 出品サイト（参考用）
+function pickListingMarketplaceId(o) {
+  if (!o) return '';
+  const li = (o.lineItems && o.lineItems[0]) || {};
+  return li.listingMarketplaceId || '';
 }
 
 // ===== 注文オブジェクトを表示用に整形 =====
@@ -506,6 +533,7 @@ function formatOrder(o) {
     orderDate: o.creationDate || '',
     marketplace: marketplaceName(pickMarketplaceId(o)),
     marketplaceRaw: pickMarketplaceId(o),
+    listingSite: marketplaceName(pickListingMarketplaceId(o)),
     name: ship.fullName || '',
     email: ship.email || '',
     phone: (ship.primaryPhone && ship.primaryPhone.phoneNumber) || '',
@@ -654,6 +682,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       orderDate: o.creationDate || '',
       marketplace: marketplaceName(pickMarketplaceId(o)),
       marketplaceRaw: pickMarketplaceId(o),
+      listingSite: marketplaceName(pickListingMarketplaceId(o)),
       salesRecordNo: (li.legacyReference && li.legacyReference.legacyItemId) || '',
       name: ship.fullName || '',
       email: ship.email || '',
