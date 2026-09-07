@@ -71,22 +71,26 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s1-row{display:grid;gap:0;padding:12px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0f7ff !important;}
-/* ===== 未読：白背景・全文字濃く太く ===== */
-.s1-row.unread{background:#ffffff;}
-.s1-row.unread .s1-buyer-name{font-weight:800;color:#0f172a;}
-.s1-row.unread .s1-item-name{font-weight:700;color:#0f172a;}
-.s1-row.unread .s1-preview{color:#334155;font-weight:500;}
-.s1-row.unread .s1-date{color:#0f172a;font-weight:800;}
-/* ===== 既読：全体的に薄く・細く（一目で区別できる） ===== */
-.s1-row.read{background:#f8f9fb;}
-.s1-row.read .s1-buyer-name{font-weight:400;color:#94a3b8;}
-.s1-row.read .s1-item-name{font-weight:400;color:#94a3b8;}
-.s1-row.read .s1-preview{color:#94a3b8;}
-.s1-row.read .s1-date{color:#94a3b8;font-weight:600;}
-.s1-row.read .s1-time{color:#b6bfcc;}
+/* ===== 未読：左に色帯＋濃い文字 ===== */
+.s1-row.unread{background:#fff;box-shadow:inset 3px 0 0 var(--orange);}
+.s1-row.unread .s1-buyer-name{font-weight:700;color:#101828;}
+.s1-row.unread .s1-item-name{font-weight:500;color:#344054;}
+.s1-row.unread .s1-preview{color:#475467;}
+.s1-row.unread .s1-date{color:#101828;font-weight:700;}
+
+/* ===== 既読：淡色でトーンダウン ===== */
+.s1-row.read{background:#fcfcfd;box-shadow:none;}
+.s1-row.read .s1-buyer-name{font-weight:400;color:#98a2b3;}
+.s1-row.read .s1-item-name{font-weight:400;color:#b6bfcc;}
+.s1-row.read .s1-preview{color:#c2c8d2;}
+.s1-row.read .s1-date{color:#b6bfcc;font-weight:500;}
+.s1-row.read .s1-time{color:#c8cdd6;}
+.s1-row.read .s1-thumb{opacity:0.62;}
+.s1-row.read .s1-avatar{opacity:0.55;}
+
 /* even/odd廃止 */
-.s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#ffffff;}
-.s1-row.read.s1-even,.s1-row.read.s1-odd{background:#f8f9fb;}
+.s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#fff;}
+.s1-row.read.s1-even,.s1-row.read.s1-odd{background:#fcfcfd;}
 /* 列表示切替ボタン */
 .col-toggle-btn{font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;font-weight:500;position:relative;}
 .col-toggle-btn:hover{background:var(--bg3);}
@@ -99,8 +103,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
 .s1-time{font-size:11px;color:var(--text3);font-weight:400;font-family:var(--mono);}
 .s1-date{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono);}
-.s1-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:1px;}
-.s1-read-dot{width:7px;height:7px;}
+.s1-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);margin-bottom:3px;}
+.s1-read-dot{width:6px;height:6px;margin-bottom:3px;}
 /* 商品画像 */
 .s1-thumb{width:64px;height:64px;border-radius:6px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;}
 .s1-thumb img{width:100%;height:100%;object-fit:contain;}
@@ -644,7 +648,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <!-- 配送先セクション -->
         <div class="rp-section" id="rp-section-ship">
           <div class="rp-section-hdr" onclick="toggleRpSection('ship')">
-            <span class="rp-section-title">&#128666; 配送先・金額</span>
+            <span class="rp-section-title">&#128100; バイヤー・配送先</span>
             <span class="rp-toggle-icon" id="rp-icon-ship">&#9660;</span>
           </div>
           <div class="rp-section-body" id="rp-body-ship">
@@ -1139,15 +1143,18 @@ function renderChatDetail(){
     return '<div class="prod-kv-row"><span class="kv-k">'+label+'</span>'+valHtml+cp+'</div>';
   }
 
-  if(m.itemId) kvHtml+=kvRow('Item ID', m.itemId, {link:'https://www.ebay.com/itm/'+esc(m.itemId)});
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" id="prod-sku">—</span>'
-    +'<button class="cp-btn" id="cp-sku" title="SKUをコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
-
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
+  // 販売状況を最初に（一番知りたい情報）
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">状況</span>'
     +(m.sold
       ? '<span class="kv-v"><span class="sold-tag">&#10003; SOLD</span></span>'
-      : '<span class="kv-v" style="color:var(--text2);">未購入</span>'
+      : '<span class="kv-v" style="color:#98a2b3;">未購入</span>'
     )+'</div>';
+
+  // 識別子
+  if(m.itemId) kvHtml+=kvRow('Item ID', m.itemId, {link:'https://www.ebay.com/itm/'+esc(m.itemId)});
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" id="prod-sku">—</span>'
+    +'<button class="cp-btn" id="cp-sku" title="SKUをコピー">'+COPY_ICON+'</button></div>';
+
   kvHtml+='<div id="order-inline"></div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
 
@@ -1411,9 +1418,18 @@ function toggleStar(){
 }
 function markUnread(){
   if(currentIdx===null) return;
-  messages[currentIdx].read=false;
-  saveState(messages[currentIdx]);
-  backToList();
+  var m=messages[currentIdx];
+  m.read=false;
+  saveState(m);
+  renderList();
+  renderMiniList();
+  // 一覧に戻らず、その場で状態だけ変える
+  var btn=document.querySelector('.s2-header-actions button[onclick="markUnread()"]');
+  if(btn){
+    var o=btn.innerHTML;
+    btn.innerHTML='&#10003; 未読にしました';
+    setTimeout(function(){btn.innerHTML=o;},1500);
+  }
 }
 function markReplied(){
   if(currentIdx===null) return;
@@ -1659,7 +1675,8 @@ async function loadBuyerDetail(buyer, idx){
     }
     function block(title, rows){
       if(!rows) return '';
-      return '<div class="bd-block"><div class="bd-block-t">'+title+'</div>'+rows+'</div>';
+      var t = title ? '<div class="bd-block-t">'+title+'</div>' : '';
+      return '<div class="bd-block">'+t+rows+'</div>';
     }
 
     // --- バイヤーID行に評価情報を追記 ---
@@ -1684,10 +1701,6 @@ async function loadBuyerDetail(buyer, idx){
         bits.push('<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>');
       } else if(!info.purchased){
         bits.push('<span class="sub-tag">未購入</span>');
-      }
-      if(info.registrationDate){
-        var rd=new Date(info.registrationDate);
-        bits.push('<span class="sub-reg">登録 '+rd.toLocaleDateString('ja-JP')+'</span>');
       }
       subEl.innerHTML=bits.join('');
     }
@@ -1728,7 +1741,13 @@ async function loadBuyerDetail(buyer, idx){
         +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）">'+COPY_ICON+'</button></div>';
     }
     b4+=r('電話', info.phone, true);
-    html+=block('配送先', b4);
+    // バイヤーの登録情報
+    if(info.registrationDate){
+      var rd2=new Date(info.registrationDate);
+      var yy=Math.floor((Date.now()-rd2.getTime())/(365.25*86400000));
+      b4+=r('eBay登録', rd2.toLocaleDateString('ja-JP')+(yy>0?'（'+yy+'年）':''), false);
+    }
+    html+=block('', b4);
 
     el2.innerHTML=html;
 
