@@ -440,11 +440,32 @@ app.get('/api/ebay/enrich', async (req, res) => {
   }
 });
 
+// ===== 会話取得の診断 =====
+app.get('/api/ebay/diag', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 3;
+    const convs = await ebayApi.getConversations(days, 50);
+    const list = (convs && convs.conversations) || [];
+    res.json({
+      ok: true,
+      days,
+      total: convs ? convs.total : null,
+      fetched: list.length,
+      buyers: list.map(c => {
+        const lm = c.latestMessage || {};
+        return (lm.senderUsername || '?') + ' @' + (lm.createdDate || '').substring(5, 16);
+      }),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 特定バイヤーの会話を生データで確認（デバッグ用） =====
 app.get('/api/ebay/conv/:buyer', async (req, res) => {
   try {
     const target = String(req.params.buyer).toLowerCase();
-    const convs = await ebayApi.getConversations(60, 300);
+    const convs = await ebayApi.getConversations(60, 50);
     const list = (convs && convs.conversations) || [];
     const hit = list.find(c => {
       const lm = c.latestMessage || {};
