@@ -81,7 +81,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-row{display:grid;gap:0;padding:12px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0fdfa !important;}
 /* ===== 未読：左に色帯＋濃い文字 ===== */
-.s1-row.unread{background:#fff;box-shadow:inset 3px 0 0 var(--teal);}
+.s1-row.unread{background:#fff;box-shadow:inset 2px 0 0 var(--teal);}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:#101828;}
 .s1-row.unread .s1-item-name{font-weight:500;color:#344054;}
 .s1-row.unread .s1-preview{color:#475467;}
@@ -140,7 +140,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-buyer-cell{display:flex;align-items:center;gap:8px;min-width:0;}
 .s1-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
 .s1-buyer-info{min-width:0;}
-.s1-buyer-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.s1-buyer-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
+
+/* 未読件数バッジ：バイヤー名の直後に置く角丸ピル */
+.unread-pill{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 6px;background:var(--teal);color:#fff;font-size:11px;font-weight:700;border-radius:10px;font-family:var(--sans);line-height:1;flex-shrink:0;letter-spacing:0;}
+.unread-pill.mini{min-width:17px;height:17px;font-size:10px;padding:0 5px;}
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
 .s1-star-btn.on{color:#e8a838;}
@@ -873,7 +877,7 @@ function clearAllChecks(){
 function bulkMarkRead(readVal){
   checkedIds.forEach(function(id){
     var m=messages.find(function(x){return x.id==id;});
-    if(m){m.read=readVal;saveState(m);}
+    if(m){m.read=readVal; if(readVal) m.unreadCount=0; else if(!m.unreadCount) m.unreadCount=1; saveState(m);}
   });
   clearAllChecks();
   renderList();
@@ -1102,7 +1106,9 @@ function renderList(){
       buyer: '<div class="s1-buyer-cell s1-col-buyer">'
         +'<div class="s1-avatar" style="'+avatarStyle+'">'+initials+'</div>'
         +'<div class="s1-buyer-info">'
-          +'<div class="s1-buyer-name">'+esc(m.buyer)+soldTag+(m.replied?'<span class="s1-replied-badge" style="margin-left:5px;">&#10003; 返信済み</span>':'')+'</div>'
+          +'<div class="s1-buyer-name">'+esc(m.buyer)
+            +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'')
+            +soldTag+(m.replied?'<span class="s1-replied-badge" style="margin-left:5px;">&#10003; 返信済み</span>':'')+'</div>'
           +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
         +'</div></div>',
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
@@ -1151,6 +1157,7 @@ function renderMiniList(){
         +'<div class="mini-top">'
           +(m.read?'':'<span class="mini-dot"></span>')
           +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
+          +((!m.read&&m.unreadCount>0)?'<span class="unread-pill mini">'+m.unreadCount+'</span>':'')
           +(m.sold?'<span class="mini-sold">SOLD</span>':'')
         +'</div>'
         +'<div class="mini-date">'+esc(dstr)+' <span class="mini-hm">'+(m.time||'')+'</span></div>'
@@ -1176,6 +1183,7 @@ function selectMsg(i){
   currentIdx=i;
   var m=messages[i];
   m.read=true;
+  m.unreadCount=0;   // 開いたら未読件数をリセット
   saveState(m);
   showChat();
   renderChatDetail();
@@ -1502,6 +1510,7 @@ function markUnread(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
   m.read=false;
+  if(!m.unreadCount||m.unreadCount<1) m.unreadCount=1;
   saveState(m);
   renderList();
   renderMiniList();
@@ -2625,7 +2634,7 @@ window.addEventListener('load',function(){
       if(d.messages&&d.messages.length>0){
         messages=d.messages.map(function(m){
           var jst=toJST(m.timestamp);
-          return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+          return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
         });
         renderList();
       }
@@ -2662,7 +2671,7 @@ window.addEventListener('load',function(){
       // 新着あり → データを差し替えて再描画
       messages=list.map(function(m){
         var jst=toJST(m.timestamp);
-        return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+        return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
       });
       renderList();
     }catch(e){}
