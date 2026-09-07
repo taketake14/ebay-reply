@@ -259,7 +259,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-dot{width:6px;height:6px;border-radius:50%;background:#f97316;flex-shrink:0;}
 
 /* チャットカラム（リサイズ対応） */
-.s2-chat-col{display:flex;flex-direction:column;min-width:360px;overflow:hidden;}
+.s2-chat-col{flex:1;display:flex;flex-direction:column;min-width:360px;min-height:0;overflow:hidden;}
 /* 縦リサイザー（チャットエリア↕返信エリア） */
 .v-resizer{height:7px;background:var(--border);cursor:row-resize;flex-shrink:0;transition:background 0.12s;position:relative;}
 .v-resizer::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36px;height:2px;background:var(--text3);border-radius:2px;opacity:0.35;}
@@ -269,7 +269,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
 .h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
 
-.chat-wrap{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;flex-shrink:0;}
+.chat-wrap{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
 .scroll-btm{position:absolute;left:50%;bottom:14px;transform:translateX(-50%) translateY(6px);width:38px;height:38px;border-radius:50%;background:var(--teal);color:#fff;border:none;box-shadow:0 3px 12px rgba(13,148,136,0.32);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.18s,transform 0.18s,background 0.15s;z-index:10;}
 .scroll-btm.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
 .scroll-btm:hover{background:var(--teal-dark);box-shadow:0 4px 16px rgba(13,148,136,0.42);}
@@ -311,7 +311,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .new-badge{font-size:11px;font-weight:600;color:#b54708;text-align:center;padding:3px 12px;margin:4px 0;background:#fffaeb;border:1px solid #fedf89;border-radius:20px;display:inline-block;align-self:center;letter-spacing:0.02em;}
 
 /* 返信エリア */
-.reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;}
+.reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
 .reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;}
 .reply-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;}
 .reply-status{font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600;}
@@ -2867,12 +2867,14 @@ document.addEventListener('mousedown',function(e){
   document.addEventListener('mousemove',function(e){
     if(!vDragging) return;
 
-    var main=document.querySelector('.s2-main');
-    var avail=main?main.getBoundingClientRect().height:(vStartChatH+vStartReplyH);
+    // チャットカラム（chat-col）を基準にする。s2-mainだとヘッダー分ずれる
+    var col=document.getElementById('chat-col')||chatArea.parentElement;
+    var colRect=col.getBoundingClientRect();
+    var res=document.getElementById('v-resizer');
+    var resH=res?res.offsetHeight:7;
+    var avail=colRect.height-resH;
 
-    // マウス位置から返信エリアの高さを直接決める（差分計算より確実）
-    var mainTop=main?main.getBoundingClientRect().top:0;
-    var newChatH=e.clientY-mainTop;
+    var newChatH=e.clientY-colRect.top;
 
     // 範囲内に収める
     var maxChatH=avail-MIN_REPLY_H;
