@@ -269,12 +269,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
 .h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
 
-.chat-wrap{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.chat-wrap{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;flex-shrink:0;}
 .scroll-btm{position:absolute;left:50%;bottom:14px;transform:translateX(-50%) translateY(6px);width:38px;height:38px;border-radius:50%;background:var(--teal);color:#fff;border:none;box-shadow:0 3px 12px rgba(13,148,136,0.32);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.18s,transform 0.18s,background 0.15s;z-index:10;}
 .scroll-btm.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
 .scroll-btm:hover{background:var(--teal-dark);box-shadow:0 4px 16px rgba(13,148,136,0.42);}
 .scroll-btm:active{transform:translateX(-50%) scale(0.93);}
-.chat-area{flex:1;padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;}
+.chat-area{flex:1 1 0;min-height:0;padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;}
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
@@ -1695,7 +1695,8 @@ function updateScrollBtn(){
   var btn=document.getElementById('scroll-btm');
   if(!el||!btn) return;
   var gap=el.scrollHeight-el.clientHeight-el.scrollTop;
-  if(gap>160) btn.classList.add('show');
+  // 40px以上下にスクロールできる状態なら表示（狭い高さでも出る）
+  if(gap>40) btn.classList.add('show');
   else btn.classList.remove('show');
 }
 
@@ -1752,7 +1753,8 @@ function renderChatBubbles(){
   });
   el.innerHTML=html;
   el.scrollTop=el.scrollHeight;
-  setTimeout(updateScrollBtn,50);
+  setTimeout(updateScrollBtn,60);
+  setTimeout(updateScrollBtn,300);
 }
 
 
@@ -2882,6 +2884,8 @@ document.addEventListener('mousedown',function(e){
     chatArea.style.height=newChatH+'px';
     replyArea.style.flex='none';
     replyArea.style.height=(avail-newChatH)+'px';
+    // 高さが変わるとスクロール可能量も変わるのでボタン状態を更新
+    if(typeof updateScrollBtn==='function') updateScrollBtn();
   });
   document.addEventListener('mouseup',function(){
     if(vDragging){
