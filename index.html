@@ -89,6 +89,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sf-count{font-size:11.5px;font-weight:700;color:var(--text3);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:9px;min-width:22px;text-align:center;}
 .side-filter.on .sf-count{background:rgba(255,255,255,0.22);border-color:transparent;color:#fff;}
 .s1-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
+.s1-side-resizer{width:5px;flex-shrink:0;background:#d5efeb;cursor:col-resize;position:relative;transition:background 0.12s;}
+.s1-side-resizer:hover,.s1-side-resizer.dragging{background:var(--teal);}
+.s1-side-resizer::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:28px;background:rgba(255,255,255,0.6);border-radius:2px;}
 
 /* 列見出し：左端にゆとりを持たせる */
 .s1-th{padding-left:10px;}
@@ -114,7 +117,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-row.read .s1-buyer-name{font-weight:400;color:#101828;}
 .s1-row.read .s1-item-name{font-weight:400;color:#344054;}
 .s1-row.read .s1-preview{color:#475467;}
-.s1-row.read .s1-date{color:#101828;font-weight:600;}
+.s1-row.read .s1-date{color:#0f172a;font-weight:600;}
 
 /* even/odd廃止 */
 .s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#fff;}
@@ -129,8 +132,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .col-toggle-item input[type=checkbox]{cursor:pointer;width:14px;height:14px;accent-color:var(--orange);}
 /* 時刻セル */
 .s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
-.s1-time{font-size:11px;color:var(--text3);font-weight:400;font-family:var(--mono);}
-.s1-date{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono);}
+.s1-time{font-size:12px;color:var(--text2);font-weight:500;font-family:var(--mono);}
+.s1-date{font-size:14.5px;font-weight:700;color:#0f172a;font-family:var(--mono);}
 .s1-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);margin-bottom:3px;}
 .s1-read-dot{width:6px;height:6px;margin-bottom:3px;}
 /* 商品画像 */
@@ -168,7 +171,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .unread-pill.mini{min-width:17px;height:17px;font-size:10px;padding:0 5px;}
 
 /* ステータス列：未読数のみ。SOLD等は絶対に入れない（位置を固定するため） */
-.s1-status-cell{display:flex;align-items:center;justify-content:center;width:100%;}
+.s1-status-cell{display:flex;align-items:center;justify-content:center;width:100%;height:100%;}
+/* 未読の行だけ、この列に薄いティール地を敷いて一目で分かるようにする */
+.s1-row.unread .s1-status-cell{background:#e6fffa;border-radius:6px;}
+
+/* 未読化ボタン列 */
+.s1-col-unread{display:flex;align-items:center;justify-content:center;}
+.s1-unread-btn{background:none;border:none;cursor:pointer;font-size:16px;color:#cbd5e1;padding:4px;line-height:1;border-radius:5px;transition:all 0.12s;}
+.s1-unread-btn:hover{color:var(--teal);background:#f0fdfa;}
+.s1-unread-btn.done{color:var(--teal);}
+.s1-unread-btn.done:hover{color:#94a3b8;background:var(--bg3);}
+.s1-unread-btn:active{transform:scale(0.88);}
 
 /* SOLD：サムネイル画像の下部に重ねる帯（他要素に一切干渉しない） */
 /* サムネイル列：画像の下にSOLD（画像に重ねない） */
@@ -231,12 +244,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-top .unread-pill{margin-left:auto;flex-shrink:0;}
 .mini-buyer{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-weight:600;}
 .mini-time{font-size:10px;color:var(--text3);flex-shrink:0;font-family:var(--mono);}
-.mini-date{font-size:12px;font-weight:600;color:var(--text2);margin-top:3px;font-family:var(--mono);}
+.mini-date{font-size:13.5px;font-weight:700;color:#0f172a;margin-top:3px;font-family:var(--mono);}
 .mini-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px;justify-content:flex-end;}
 .mini-tags .tag{font-size:9.5px;padding:1px 6px;white-space:nowrap;}
 .sold-circle.mini{width:16px;height:16px;font-size:9px;}
 .mini-hm{font-size:11.5px;font-weight:500;color:var(--text2);}
-.mini-item.read .mini-date{color:var(--text2);}
+.mini-item.read .mini-date{color:#0f172a;font-weight:600;}
 .mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
 .mini-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;}
 
@@ -671,7 +684,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       </div>
     </div>
     <div class="s1-main">
-      <div class="s1-side">
+      <div class="s1-side" id="s1-side">
         <button class="side-filter on" onclick="setFilter('all',this)"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-all">0</span></button>
         <button class="side-filter" onclick="setFilter('unread',this)"><span class="sf-icon">&#128235;</span><span class="sf-label">未読</span><span class="sf-count" id="cnt-unread">0</span></button>
         <button class="side-filter" onclick="setFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="cnt-urgent">0</span></button>
@@ -679,6 +692,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="side-filter" onclick="setFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="cnt-sold">0</span></button>
         <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon">&#10003;</span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span></button>
       </div>
+      <div class="s1-side-resizer" id="s1-side-resizer"></div>
       <div class="s1-listwrap">
         <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
       <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
@@ -689,6 +703,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="s1-th s1-col-item" data-col="item">商品名<div class="col-resizer" data-col="item"></div></div>
       <div class="s1-th s1-col-buyer" data-col="buyer">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
       <div class="s1-th s1-col-flag th-center" data-col="flag">フラグ<div class="col-resizer" data-col="flag"></div></div>
+      <div class="s1-th s1-col-unread th-center" data-col="unread">未読化<div class="col-resizer" data-col="unread"></div></div>
     </div>
     <div class="s1-body" id="msg-list"></div>
       </div>
@@ -1208,6 +1223,11 @@ function renderList(){
             : '<div class="s1-preview">'+esc(m.msg)+'</div>')
         +'</div></div>',
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
+      unread: '<div class="s1-col-unread">'
+        +(m.read
+          ? '<button class="s1-unread-btn" onclick="event.stopPropagation();markUnreadIdx('+ri+')" title="未読に戻す">&#9711;</button>'
+          : '<button class="s1-unread-btn done" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">&#9679;</button>')
+        +'</div>',
     };
     var cells=colOrder.filter(function(k){return colVisible[k];}).map(function(k){return cellMap[k]||'';}).join('');
     var cbChecked=checkedIds.has(m.id)?'checked':'';
@@ -1219,6 +1239,24 @@ function renderList(){
       +checkCell+cells
       +'</div>';
   }).join('');
+}
+
+// 一覧から直接 未読/既読 を切り替え
+function markUnreadIdx(i){
+  var m=messages[i];
+  if(!m) return;
+  m.read=false;
+  if(!m.unreadCount||m.unreadCount<1) m.unreadCount=1;
+  saveState(m);
+  renderList();
+}
+function markReadIdx(i){
+  var m=messages[i];
+  if(!m) return;
+  m.read=true;
+  m.unreadCount=0;
+  saveState(m);
+  renderList();
 }
 
 function toggleStarIdx(i){
@@ -1281,6 +1319,44 @@ function toggleMiniList(){
   ml.classList.toggle('collapsed');
   try{ localStorage.setItem('ebay_mini_collapsed', ml.classList.contains('collapsed')?'1':'0'); }catch(e){}
 }
+
+// ===== 受信トレイ サイドバーの幅調整 =====
+(function(){
+  var res=document.getElementById('s1-side-resizer');
+  var side=document.getElementById('s1-side')||document.querySelector('.s1-side');
+  if(!res||!side) return;
+  var dragging=false;
+
+  // 保存された幅を復元
+  try{
+    var w=localStorage.getItem('ebay_side_width');
+    if(w){ var n=parseInt(w,10); if(n>=120&&n<=380) side.style.width=n+'px'; }
+  }catch(e){}
+
+  res.addEventListener('mousedown',function(e){
+    dragging=true;
+    res.classList.add('dragging');
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging) return;
+    var rect=side.getBoundingClientRect();
+    var w=e.clientX-rect.left;
+    if(w<120) w=120;
+    if(w>380) w=380;
+    side.style.width=w+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(!dragging) return;
+    dragging=false;
+    res.classList.remove('dragging');
+    document.body.style.cursor='';
+    document.body.style.userSelect='';
+    try{ localStorage.setItem('ebay_side_width', parseInt(side.style.width,10)); }catch(e){}
+  });
+})();
 
 // ===== メッセージ選択 =====
 function selectMsg(i){
@@ -2510,6 +2586,7 @@ var COL_DEFS = [
   {key:'item',   label:'商品名',   w:260, fr:false, align:'left'},
   {key:'buyer',  label:'バイヤー / メッセージ', w:320, fr:false, align:'left'},
   {key:'flag',   label:'フラグ',   w:56,  fr:false, align:'center'},
+  {key:'unread', label:'未読化',   w:60,  fr:false, align:'center'},
 ];
 var colOrder = COL_DEFS.map(function(c){return c.key;});
 var colWidths = {};
