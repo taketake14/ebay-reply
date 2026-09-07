@@ -80,13 +80,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* ===== 受信トレイ：左サイドバー（フィルター） ===== */
 .s1-main{flex:1;display:flex;min-height:0;overflow:hidden;}
-.s1-side{width:168px;flex-shrink:0;background:#f7fdfc;border-right:1px solid #d5efeb;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
-.side-filter{display:flex;align-items:center;gap:8px;width:100%;padding:9px 11px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:13px;color:var(--text2);text-align:left;transition:all 0.12s;}
+.s1-side{width:190px;flex-shrink:0;background:#f7fdfc;border-right:1px solid #d5efeb;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+.side-filter{display:flex;align-items:center;gap:9px;width:100%;padding:11px 12px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:14px;color:var(--text2);text-align:left;transition:all 0.12s;}
 .side-filter:hover{background:#e6f7f4;color:var(--text);}
 .side-filter.on{background:var(--teal);color:#fff;font-weight:700;}
-.sf-icon{font-size:13px;flex-shrink:0;width:16px;text-align:center;}
+.sf-icon{font-size:15px;flex-shrink:0;width:18px;text-align:center;}
 .sf-label{flex:1;min-width:0;white-space:nowrap;}
-.sf-count{font-size:11px;font-weight:700;color:var(--text3);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:9px;min-width:22px;text-align:center;}
+.sf-count{font-size:11.5px;font-weight:700;color:var(--text3);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:9px;min-width:22px;text-align:center;}
 .side-filter.on .sf-count{background:rgba(255,255,255,0.22);border-color:transparent;color:#fff;}
 .s1-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
 
@@ -97,8 +97,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* SOLD列 */
 .s1-sold-cell{display:flex;align-items:center;justify-content:center;}
-.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#fff;color:#dc2626;border:1.5px solid #dc2626;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:3px 9px;border-radius:5px;line-height:1.3;white-space:nowrap;}
-.s1-row.read .sold-mark{opacity:0.75;}
+.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.04em;padding:3px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
+
 
 .s1-row{display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0fdfa !important;}
@@ -111,13 +111,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* ===== 既読：淡色でトーンダウン ===== */
 .s1-row.read{background:#fcfcfd;box-shadow:none;}
-.s1-row.read .s1-buyer-name{font-weight:400;color:#98a2b3;}
-.s1-row.read .s1-item-name{font-weight:400;color:#b6bfcc;}
-.s1-row.read .s1-preview{color:#c2c8d2;}
-.s1-row.read .s1-date{color:#b6bfcc;font-weight:500;}
-.s1-row.read .s1-time{color:#c8cdd6;}
-.s1-row.read .s1-thumb{opacity:0.62;}
-.s1-row.read .s1-avatar{opacity:0.55;}
+.s1-row.read .s1-buyer-name{font-weight:400;color:#101828;}
+.s1-row.read .s1-item-name{font-weight:400;color:#344054;}
+.s1-row.read .s1-preview{color:#475467;}
+.s1-row.read .s1-date{color:#101828;font-weight:600;}
 
 /* even/odd廃止 */
 .s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#fff;}
@@ -177,9 +174,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* サムネイル列：画像の下にSOLD（画像に重ねない） */
 .s1-thumb-col{display:flex;flex-direction:column;align-items:center;gap:3px;}
 .s1-sold-tag{display:block;width:64px;text-align:center;background:#dc2626;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.1em;padding:2px 0;border-radius:3px;line-height:1.3;}
-.s1-row.read .s1-sold-tag{background:#e88a8a;}
+
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
+/* メモは琥珀の枠で目立たせる */
+.s1-memo{display:inline-block;max-width:100%;font-size:12.5px;color:#8a5a12;background:#fffaf0;border:1px solid #f0d49a;border-left:3px solid #e8a838;border-radius:5px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
+.s1-star-btn{background:none;border:none;cursor:pointer;font-size:21px;color:#cbd5e1;padding:0;line-height:1;transition:color 0.12s,transform 0.1s;}
+.s1-star-btn:active{transform:scale(0.88);}
 .s1-star-btn.on{color:#e8a838;}
 .s1-star-btn:hover{color:#e8a838;}
 .s1-empty{padding:40px;text-align:center;color:var(--text3);font-size:13px;}
@@ -683,10 +683,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
       <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
       <div class="s1-th s1-col-time th-center" data-col="time">時刻<div class="col-resizer" data-col="time"></div></div>
+      <div class="s1-th s1-col-sold th-center" data-col="sold">販売<div class="col-resizer" data-col="sold"></div></div>
       <div class="s1-th s1-col-status th-center" data-col="status">未読<div class="col-resizer" data-col="status"></div></div>
       <div class="s1-th s1-col-thumb th-center" data-col="thumb">画像<div class="col-resizer" data-col="thumb"></div></div>
       <div class="s1-th s1-col-item" data-col="item">商品名<div class="col-resizer" data-col="item"></div></div>
-      <div class="s1-th s1-col-sold th-center" data-col="sold">販売<div class="col-resizer" data-col="sold"></div></div>
       <div class="s1-th s1-col-buyer" data-col="buyer">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
       <div class="s1-th s1-col-flag th-center" data-col="flag">フラグ<div class="col-resizer" data-col="flag"></div></div>
     </div>
@@ -1203,7 +1203,9 @@ function renderList(){
         +'<div class="s1-buyer-info">'
           +'<div class="s1-buyer-name">'+esc(m.buyer)
             +(m.replied?'<span class="s1-replied-badge" style="margin-left:5px;">&#10003; 返信済み</span>':'')+'</div>'
-          +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
+          +(m.memo
+            ? '<div class="s1-memo">&#128221; '+esc(m.memo)+'</div>'
+            : '<div class="s1-preview">'+esc(m.msg)+'</div>')
         +'</div></div>',
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
     };
@@ -2502,10 +2504,10 @@ async function syncFromEbay(){
 // 列定義: key, デフォルト幅(px), frかpxか
 var COL_DEFS = [
   {key:'time',   label:'時刻',     w:80,  fr:false, align:'center'},
+  {key:'sold',   label:'販売',     w:86,  fr:false, align:'center'},
   {key:'status', label:'未読',     w:50,  fr:false, align:'center'},
   {key:'thumb',  label:'画像',     w:76,  fr:false, align:'center'},
   {key:'item',   label:'商品名',   w:260, fr:false, align:'left'},
-  {key:'sold',   label:'販売',     w:88,  fr:false, align:'center'},
   {key:'buyer',  label:'バイヤー / メッセージ', w:320, fr:false, align:'left'},
   {key:'flag',   label:'フラグ',   w:56,  fr:false, align:'center'},
 ];
