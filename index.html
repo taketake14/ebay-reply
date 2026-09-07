@@ -76,13 +76,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-row.unread .s1-buyer-name{font-weight:800;color:#0f172a;}
 .s1-row.unread .s1-item-name{font-weight:700;color:#0f172a;}
 .s1-row.unread .s1-preview{color:#334155;font-weight:500;}
-.s1-row.unread .s1-time{color:#0f172a;font-weight:800;}
+.s1-row.unread .s1-date{color:#0f172a;font-weight:800;}
 /* ===== 既読：全体的に薄く・細く（一目で区別できる） ===== */
 .s1-row.read{background:#f8f9fb;}
 .s1-row.read .s1-buyer-name{font-weight:400;color:#94a3b8;}
 .s1-row.read .s1-item-name{font-weight:400;color:#94a3b8;}
 .s1-row.read .s1-preview{color:#94a3b8;}
-.s1-row.read .s1-time{color:#94a3b8;}
+.s1-row.read .s1-date{color:#94a3b8;font-weight:600;}
+.s1-row.read .s1-time{color:#b6bfcc;}
 /* even/odd廃止 */
 .s1-row.unread.s1-even,.s1-row.unread.s1-odd{background:#ffffff;}
 .s1-row.read.s1-even,.s1-row.read.s1-odd{background:#f8f9fb;}
@@ -96,8 +97,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .col-toggle-item input[type=checkbox]{cursor:pointer;width:14px;height:14px;accent-color:var(--orange);}
 /* 時刻セル */
 .s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
-.s1-time{font-size:14px;color:var(--text);font-weight:700;font-family:var(--mono);}
-.s1-date{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.s1-time{font-size:11px;color:var(--text3);font-weight:400;font-family:var(--mono);}
+.s1-date{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono);}
 .s1-unread-dot{width:7px;height:7px;border-radius:50%;background:var(--orange);margin-top:1px;}
 .s1-read-dot{width:7px;height:7px;}
 /* 商品画像 */
@@ -165,19 +166,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-list.collapsed + .mini-expand{display:block;}
 
 /* リスト項目 */
-.mini-item{display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:flex-start;}
+.mini-item{display:flex;gap:9px;padding:10px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:flex-start;}
 .mini-item:hover{background:#f0f7ff;}
 .mini-item.active{background:#e8effa;box-shadow:inset 3px 0 0 var(--accent);}
 .mini-item.unread .mini-buyer{font-weight:800;color:#0f172a;}
 .mini-item.read .mini-buyer{font-weight:400;color:#94a3b8;}
 .mini-item.read .mini-preview{color:#b6bfcc;}
-.mini-thumb{width:34px;height:34px;border-radius:5px;border:1px solid var(--border);background:#fff;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.mini-thumb{width:44px;height:44px;border-radius:5px;border:1px solid var(--border);background:#fff;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:14px;}
 .mini-thumb img{width:100%;height:100%;object-fit:contain;}
 .mini-info{flex:1;min-width:0;}
 .mini-top{display:flex;align-items:center;gap:5px;}
-.mini-buyer{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.mini-buyer{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
 .mini-time{font-size:10px;color:var(--text3);flex-shrink:0;font-family:var(--mono);}
-.mini-preview{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.mini-date{font-size:12px;font-weight:600;color:var(--text2);margin-top:3px;font-family:var(--mono);}
+.mini-hm{font-size:11px;font-weight:400;color:var(--text3);}
+.mini-item.read .mini-date{color:#b6bfcc;}
 .mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
 .mini-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);flex-shrink:0;}
 
@@ -332,6 +335,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-kv-row:last-child{border-bottom:none;}
 .prod-kv-row .kv-k{flex-shrink:0;min-width:62px;}
 .prod-kv-row .kv-v{flex:1;min-width:0;word-break:break-all;}
+.prod-total{border-top:1.5px solid var(--border2) !important;margin-top:3px;padding-top:6px !important;}
+.prod-total .kv-k{font-weight:700;color:var(--text);}
+.prod-total .kv-v{font-weight:700;color:#dc2626;font-size:13px;}
 .sold-tag{background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:5px;letter-spacing:0.04em;}
 
 /* ===== バイヤー詳細：グループ表示 ===== */
@@ -372,9 +378,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* メモありインジケーター（折りたたみ時も見える） */
 .memo-dot{display:none;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-left:5px;flex-shrink:0;}
 .memo-dot.on{display:inline-block;}
-.rp-section-hdr{padding:8px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:var(--bg3);user-select:none;}
-.rp-section-hdr:hover{background:#e8f0fe;}
-.rp-section-title{font-size:12px;font-weight:700;color:var(--text);}
+.rp-section-hdr{padding:9px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#eef1f6;border-top:1px solid #dde3ec;border-bottom:1px solid #dde3ec;user-select:none;transition:background 0.12s;}
+.rp-section-hdr:hover{background:#e3e9f2;}
+.rp-section-title{font-size:12px;font-weight:700;color:#344054;letter-spacing:0.02em;}
+.rp-toggle-icon{font-size:10px;color:#98a2b3;transition:transform 0.15s;}
+
+/* バイヤー固定エリア */
+.buyer-fixed{padding:12px 12px 11px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;}
 .rp-toggle-icon{font-size:10px;color:var(--text3);transition:transform 0.15s;}
 .rp-toggle-icon.closed{transform:rotate(-90deg);}
 .rp-section-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
@@ -591,21 +601,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="panel-body" style="gap:0;padding:0;overflow-y:auto;">
 
         <!-- 商品セクション -->
-        <div class="rp-section" id="rp-section-buyer">
-          <div class="rp-section-hdr" onclick="toggleRpSection('buyer')">
-            <span class="rp-section-title">&#128100; バイヤー</span>
-            <span class="rp-toggle-icon" id="rp-icon-buyer">&#9660;</span>
-          </div>
-          <div class="rp-section-body" id="rp-body-buyer">
-            <div class="buyer-panel-row">
-              <div class="buyer-panel-avatar" id="buyer-avatar"></div>
-              <div style="flex:1;min-width:0;">
-                <div class="buyer-panel-name" id="buyer-panel-name">—</div>
-                <div class="buyer-panel-sub" id="buyer-panel-sub"></div>
-              </div>
-              <button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー"></button>
+        <!-- バイヤー基本情報（常時表示・折りたたみ不可） -->
+        <div class="buyer-fixed">
+          <div class="buyer-panel-row">
+            <div class="buyer-panel-avatar" id="buyer-avatar"></div>
+            <div style="flex:1;min-width:0;">
+              <div class="buyer-panel-name" id="buyer-panel-name">—</div>
+              <div class="buyer-panel-sub" id="buyer-panel-sub"></div>
             </div>
-            <div class="buyer-links" id="buyer-links"></div>
+            <button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー"></button>
           </div>
         </div>
 
@@ -622,6 +626,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
               <button class="cp-btn" id="cp-prod-name" title="商品名をコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>
             </div>
             <div class="prod-kv" id="prod-kv"></div>
+          </div>
+        </div>
+
+        <!-- 配送先セクション -->
+        <div class="rp-section" id="rp-section-ship">
+          <div class="rp-section-hdr" onclick="toggleRpSection('ship')">
+            <span class="rp-section-title">&#128666; 配送先・金額</span>
+            <span class="rp-toggle-icon" id="rp-icon-ship">&#9660;</span>
+          </div>
+          <div class="rp-section-body" id="rp-body-ship">
+            <div class="buyer-links" id="buyer-links"></div>
           </div>
         </div>
 
@@ -969,15 +984,21 @@ function renderList(){
     // colOrderの順番に従ってセルを生成
     var soldTag=m.sold?'<span class="s1-sold-badge" style="margin-left:5px;">SOLD</span>':'';
     var cellMap={
-      time: '<div class="s1-time-cell s1-col-time">'
-        +(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')
-        +'<span class="s1-time" style="color:var(--text);font-weight:600;">'+(m.time||'')+'</span>'
-        +'<span class="s1-date">'+(m.date||'')+'</span>'
-        +'</div>',
+      time: (function(){
+        var md='';
+        if(m.timestamp){
+          var dt=new Date(m.timestamp);
+          if(!isNaN(dt.getTime())) md=(dt.getMonth()+1)+'/'+dt.getDate();
+        }
+        return '<div class="s1-time-cell s1-col-time">'
+          +(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')
+          +'<span class="s1-date">'+md+'</span>'
+          +'<span class="s1-time">'+(m.time||'')+'</span>'
+          +'</div>';
+      })(),
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
       item: '<div class="s1-item-cell s1-col-item">'
         +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
-        +'<div class="s1-item-ids">'+esc(idsHtml)+'</div>'
         +'</div>',
       tags: '<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>',
       buyer: '<div class="s1-buyer-cell s1-col-buyer">'
@@ -1020,6 +1041,12 @@ function renderMiniList(){
     var thumb=m.imgUrl
       ? '<div class="mini-thumb"><img src="'+esc(ebayImg(m.imgUrl,140))+'" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>'
       : '<div class="mini-thumb">&#128230;</div>';
+    // 日付を M/D 形式に
+    var dstr='';
+    if(m.timestamp){
+      var dt=new Date(m.timestamp);
+      if(!isNaN(dt.getTime())) dstr=(dt.getMonth()+1)+'/'+dt.getDate();
+    }
     return '<div class="mini-item '+(m.read?'read':'unread')+(active?' active':'')+'" onclick="selectMsg('+ri+')">'
       +thumb
       +'<div class="mini-info">'
@@ -1027,9 +1054,8 @@ function renderMiniList(){
           +(m.read?'':'<span class="mini-dot"></span>')
           +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
           +(m.sold?'<span class="mini-sold">SOLD</span>':'')
-          +'<span class="mini-time">'+(m.time||'')+'</span>'
         +'</div>'
-        +'<div class="mini-preview">'+esc(m.memo?('📝 '+m.memo):m.msg)+'</div>'
+        +'<div class="mini-date">'+esc(dstr)+' <span class="mini-hm">'+(m.time||'')+'</span></div>'
       +'</div>'
     +'</div>';
   }).join('');
@@ -1692,18 +1718,6 @@ async function loadBuyerDetail(buyer, idx){
     b4+=r('電話', info.phone, true);
     html+=block('配送先', b4);
 
-    // --- 金額 ---
-    var b3='';
-    if(info.itemSubtotal) b3+=r('商品代金', info.itemSubtotal, false);
-    if(info.shippingCost) b3+=r('送料', info.shippingCost, false);
-    if(info.taxBreakdown && info.taxBreakdown.length>0){
-      info.taxBreakdown.forEach(function(t){ b3+=r(t.label, t.value, false); });
-    } else if(info.taxTotal){
-      b3+=r('税', info.taxTotal, false);
-    }
-    if(info.total) b3+='<div class="bd-row bd-total"><span class="bd-k">合計</span><span class="bd-v">'+esc(info.total)+'</span></div>';
-    html+=block('金額', b3);
-
     el2.innerHTML=html;
 
     // 商品パネル側に注文情報をコンパクト表示
@@ -1731,6 +1745,19 @@ async function loadBuyerDetail(buyer, idx){
     if(info.shipByDate) dates.push('期限 '+new Date(info.shipByDate).toLocaleDateString('ja-JP'));
     if(dates.length) h+='<div class="prod-kv-row"><span class="kv-k">日程</span><span class="kv-v" style="font-size:11.5px;">'+esc(dates.join('　/　'))+'</span></div>';
     if(info.marketplace) h+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v" style="font-size:11.5px;">'+esc(info.marketplace)+'</span></div>';
+
+    // 金額の内訳
+    if(info.itemSubtotal) h+='<div class="prod-kv-row"><span class="kv-k">商品代金</span><span class="kv-v">'+esc(info.itemSubtotal)+'</span></div>';
+    if(info.shippingCost) h+='<div class="prod-kv-row"><span class="kv-k">送料</span><span class="kv-v">'+esc(info.shippingCost)+'</span></div>';
+    if(info.taxBreakdown && info.taxBreakdown.length>0){
+      info.taxBreakdown.forEach(function(t){
+        h+='<div class="prod-kv-row"><span class="kv-k">'+esc(t.label)+'</span><span class="kv-v">'+esc(t.value)+'</span></div>';
+      });
+    } else if(info.taxTotal){
+      h+='<div class="prod-kv-row"><span class="kv-k">税</span><span class="kv-v">'+esc(info.taxTotal)+'</span></div>';
+    }
+    if(info.total) h+='<div class="prod-kv-row prod-total"><span class="kv-k">合計</span><span class="kv-v">'+esc(info.total)+'</span></div>';
+
     slot.innerHTML=h;
   }
 
