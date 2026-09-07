@@ -363,8 +363,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* AI返信案ボタン */
 .btn-ai{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:1px solid #0f766e;font-weight:700;}
 .btn-ai2{background:#fff;color:#0d9488;border:1.5px solid #5eead4;font-weight:700;}
-.btn-clear{margin-left:auto;background:#fff;color:var(--text3);border:1px solid var(--border2);font-weight:600;}
+.btn-clear{margin-left:auto;background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
 .btn-clear:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+.btn-undo{background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
+.btn-undo:hover:not(:disabled){background:#f0fdfa;border-color:#5eead4;color:var(--teal);}
+.btn-undo:disabled{opacity:0.4;cursor:not-allowed;}
 .btn-ai2:hover{background:#f0fdfa;border-color:#0d9488;}
 .btn-ai:hover{background:linear-gradient(135deg,#0d9488,#0f766e);}
 .reply-col{display:flex;flex-direction:column;gap:5px;min-height:0;}
@@ -886,6 +889,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
             <option value="-1">最新の返信案</option>
           </select>
           <button class="btn btn-clear" onclick="clearReplyFields()" id="btn-clear-reply" title="日本語・英語の入力欄を空にする">&#10005; クリア</button>
+          <button class="btn btn-undo" onclick="undoReplyClear()" id="btn-undo-reply" title="クリア前の内容に戻す" disabled>&#8630; 戻す</button>
         </div>
         <div class="reply-split">
           <!-- 左：日本語 -->
@@ -2456,19 +2460,41 @@ function deleteCanned(i){
 }
 
 // ===== 入力欄をクリア =====
+var clearedBackup=null;
+
 function clearReplyFields(){
   var ja=document.getElementById('d-input-ja');
   var en=document.getElementById('d-reply');
-  var hasText=(ja&&ja.value.trim())||(en&&en.value.trim());
-  if(!hasText) return;
-  if(!confirm('日本語と英語の入力内容を消します。よろしいですか？')) return;
+  var jaVal=ja?ja.value:'';
+  var enVal=en?en.value:'';
+  if(!jaVal.trim() && !enVal.trim()) return;
+
+  // 戻せるように退避
+  clearedBackup={ja:jaVal, en:enVal, idx:currentIdx};
+
   if(ja) ja.value='';
   if(en) en.value='';
   var m=messages[currentIdx];
   if(m){ m.reply=''; m.replyJa=''; m.status='pending'; }
   var s=document.getElementById('d-status');
   if(s){ s.className='reply-status'; s.textContent=''; }
+
+  var ub=document.getElementById('btn-undo-reply');
+  if(ub) ub.disabled=false;
   if(ja) ja.focus();
+}
+
+function undoReplyClear(){
+  if(!clearedBackup) return;
+  var ja=document.getElementById('d-input-ja');
+  var en=document.getElementById('d-reply');
+  if(ja) ja.value=clearedBackup.ja;
+  if(en) en.value=clearedBackup.en;
+  var m=messages[currentIdx];
+  if(m){ m.reply=clearedBackup.en; m.replyJa=clearedBackup.ja; }
+  clearedBackup=null;
+  var ub=document.getElementById('btn-undo-reply');
+  if(ub) ub.disabled=true;
 }
 
 // ===== AI：情報を伝えて作る =====
