@@ -89,6 +89,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sf-count{font-size:11.5px;font-weight:700;color:var(--text3);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:9px;min-width:22px;text-align:center;}
 .side-filter.on .sf-count{background:rgba(255,255,255,0.22);border-color:transparent;color:#fff;}
 .s1-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
+/* メッセージ画面のフィルターサイドバー（受信トレイと同じ見た目） */
+.s2-side{width:170px;flex-shrink:0;}
 .s1-side-resizer{width:5px;flex-shrink:0;background:#d5efeb;cursor:col-resize;position:relative;transition:background 0.12s;}
 .s1-side-resizer:hover,.s1-side-resizer.dragging{background:var(--teal);}
 .s1-side-resizer::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:28px;background:rgba(255,255,255,0.6);border-radius:2px;}
@@ -226,13 +228,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-collapse:hover{background:var(--bg2);color:var(--text);}
 .mini-list-body{flex:1;overflow-y:auto;overflow-x:hidden;}
 
-/* ミニリストのフィルター */
-.mini-filters{display:flex;flex-wrap:wrap;gap:4px;padding:8px 9px;border-bottom:1px solid var(--border);background:#fbfefe;flex-shrink:0;}
-.mini-filter{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:13px;border:1px solid var(--border2);background:#fff;color:var(--text2);cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.12s;}
-.mini-filter:hover{border-color:var(--teal);color:var(--teal);}
-.mini-filter.on{background:var(--teal);border-color:var(--teal);color:#fff;}
-.mf-count{font-size:10px;opacity:0.75;font-weight:600;}
-.mini-filter.on .mf-count{opacity:0.85;}
+
 
 /* 折りたたみ時に出る展開ボタン */
 .mini-expand{display:none;width:20px;flex-shrink:0;border:none;border-right:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:12px;padding:0;}
@@ -240,7 +236,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-list.collapsed + .mini-expand{display:block;}
 
 /* リスト項目 */
-.mini-item{display:flex;gap:10px;padding:12px 11px;align-items:flex-start;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;}
+.mini-item{position:relative;display:flex;gap:10px;padding:12px 11px 12px 15px;align-items:flex-start;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;}
+.mini-item.unread::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:7px;height:30px;border-radius:0 4px 4px 0;background:linear-gradient(90deg,var(--teal) 0%,#5eead4 55%,rgba(94,234,212,0.15) 100%);}
 .mini-item:hover{background:#f0fdfa;}
 .mini-item.active{background:#e6fffa;box-shadow:inset 3px 0 0 var(--teal);}
 .mini-item.unread .mini-buyer{font-weight:800;color:#0f172a;}
@@ -766,19 +763,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   </div>
 
   <div class="s2-main">
-    <!-- 最左：ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
+    <!-- 最左：フィルター（受信トレイと同じ位置・同じ見た目） -->
+    <div class="s1-side s2-side" id="s2-side">
+      <button class="side-filter on" onclick="setMiniFilter('all',this)"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-all">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('unread',this)"><span class="sf-icon">&#128235;</span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-unread">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="mcnt-urgent">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('replied',this)"><span class="sf-icon">&#10003;</span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span></button>
+    </div>
+
+    <!-- ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
     <div class="mini-list" id="mini-list">
       <div class="mini-list-hdr">
         <span class="mini-list-title">受信トレイ</span>
         <button class="mini-collapse" onclick="toggleMiniList()" title="リストを折りたたむ">&#10094;</button>
-      </div>
-      <!-- フィルター（受信トレイと同じ条件で絞り込み） -->
-      <div class="mini-filters" id="mini-filters">
-        <button class="mini-filter on" onclick="setMiniFilter('all',this)">すべて<span class="mf-count" id="mcnt-all">0</span></button>
-        <button class="mini-filter" onclick="setMiniFilter('unread',this)">未読<span class="mf-count" id="mcnt-unread">0</span></button>
-        <button class="mini-filter" onclick="setMiniFilter('urgent',this)">要対応<span class="mf-count" id="mcnt-urgent">0</span></button>
-        <button class="mini-filter" onclick="setMiniFilter('starred',this)">★<span class="mf-count" id="mcnt-starred">0</span></button>
-        <button class="mini-filter" onclick="setMiniFilter('sold',this)">購入者<span class="mf-count" id="mcnt-sold">0</span></button>
       </div>
       <div class="mini-list-body" id="mini-list-body"></div>
     </div>
@@ -1294,7 +1293,7 @@ function toggleStarIdx(i){
 var miniFilter='all';
 function setMiniFilter(f,btn){
   miniFilter=f;
-  document.querySelectorAll('.mini-filter').forEach(function(b){b.classList.remove('on');});
+  document.querySelectorAll('#s2-side .side-filter').forEach(function(b){b.classList.remove('on');});
   if(btn) btn.classList.add('on');
   renderMiniList();
 }
@@ -1304,6 +1303,7 @@ function getMiniFiltered(){
     if(miniFilter==='starred') return m.starred;
     if(miniFilter==='sold') return m.sold;
     if(miniFilter==='urgent') return getTags(m.msg||'').some(function(t){return t.key==='urgent';});
+    if(miniFilter==='replied') return m.replied;
     return true;
   });
 }
@@ -1314,6 +1314,7 @@ function updateMiniCounts(){
   set('mcnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
   set('mcnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('mcnt-sold', messages.filter(function(m){return m.sold;}).length);
+  set('mcnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 
 function renderMiniList(){
