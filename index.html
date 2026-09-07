@@ -103,10 +103,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sold-mark{display:inline-flex;align-items:center;gap:3px;background:#dc2626;color:#fff;font-size:11px;font-weight:700;letter-spacing:0.04em;padding:3px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
 
 
-.s1-row{display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row{position:relative;display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0fdfa !important;}
 /* ===== 未読：左に色帯＋濃い文字 ===== */
-.s1-row.unread{background:#fff;box-shadow:inset 3px 0 0 var(--teal);}
+.s1-row.unread{background:#fff;box-shadow:none;position:relative;}
+/* 未読アクセント：左端に太めのグラデーション帯（未読列の塗りと同じ高さ） */
+.s1-row.unread::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:9px;height:34px;border-radius:0 5px 5px 0;background:linear-gradient(90deg,var(--teal) 0%,#5eead4 55%,rgba(94,234,212,0.15) 100%);}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:#101828;}
 .s1-row.unread .s1-item-name{font-weight:500;color:#344054;}
 .s1-row.unread .s1-preview{color:#475467;}
@@ -175,7 +177,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 未読の行だけ、この列に薄いティール地を敷いて一目で分かるようにする */
 .s1-row.unread .s1-status-cell{background:#e6fffa;border-radius:6px;}
 
-/* 未読化ボタン列 */
+/* フラグ列・既読切替列：中央揃え */
+.s1-col-flag{display:flex;align-items:center;justify-content:center;width:100%;}
 .s1-col-unread{display:flex;align-items:center;justify-content:center;}
 .s1-unread-btn{background:none;border:none;cursor:pointer;color:#b6c2cc;padding:5px;line-height:0;border-radius:6px;transition:all 0.13s;display:flex;align-items:center;justify-content:center;}
 .s1-unread-btn:hover{color:var(--teal);background:#f0fdfa;}
@@ -191,7 +194,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* メモは琥珀の枠で目立たせる */
 .s1-memo{display:inline-block;max-width:100%;font-size:12.5px;color:#8a5a12;background:#fffaf0;border:1px solid #f0d49a;border-left:3px solid #e8a838;border-radius:5px;padding:3px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500;}
-.s1-star-btn{background:none;border:none;cursor:pointer;font-size:21px;color:#cbd5e1;padding:0;line-height:1;transition:color 0.12s,transform 0.1s;}
+.s1-star-btn{background:none;border:none;cursor:pointer;font-size:21px;color:#cbd5e1;padding:0;line-height:1;transition:color 0.12s,transform 0.1s;width:100%;display:flex;align-items:center;justify-content:center;}
 .s1-star-btn:active{transform:scale(0.88);}
 .s1-star-btn.on{color:#e8a838;}
 .s1-star-btn:hover{color:#e8a838;}
@@ -222,6 +225,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-collapse{border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:4px;line-height:1;}
 .mini-collapse:hover{background:var(--bg2);color:var(--text);}
 .mini-list-body{flex:1;overflow-y:auto;overflow-x:hidden;}
+
+/* ミニリストのフィルター */
+.mini-filters{display:flex;flex-wrap:wrap;gap:4px;padding:8px 9px;border-bottom:1px solid var(--border);background:#fbfefe;flex-shrink:0;}
+.mini-filter{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 9px;border-radius:13px;border:1px solid var(--border2);background:#fff;color:var(--text2);cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.12s;}
+.mini-filter:hover{border-color:var(--teal);color:var(--teal);}
+.mini-filter.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+.mf-count{font-size:10px;opacity:0.75;font-weight:600;}
+.mini-filter.on .mf-count{opacity:0.85;}
 
 /* 折りたたみ時に出る展開ボタン */
 .mini-expand{display:none;width:20px;flex-shrink:0;border:none;border-right:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:12px;padding:0;}
@@ -761,6 +772,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <span class="mini-list-title">受信トレイ</span>
         <button class="mini-collapse" onclick="toggleMiniList()" title="リストを折りたたむ">&#10094;</button>
       </div>
+      <!-- フィルター（受信トレイと同じ条件で絞り込み） -->
+      <div class="mini-filters" id="mini-filters">
+        <button class="mini-filter on" onclick="setMiniFilter('all',this)">すべて<span class="mf-count" id="mcnt-all">0</span></button>
+        <button class="mini-filter" onclick="setMiniFilter('unread',this)">未読<span class="mf-count" id="mcnt-unread">0</span></button>
+        <button class="mini-filter" onclick="setMiniFilter('urgent',this)">要対応<span class="mf-count" id="mcnt-urgent">0</span></button>
+        <button class="mini-filter" onclick="setMiniFilter('starred',this)">★<span class="mf-count" id="mcnt-starred">0</span></button>
+        <button class="mini-filter" onclick="setMiniFilter('sold',this)">購入者<span class="mf-count" id="mcnt-sold">0</span></button>
+      </div>
       <div class="mini-list-body" id="mini-list-body"></div>
     </div>
     <button class="mini-expand" id="mini-expand" onclick="toggleMiniList()" title="受信リストを表示">&#10095;</button>
@@ -1272,10 +1291,36 @@ function toggleStarIdx(i){
 }
 
 // ===== ミニ受信リスト =====
+var miniFilter='all';
+function setMiniFilter(f,btn){
+  miniFilter=f;
+  document.querySelectorAll('.mini-filter').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
+  renderMiniList();
+}
+function getMiniFiltered(){
+  return messages.filter(function(m){
+    if(miniFilter==='unread') return !m.read;
+    if(miniFilter==='starred') return m.starred;
+    if(miniFilter==='sold') return m.sold;
+    if(miniFilter==='urgent') return getTags(m.msg||'').some(function(t){return t.key==='urgent';});
+    return true;
+  });
+}
+function updateMiniCounts(){
+  function set(id,n){var e=document.getElementById(id); if(e) e.textContent=n;}
+  set('mcnt-all', messages.length);
+  set('mcnt-unread', messages.filter(function(m){return !m.read;}).length);
+  set('mcnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
+  set('mcnt-starred', messages.filter(function(m){return m.starred;}).length);
+  set('mcnt-sold', messages.filter(function(m){return m.sold;}).length);
+}
+
 function renderMiniList(){
   var el=document.getElementById('mini-list-body');
   if(!el) return;
-  var list=getFiltered();
+  updateMiniCounts();
+  var list=getMiniFiltered();
   if(list.length===0){ el.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">該当なし</div>'; return; }
 
   el.innerHTML=list.map(function(m){
