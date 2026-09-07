@@ -132,7 +132,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tag-complaint{background:#fee2e2;color:#dc2626;}
 .tag-spec{background:#ede9fe;color:#6d28d9;}
 .tag-cancel{background:#fdf3e0;color:#8a5a12;}
-.tag-urgent{background:#dc2626;color:#fff;font-weight:700;}
+.tag-urgent{background:#dc2626;color:#fff;font-weight:800;box-shadow:0 1px 3px rgba(220,38,38,0.3);}
 .tag-other{background:#f1f5f9;color:var(--text2);}
 /* 状態 */
 .s1-status-cell{display:flex;flex-direction:column;gap:3px;}
@@ -148,11 +148,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .unread-pill{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;background:var(--teal);color:#fff;font-size:11px;font-weight:700;border-radius:10px;font-family:var(--sans);line-height:1;flex-shrink:0;letter-spacing:0;}
 .unread-pill.mini{min-width:17px;height:17px;font-size:10px;padding:0 5px;}
 
-/* ステータス列：未読数とSOLDを縦に整列 */
-.s1-status-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;}
-.unread-slot{width:20px;height:20px;}
-.sold-circle{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:50%;line-height:1;flex-shrink:0;}
-.s1-row.read .sold-circle{opacity:0.55;}
+/* ステータス列：未読数のみ（常に同じ位置に整列） */
+.s1-status-cell{display:flex;align-items:center;justify-content:center;}
+
+/* SOLDリボン：商品名の左に置く帯 */
+.s1-item-top{display:flex;align-items:flex-start;gap:7px;}
+.sold-ribbon{flex-shrink:0;background:#dc2626;color:#fff;font-size:10px;font-weight:800;letter-spacing:0.06em;padding:2px 8px;border-radius:3px;line-height:1.5;margin-top:1px;box-shadow:0 1px 2px rgba(220,38,38,0.28);}
+.s1-row.read .sold-ribbon{background:#e88a8a;box-shadow:none;}
+.s1-item-name{flex:1;min-width:0;}
+
+/* ミニリストのSOLD */
+.sold-circle.mini{display:inline-flex;align-items:center;justify-content:center;background:#dc2626;color:#fff;font-size:8.5px;font-weight:800;letter-spacing:0.04em;padding:1px 6px;border-radius:3px;line-height:1.5;flex-shrink:0;width:auto;height:auto;}
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
 .s1-star-btn.on{color:#e8a838;}
@@ -177,7 +183,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s2-main{flex:1;display:flex;overflow:hidden;}
 
 /* ===== ミニ受信リスト（チャット画面の最左） ===== */
-.mini-list{width:240px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
+.mini-list{width:252px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
 .mini-list.collapsed{width:0;border-right:none;}
 .mini-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid #d5efeb;background:#eefaf8;flex-shrink:0;}
 .mini-list-title{font-size:12px;font-weight:700;color:#12554e;white-space:nowrap;}
@@ -191,7 +197,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-list.collapsed + .mini-expand{display:block;}
 
 /* リスト項目 */
-.mini-item{display:flex;gap:9px;padding:10px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:flex-start;}
+.mini-item{display:flex;gap:9px;padding:11px 10px;align-items:flex-start;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:flex-start;}
 .mini-item:hover{background:#f0fdfa;}
 .mini-item.active{background:#e6fffa;box-shadow:inset 3px 0 0 var(--teal);}
 .mini-item.unread .mini-buyer{font-weight:800;color:#0f172a;}
@@ -204,8 +210,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-buyer{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
 .mini-time{font-size:10px;color:var(--text3);flex-shrink:0;font-family:var(--mono);}
 .mini-date{font-size:12px;font-weight:600;color:var(--text2);margin-top:3px;font-family:var(--mono);}
-.mini-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px;}
-.mini-tags .tag{font-size:9.5px;padding:1px 6px;}
+.mini-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px;}
+.mini-tags .tag{font-size:9.5px;padding:1px 6px;white-space:nowrap;}
 .sold-circle.mini{width:16px;height:16px;font-size:9px;}
 .mini-hm{font-size:11px;font-weight:400;color:var(--text3);}
 .mini-item.read .mini-date{color:#b6bfcc;}
@@ -495,10 +501,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .demo-btn:hover{border-color:var(--orange);color:var(--orange);}
 
 /* ===== AI情報入力モーダル ===== */
-.ai-modal{background:#fff;border-radius:14px;width:100%;max-width:720px;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,42,40,0.25);overflow:hidden;}
+.ai-modal{background:#fff;border-radius:14px;width:100%;max-width:820px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,42,40,0.25);overflow:hidden;}
 .ai-body{padding:16px 20px;overflow-y:auto;flex:1;min-height:0;}
 .ai-guide{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;}
-.ai-hint-input{width:100%;min-height:140px;border:1px solid var(--border2);border-radius:9px;padding:11px 13px;font-size:13px;font-family:var(--sans);line-height:1.7;color:var(--text);outline:none;resize:vertical;}
+.ai-hint-input{width:100%;min-height:180px;border:1px solid var(--border2);border-radius:9px;padding:11px 13px;font-size:13px;font-family:var(--sans);line-height:1.7;color:var(--text);outline:none;resize:vertical;}
 .ai-hint-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,0.1);}
 .ai-chips-hdr{display:flex;align-items:center;justify-content:space-between;margin-top:14px;margin-bottom:7px;}
 .ai-chips-label{font-size:10.5px;font-weight:700;color:var(--text3);letter-spacing:0.04em;}
@@ -981,14 +987,15 @@ function cannedCategories(){
   return set;
 }
 
+// 優先度の高い順に定義（左から表示されるので重要なものを先に）
 var TAG_DEFS = [
-  {key:'discount', label:'値引き', cls:'tag-discount', test:function(m){return /price|discount|cheaper|mejor precio|prezzo|offer|reduce/i.test(m);}},
-  {key:'stock', label:'在庫確認', cls:'tag-stock', test:function(m){return /stock|available|disponible|still have/i.test(m);}},
-  {key:'ship', label:'配送', cls:'tag-ship', test:function(m){return /ship|deliver|entrega|tracking|dispatch|arrival/i.test(m);}},
-  {key:'spec', label:'仕様確認', cls:'tag-spec', test:function(m){return /weight|spec|dimension|size|compatible|casting|max|mm|watt|volt|lens|model|drawing|written|language/i.test(m);}},
-  {key:'cancel', label:'キャンセル', cls:'tag-cancel', test:function(m){return /cancel|annul|annullare|sbagliato|wrong.*order/i.test(m);}},
-  {key:'complaint', label:'クレーム', cls:'tag-complaint', test:function(m){return /broken|damage|defect|not working|wrong item|not as described|missing|perished|sticky|roller/i.test(m);}},
   {key:'urgent', label:'要対応', cls:'tag-urgent', test:function(m){return /refund|waiting.*respond|open.*case|ebay.*case|not.*received|haven.*received|still.*waiting|dispute|return.*money/i.test(m);}},
+  {key:'complaint', label:'クレーム', cls:'tag-complaint', test:function(m){return /broken|damage|defect|not working|wrong item|not as described|missing|perished|sticky|roller/i.test(m);}},
+  {key:'cancel', label:'キャンセル', cls:'tag-cancel', test:function(m){return /cancel|annul|annullare|sbagliato|wrong.*order/i.test(m);}},
+  {key:'ship', label:'配送', cls:'tag-ship', test:function(m){return /ship|deliver|entrega|tracking|dispatch|arrival/i.test(m);}},
+  {key:'stock', label:'在庫確認', cls:'tag-stock', test:function(m){return /stock|available|disponible|still have/i.test(m);}},
+  {key:'discount', label:'値引き', cls:'tag-discount', test:function(m){return /price|discount|cheaper|mejor precio|prezzo|offer|reduce/i.test(m);}},
+  {key:'spec', label:'仕様確認', cls:'tag-spec', test:function(m){return /weight|spec|dimension|size|compatible|casting|max|mm|watt|volt|lens|model|drawing|written|language/i.test(m);}},
 ];
 function getTags(msg) {
   var found = TAG_DEFS.filter(function(t){return t.test(msg);});
@@ -1145,12 +1152,14 @@ function renderList(){
           +'</div>';
       })(),
       status: '<div class="s1-status-cell s1-col-status">'
-        +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'<span class="unread-slot"></span>')
-        +(m.sold?'<span class="sold-circle" title="購入済み">&#10003;</span>':'')
+        +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'')
         +'</div>',
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
       item: '<div class="s1-item-cell s1-col-item">'
-        +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
+        +'<div class="s1-item-top">'
+          +(m.sold?'<span class="sold-ribbon">SOLD</span>':'')
+          +'<span class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</span>'
+        +'</div>'
         +(tagsHtml?'<div class="s1-inline-tags">'+tagsHtml+'</div>':'')
         +'</div>',
       buyer: '<div class="s1-buyer-cell s1-col-buyer">'
@@ -1201,7 +1210,7 @@ function renderMiniList(){
       if(!isNaN(dt.getTime())) dstr=(dt.getMonth()+1)+'/'+dt.getDate();
     }
     // タグを算出
-    var mtags=TAG_DEFS.filter(function(t){return t.test(m.msg||'');}).slice(0,2);
+    var mtags=TAG_DEFS.filter(function(t){return t.test(m.msg||'');});
     var mtagHtml=mtags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
 
     return '<div class="mini-item '+(m.read?'read':'unread')+(active?' active':'')+'" onclick="selectMsg('+ri+')">'
@@ -1210,7 +1219,7 @@ function renderMiniList(){
         +'<div class="mini-top">'
           +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
           +((!m.read&&m.unreadCount>0)?'<span class="unread-pill mini">'+m.unreadCount+'</span>':'')
-          +(m.sold?'<span class="sold-circle mini">&#10003;</span>':'')
+          +(m.sold?'<span class="sold-circle mini">SOLD</span>':'')
         +'</div>'
         +'<div class="mini-date">'+esc(dstr)+' <span class="mini-hm">'+(m.time||'')+'</span></div>'
         +(mtagHtml?'<div class="mini-tags">'+mtagHtml+'</div>':'')
@@ -2849,7 +2858,7 @@ window.addEventListener('load',function(){
 });
 </script>
 <!-- AI情報入力モーダル -->
-<div class="ct-overlay" id="ai-hint-modal" onclick="if(event.target===this)closeAiHint()">
+<div class="ct-overlay" id="ai-hint-modal">
   <div class="ai-modal">
     <div class="ct-hdr">
       <span class="ct-hdr-title">&#10024; AIに情報を渡して返信案を作る</span>
@@ -2876,7 +2885,7 @@ window.addEventListener('load',function(){
 </div>
 
 <!-- 定型文モーダル -->
-<div class="ct-overlay" id="canned-modal" onclick="if(event.target===this)closeCanned()">
+<div class="ct-overlay" id="canned-modal">
   <div class="ct-modal">
     <!-- ヘッダー -->
     <div class="ct-hdr">
