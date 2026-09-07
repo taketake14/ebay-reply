@@ -1858,6 +1858,8 @@ function resetLayout(){
   var rp=document.getElementById('right-panel');
   var cw=document.getElementById('chat-wrap');
   if(cw){ cw.style.flex='1.8'; cw.style.height='auto'; }
+  // 過去に chat-area 自体へ設定された height が残っていると追従しないので消す
+  if(ca){ ca.style.height=''; ca.style.flex=''; }
   if(ra){ ra.style.flex='1'; ra.style.height='auto'; }
   if(cc){ cc.style.flex='1'; cc.style.width='auto'; }
   if(rp){ rp.style.flex='none'; rp.style.width='240px'; }
@@ -2784,8 +2786,12 @@ document.addEventListener('mousedown',function(e){
   // ===== リサイザーのサイズ復元 =====
   function restoreResize(){
     try{
+      // 旧バージョンで chat-area 自体に付いた height を除去（追従しなくなる原因）
+      var innerChat=document.getElementById('chat-area');
+      if(innerChat){ innerChat.style.height=''; innerChat.style.flex=''; }
+
       var s=JSON.parse(localStorage.getItem('ebay_resize')||'{}');
-      var chatArea=document.getElementById('chat-area');
+      var chatArea=document.getElementById('chat-wrap');   // 高さを持つのはラッパー
       var replyArea=document.getElementById('reply-area');
       var chatCol=document.getElementById('chat-col');
       var rightPanel=document.getElementById('right-panel');
@@ -2809,7 +2815,7 @@ document.addEventListener('mousedown',function(e){
   }
   function saveResize(){
     try{
-      var chatArea=document.getElementById('chat-area');
+      var chatArea=document.getElementById('chat-wrap');
       var replyArea=document.getElementById('reply-area');
       var chatCol=document.getElementById('chat-col');
       var rightPanel=document.getElementById('right-panel');
@@ -2869,12 +2875,14 @@ document.addEventListener('mousedown',function(e){
 
     // チャットカラム（chat-col）を基準にする。s2-mainだとヘッダー分ずれる
     var col=document.getElementById('chat-col')||chatArea.parentElement;
-    var colRect=col.getBoundingClientRect();
     var res=document.getElementById('v-resizer');
     var resH=res?res.offsetHeight:7;
-    var avail=colRect.height-resH;
+    // チャット領域の開始位置（ヘッダーの下端）を基準にする
+    var chatTop=chatArea.getBoundingClientRect().top;
+    var colBottom=col.getBoundingClientRect().bottom;
+    var avail=colBottom-chatTop-resH;
 
-    var newChatH=e.clientY-colRect.top;
+    var newChatH=e.clientY-chatTop;
 
     // 範囲内に収める
     var maxChatH=avail-MIN_REPLY_H;
