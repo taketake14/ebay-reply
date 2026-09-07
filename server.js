@@ -444,7 +444,7 @@ app.get('/api/ebay/enrich', async (req, res) => {
 app.get('/api/ebay/conv/:buyer', async (req, res) => {
   try {
     const target = String(req.params.buyer).toLowerCase();
-    const convs = await ebayApi.getConversations(60, 200);
+    const convs = await ebayApi.getConversations(60, 300);
     const list = (convs && convs.conversations) || [];
     const hit = list.find(c => {
       const lm = c.latestMessage || {};
