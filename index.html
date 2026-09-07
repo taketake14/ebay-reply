@@ -90,7 +90,23 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .side-filter.on .sf-count{background:rgba(255,255,255,0.22);border-color:transparent;color:#fff;}
 .s1-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
 /* メッセージ画面のフィルターサイドバー（受信トレイと同じ見た目） */
-.s2-side{width:170px;flex-shrink:0;}
+.s2-side{width:170px;flex-shrink:0;position:relative;transition:width 0.16s ease;}
+
+/* 折りたたみボタン */
+.side-collapse{position:absolute;top:8px;right:6px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:11px;padding:3px 5px;border-radius:4px;line-height:1;z-index:2;transition:all 0.12s;}
+.side-collapse:hover{background:#e6f7f4;color:var(--teal);}
+
+/* 折りたたみ時：アイコンと件数だけの細い列 */
+.s2-side.collapsed{width:56px;padding:10px 5px;}
+.s2-side.collapsed .side-collapse{position:static;width:100%;margin-bottom:5px;transform:rotate(180deg);}
+.s2-side.collapsed .side-filter{flex-direction:column;gap:3px;padding:8px 4px;justify-content:center;}
+.s2-side.collapsed .sf-label{display:none;}
+.s2-side.collapsed .sf-icon{width:auto;font-size:16px;}
+.s2-side.collapsed .sf-count{font-size:10px;padding:0 5px;min-width:20px;}
+
+/* 折りたたみ時は上部に余白を作らない */
+.s2-side{padding-top:30px;}
+.s2-side.collapsed{padding-top:10px;}
 .s1-side-resizer{width:5px;flex-shrink:0;background:#d5efeb;cursor:col-resize;position:relative;transition:background 0.12s;}
 .s1-side-resizer:hover,.s1-side-resizer.dragging{background:var(--teal);}
 .s1-side-resizer::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:28px;background:rgba(255,255,255,0.6);border-radius:2px;}
@@ -762,12 +778,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   <div class="s2-main">
     <!-- 最左：フィルター（受信トレイと同じ位置・同じ見た目） -->
     <div class="s1-side s2-side" id="s2-side">
-      <button class="side-filter on" onclick="setMiniFilter('all',this)"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-all">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('unread',this)"><span class="sf-icon">&#128235;</span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-unread">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="mcnt-urgent">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('replied',this)"><span class="sf-icon">&#10003;</span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span></button>
+      <button class="side-collapse" onclick="toggleSideCollapse()" id="btn-side-collapse" title="フィルターを折りたたむ">&#10094;</button>
+      <button class="side-filter on" onclick="setMiniFilter('all',this)" title="すべて"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-all">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('unread',this)" title="未読"><span class="sf-icon">&#128235;</span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-unread">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('urgent',this)" title="要対応"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="mcnt-urgent">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('starred',this)" title="フラグ"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('sold',this)" title="購入者"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon">&#10003;</span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span></button>
     </div>
 
     <!-- ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
@@ -1111,11 +1128,14 @@ function backToList(){
 function showChat(){
   document.getElementById('screen-list').style.display='none';
   document.getElementById('screen-chat').style.display='flex';
-  // ミニリストの折りたたみ状態を復元
+  // ミニリスト・フィルターの折りたたみ状態を復元
   try{
     var col=localStorage.getItem('ebay_mini_collapsed')==='1';
     var ml=document.getElementById('mini-list');
     if(ml){ if(col) ml.classList.add('collapsed'); else ml.classList.remove('collapsed'); }
+    var sc=localStorage.getItem('ebay_side_collapsed')==='1';
+    var sd=document.getElementById('s2-side');
+    if(sd){ if(sc) sd.classList.add('collapsed'); else sd.classList.remove('collapsed'); }
   }catch(e){}
   setTimeout(function(){if(window.restoreResize) window.restoreResize();},50);
 }
@@ -1358,6 +1378,16 @@ function renderMiniList(){
   // 選択中の項目が見えるようスクロール
   var act=el.querySelector('.mini-item.active');
   if(act) act.scrollIntoView({block:'nearest'});
+}
+
+// フィルターサイドバーの折りたたみ
+function toggleSideCollapse(){
+  var el=document.getElementById('s2-side');
+  if(!el) return;
+  el.classList.toggle('collapsed');
+  var btn=document.getElementById('btn-side-collapse');
+  if(btn) btn.title = el.classList.contains('collapsed') ? 'フィルターを開く' : 'フィルターを折りたたむ';
+  try{ localStorage.setItem('ebay_side_collapsed', el.classList.contains('collapsed')?'1':'0'); }catch(e){}
 }
 
 // リストの折りたたみ切替
@@ -2835,11 +2865,14 @@ document.addEventListener('mousedown',function(e){
   window.addEventListener('resize',function(){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(function(){
-      var main=document.querySelector('.s2-main');
+      var col=document.getElementById('chat-col');
       var ca=document.getElementById('chat-wrap');
       var ra=document.getElementById('reply-area');
-      if(!main||!ca||!ra) return;
-      var avail=main.getBoundingClientRect().height;
+      if(!col||!ca||!ra) return;
+      var resEl=document.getElementById('v-resizer');
+      var avail=col.getBoundingClientRect().height
+        - (ca.getBoundingClientRect().top - col.getBoundingClientRect().top)
+        - (resEl?resEl.offsetHeight:7);
       if(avail<60) return;
       var rh=ra.getBoundingClientRect().height;
       var ch=ca.getBoundingClientRect().height;
