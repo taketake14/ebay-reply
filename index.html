@@ -150,8 +150,39 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s2-main{flex:1;display:flex;overflow:hidden;}
 
+/* ===== ミニ受信リスト（チャット画面の最左） ===== */
+.mini-list{width:240px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
+.mini-list.collapsed{width:0;border-right:none;}
+.mini-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0;}
+.mini-list-title{font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;}
+.mini-collapse{border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:4px;line-height:1;}
+.mini-collapse:hover{background:var(--bg2);color:var(--text);}
+.mini-list-body{flex:1;overflow-y:auto;overflow-x:hidden;}
+
+/* 折りたたみ時に出る展開ボタン */
+.mini-expand{display:none;width:20px;flex-shrink:0;border:none;border-right:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:12px;padding:0;}
+.mini-expand:hover{background:#eff6ff;color:var(--accent);}
+.mini-list.collapsed + .mini-expand{display:block;}
+
+/* リスト項目 */
+.mini-item{display:flex;gap:8px;padding:9px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:flex-start;}
+.mini-item:hover{background:#f0f7ff;}
+.mini-item.active{background:#e8effa;box-shadow:inset 3px 0 0 var(--accent);}
+.mini-item.unread .mini-buyer{font-weight:800;color:#0f172a;}
+.mini-item.read .mini-buyer{font-weight:400;color:#94a3b8;}
+.mini-item.read .mini-preview{color:#b6bfcc;}
+.mini-thumb{width:34px;height:34px;border-radius:5px;border:1px solid var(--border);background:#fff;flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:14px;}
+.mini-thumb img{width:100%;height:100%;object-fit:contain;}
+.mini-info{flex:1;min-width:0;}
+.mini-top{display:flex;align-items:center;gap:5px;}
+.mini-buyer{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.mini-time{font-size:10px;color:var(--text3);flex-shrink:0;font-family:var(--mono);}
+.mini-preview{font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
+.mini-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);flex-shrink:0;}
+
 /* チャットカラム（リサイズ対応） */
-.s2-chat-col{display:flex;flex-direction:column;min-width:200px;overflow:hidden;}
+.s2-chat-col{display:flex;flex-direction:column;min-width:360px;overflow:hidden;}
 /* 縦リサイザー（チャットエリア↕返信エリア） */
 .v-resizer{height:7px;background:var(--border);cursor:row-resize;flex-shrink:0;transition:background 0.12s;position:relative;}
 .v-resizer::after{content:'';position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:36px;height:2px;background:var(--text3);border-radius:2px;opacity:0.35;}
@@ -531,8 +562,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   </div>
 
   <div class="s2-main">
+    <!-- 最左：ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
+    <div class="mini-list" id="mini-list">
+      <div class="mini-list-hdr">
+        <span class="mini-list-title">受信トレイ</span>
+        <button class="mini-collapse" onclick="toggleMiniList()" title="リストを折りたたむ">&#10094;</button>
+      </div>
+      <div class="mini-list-body" id="mini-list-body"></div>
+    </div>
+    <button class="mini-expand" id="mini-expand" onclick="toggleMiniList()" title="受信リストを表示">&#10095;</button>
+
     <!-- 左パネル：商品・バイヤー・メモ情報 -->
-    <div class="s2-right-panel" id="right-panel" style="width:260px;">
+    <div class="s2-right-panel" id="right-panel" style="width:240px;">
         <!-- メモバー（常に一番上に固定表示・スクロール不要） -->
         <div class="memo-bar" id="memo-bar" onclick="jumpToMemo()">
           <span class="memo-badge-inline" id="memo-badge-inline">&#128221; メモあり</span>
@@ -832,6 +873,12 @@ function backToList(){
 function showChat(){
   document.getElementById('screen-list').style.display='none';
   document.getElementById('screen-chat').style.display='flex';
+  // ミニリストの折りたたみ状態を復元
+  try{
+    var col=localStorage.getItem('ebay_mini_collapsed')==='1';
+    var ml=document.getElementById('mini-list');
+    if(ml){ if(col) ml.classList.add('collapsed'); else ml.classList.remove('collapsed'); }
+  }catch(e){}
   setTimeout(function(){if(window.restoreResize) window.restoreResize();},50);
 }
 function showMainTab(name, btn){
@@ -856,6 +903,11 @@ function onSearch(q){
 
 // ===== 一覧レンダリング =====
 function renderList(){
+  // チャット画面を開いている場合はミニリストも同期
+  setTimeout(function(){
+    var sc=document.getElementById('screen-chat');
+    if(sc && sc.style.display!=='none' && typeof renderMiniList==='function') renderMiniList();
+  },0);
   var el=document.getElementById('msg-list');
   var unread=messages.filter(function(m){return !m.read;}).length;
   var urgent=messages.filter(function(m){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}).length;
@@ -947,6 +999,46 @@ function toggleStarIdx(i){
   if(currentIdx===i) updateStarBtn();
 }
 
+// ===== ミニ受信リスト =====
+function renderMiniList(){
+  var el=document.getElementById('mini-list-body');
+  if(!el) return;
+  var list=getFiltered();
+  if(list.length===0){ el.innerHTML='<div style="padding:16px;text-align:center;font-size:12px;color:var(--text3);">該当なし</div>'; return; }
+
+  el.innerHTML=list.map(function(m){
+    var ri=messages.indexOf(m);
+    var active=(ri===currentIdx);
+    var thumb=m.imgUrl
+      ? '<div class="mini-thumb"><img src="'+esc(ebayImg(m.imgUrl,140))+'" onerror="this.parentElement.innerHTML=\'&#128230;\'"></div>'
+      : '<div class="mini-thumb">&#128230;</div>';
+    return '<div class="mini-item '+(m.read?'read':'unread')+(active?' active':'')+'" onclick="selectMsg('+ri+')">'
+      +thumb
+      +'<div class="mini-info">'
+        +'<div class="mini-top">'
+          +(m.read?'':'<span class="mini-dot"></span>')
+          +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
+          +(m.sold?'<span class="mini-sold">SOLD</span>':'')
+          +'<span class="mini-time">'+(m.time||'')+'</span>'
+        +'</div>'
+        +'<div class="mini-preview">'+esc(m.memo?('📝 '+m.memo):m.msg)+'</div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+
+  // 選択中の項目が見えるようスクロール
+  var act=el.querySelector('.mini-item.active');
+  if(act) act.scrollIntoView({block:'nearest'});
+}
+
+// リストの折りたたみ切替
+function toggleMiniList(){
+  var ml=document.getElementById('mini-list');
+  if(!ml) return;
+  ml.classList.toggle('collapsed');
+  try{ localStorage.setItem('ebay_mini_collapsed', ml.classList.contains('collapsed')?'1':'0'); }catch(e){}
+}
+
 // ===== メッセージ選択 =====
 function selectMsg(i){
   currentIdx=i;
@@ -955,6 +1047,7 @@ function selectMsg(i){
   saveState(m);
   showChat();
   renderChatDetail();
+  renderMiniList();   // 最左のミニリストも更新（選択状態・既読を反映）
 }
 
 function renderChatDetail(){
@@ -1350,7 +1443,7 @@ function resetLayout(){
   if(ca){ ca.style.flex='1.8'; ca.style.height='auto'; }
   if(ra){ ra.style.flex='1'; ra.style.height='auto'; }
   if(cc){ cc.style.flex='1'; cc.style.width='auto'; }
-  if(rp){ rp.style.flex='none'; rp.style.width='260px'; }
+  if(rp){ rp.style.flex='none'; rp.style.width='240px'; }
 }
 
 function jumpToMemo(){
