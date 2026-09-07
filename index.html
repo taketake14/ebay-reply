@@ -81,13 +81,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* ===== 受信トレイ：左サイドバー（フィルター） ===== */
 .s1-main{flex:1;display:flex;min-height:0;overflow:hidden;}
 .s1-side{width:190px;flex-shrink:0;background:#f7fdfc;border-right:1px solid #d5efeb;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
-.side-filter{display:flex;align-items:center;gap:9px;width:100%;padding:11px 12px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:14px;color:var(--text2);text-align:left;transition:all 0.12s;}
+.side-filter{display:flex;align-items:center;gap:9px;width:100%;padding:11px 12px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:14px;font-weight:600;color:#1d2939;text-align:left;transition:all 0.12s;}
 .side-filter:hover{background:#e6f7f4;color:var(--text);}
 .side-filter.on{background:var(--teal);color:#fff;font-weight:700;}
 .sf-icon{font-size:15px;flex-shrink:0;width:18px;text-align:center;}
 .sf-label{flex:1;min-width:0;white-space:nowrap;}
-.sf-count{font-size:11.5px;font-weight:700;color:var(--text3);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:9px;min-width:22px;text-align:center;}
-.side-filter.on .sf-count{background:rgba(255,255,255,0.22);border-color:transparent;color:#fff;}
+.sf-count{font-size:12px;font-weight:700;color:#0f766e;background:#fff;border:1px solid #99f6e4;padding:2px 8px;border-radius:10px;min-width:24px;text-align:center;}
+.side-filter.on .sf-count{background:#fff;border-color:#fff;color:#0f766e;}
 .s1-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
 /* メッセージ画面のフィルターサイドバー（受信トレイと同じ見た目） */
 .s2-side{width:170px;flex-shrink:0;position:relative;transition:width 0.16s ease;}
@@ -102,7 +102,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s2-side.collapsed .side-filter{flex-direction:column;gap:3px;padding:8px 4px;justify-content:center;}
 .s2-side.collapsed .sf-label{display:none;}
 .s2-side.collapsed .sf-icon{width:auto;font-size:16px;}
-.s2-side.collapsed .sf-count{font-size:10px;padding:0 5px;min-width:20px;}
+.s2-side.collapsed .sf-count{font-size:11px;font-weight:700;padding:1px 6px;min-width:22px;}
 
 /* 折りたたみ時は上部に余白を作らない */
 .s2-side{padding-top:30px;}
