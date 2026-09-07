@@ -982,8 +982,12 @@ app.post('/api/state', async (req, res) => {
   const { id, read, starred, replied, memo } = req.body;
   if (!id) return res.json({ ok: false });
 
-  // メモリに保存
-  stateStore[id] = { read, starred, replied, memo };
+  // メモリに保存（既読にした時刻も記録＝その後の新着で未読に戻せる）
+  const prev = stateStore[id] || {};
+  stateStore[id] = {
+    read, starred, replied, memo,
+    readAt: read ? new Date().toISOString() : (prev.readAt || null),
+  };
 
   // messagesにも反映
   const msg = messages.find(m => m.id == id);
@@ -1215,6 +1219,39 @@ app.get('/api/messages', async (req, res) => {
       });
       t.lastBuyerAt = last;               // 0 = バイヤーからの受信なし
       t.hasBuyerMsg = last > 0;
+
+      // 未読件数の算出
+      // 既読でも、状態を保存した時刻より後にバイヤーから届いていれば未読に戻す
+      const savedAt = stateStore[t.id] && stateStore[t.id].readAt
+        ? new Date(stateStore[t.id].readAt).getTime() : 0;
+      if (t.read && savedAt > 0 && last > savedAt) {
+        // 既読にした後に新着が来ている → 未読へ
+        t.read = false;
+      }
+      if (t.read) {
+        t.unreadCount = 0;
+      } else {
+        // 自分が最後に送信した時刻
+        let lastMineAt = 0;
+        (t.history || []).forEach(h => {
+          if (h.from !== 'me') return;
+          const v = new Date(h.time || 0).getTime();
+          if (!isNaN(v) && v > lastMineAt) lastMineAt = v;
+        });
+        // その後に届いたバイヤーメッセージを数える
+        let cnt = 0;
+        (t.history || []).forEach(h => {
+          if (h.from === 'me') return;
+          const v = new Date(h.time || 0).getTime();
+          if (!isNaN(v) && v > lastMineAt) cnt++;
+        });
+        // 最新メッセージ（m.msg）がバイヤーからなら加算
+        if (t.msgFrom !== 'me' && t.timestamp) {
+          const v = new Date(t.timestamp).getTime();
+          if (!isNaN(v) && v > lastMineAt) cnt++;
+        }
+        t.unreadCount = cnt > 0 ? cnt : (t.hasBuyerMsg ? 1 : 0);
+      }
     });
 
     threads.sort((a, b) => {
