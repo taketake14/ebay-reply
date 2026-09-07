@@ -370,9 +370,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* AI返信案ボタン */
 .btn-ai{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:1px solid #0f766e;font-weight:700;}
 .btn-ai2{background:#fff;color:#0d9488;border:1.5px solid #5eead4;font-weight:700;}
-.btn-clear{margin-left:auto;background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
+.btn-clear{background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
 .btn-clear:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
-.btn-undo{background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
+.btn-undo{margin-left:auto;background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
 .btn-undo:hover:not(:disabled){background:#f0fdfa;border-color:#5eead4;color:var(--teal);}
 .btn-undo:disabled{opacity:0.4;cursor:not-allowed;}
 .btn-ai2:hover{background:#f0fdfa;border-color:#0d9488;}
@@ -895,8 +895,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
             <option value="-1">最新の返信案</option>
           </select>
-          <button class="btn btn-clear" onclick="clearReplyFields()" id="btn-clear-reply" title="日本語・英語の入力欄を空にする">&#10005; クリア</button>
           <button class="btn btn-undo" onclick="undoReplyClear()" id="btn-undo-reply" title="クリア前の内容に戻す" disabled>&#8630; 戻す</button>
+          <button class="btn btn-clear" onclick="clearReplyFields()" id="btn-clear-reply" title="日本語・英語の入力欄を空にする">&#10005; クリア</button>
         </div>
         <div class="reply-split">
           <!-- 左：日本語 -->
@@ -1303,6 +1303,7 @@ function markUnreadIdx(i){
   if(!m.unreadCount||m.unreadCount<1) m.unreadCount=1;
   saveState(m);
   renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
 }
 function markReadIdx(i){
   var m=messages[i];
@@ -1311,6 +1312,7 @@ function markReadIdx(i){
   m.unreadCount=0;
   saveState(m);
   renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
 }
 
 function toggleStarIdx(i){
