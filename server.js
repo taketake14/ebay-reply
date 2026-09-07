@@ -622,18 +622,30 @@ app.get('/api/ebay/sync', async (req, res) => {
     let added = 0, updated = 0;
 
     // シート上の既存conversationIdを取得（メモリだけだと再起動後に重複する）
-    const sheetConvIds = await getSheetConversationIds();
+    const sheetTs = await getSheetConvTimestamps();
 
     for (const em of ebayMsgs) {
-      const inMemory = messages.find(m => m.conversationId === em.conversationId);
-      const inSheet = sheetConvIds.has(String(em.conversationId));
-      const exists = inMemory || inSheet;
-      if (exists) {
-        if (force) {
-          // シート上の既存行を最新内容で更新
+      const cid = String(em.conversationId);
+      const savedTs = sheetTs[cid] || 0;
+      const newTs = new Date(em.timestamp || 0).getTime() || 0;
+      const existsInSheet = savedTs > 0;
+
+      if (existsInSheet) {
+        // 既にシートにある会話。新しいメッセージが来ていれば行を更新する
+        if (force || newTs > savedTs) {
           try {
             await refreshRowInSheet(em);
             updated++;
+            // メモリ側も更新
+            const mm = messages.find(m => m.conversationId === cid);
+            if (mm) {
+              mm.msg = em.body || mm.msg;
+              mm.message = em.body || mm.message;
+              mm.msgFrom = em.msgFrom || 'buyer';
+              mm.history = em.history || mm.history;
+              mm.timestamp = em.timestamp || mm.timestamp;
+              if (newTs > savedTs) { mm.read = false; mm.unreadCount = (mm.unreadCount||0)+1; }
+            }
           } catch (e) { console.error('refreshRow error:', e.message); }
         }
         continue;
@@ -708,6 +720,35 @@ app.post('/api/ebay/reply', async (req, res) => {
 });
 
 // ===== シート上の既存conversationId一覧を取得 =====
+// conversationId -> シート上の最新timestamp を返す
+async function getSheetConvTimestamps() {
+  const map = {};
+  try {
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return map;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A1:O10000`;
+    const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    const d = await r.json();
+    const rows = d.values || [];
+    if (rows.length <= 1) return map;
+    const h = rows[0];
+    const iConv = h.indexOf('conversationId');
+    const iTs = h.indexOf('timestamp');
+    if (iConv < 0 || iTs < 0) return map;
+    for (let i = 1; i < rows.length; i++) {
+      const cid = rows[i][iConv];
+      if (!cid) continue;
+      const ts = new Date(rows[i][iTs] || 0).getTime() || 0;
+      if (!map[cid] || ts > map[cid]) map[cid] = ts;
+    }
+  } catch (e) {
+    console.error('getSheetConvTimestamps error:', e.message);
+  }
+  return map;
+}
+
 async function getSheetConversationIds() {
   const ids = new Set();
   try {
@@ -1318,12 +1359,33 @@ async function autoSyncFromEbay() {
   autoSyncRunning = true;
   try {
     const ebayMsgs = await ebayApi.getMessagesForApp(2);
-    const sheetConvIds = await getSheetConversationIds();
-    let added = 0;
+    const sheetTs = await getSheetConvTimestamps();
+    let added = 0, refreshed = 0;
     for (const em of ebayMsgs) {
-      const inMemory = messages.find(m => m.conversationId === em.conversationId);
-      const inSheet = sheetConvIds.has(String(em.conversationId));
-      if (inMemory || inSheet) continue;
+      const cid = String(em.conversationId);
+      const savedTs = sheetTs[cid] || 0;
+      const newTs = new Date(em.timestamp || 0).getTime() || 0;
+
+      if (savedTs > 0) {
+        // 既存会話に新着があれば更新して未読に
+        if (newTs > savedTs) {
+          try {
+            await refreshRowInSheet(em);
+            refreshed++;
+            const mm = messages.find(m => m.conversationId === cid);
+            if (mm) {
+              mm.msg = em.body || mm.msg;
+              mm.message = em.body || mm.message;
+              mm.msgFrom = em.msgFrom || 'buyer';
+              mm.history = em.history || mm.history;
+              mm.timestamp = em.timestamp || mm.timestamp;
+              mm.read = false;
+              mm.unreadCount = (mm.unreadCount || 0) + 1;
+            }
+          } catch (e) { console.error('[autoSync] refresh:', e.message); }
+        }
+        continue;
+      }
       // 商品名・画像を取得（失敗しても続行）
       let itemInfo = null;
       if (em.itemId) {
@@ -1352,7 +1414,7 @@ async function autoSyncFromEbay() {
       await appendToSheet(msg).catch(e => console.error('appendToSheet:', e.message));
     }
     if (messages.length > 300) messages = messages.slice(0, 300);
-    if (added > 0) console.log(`[autoSync] ${added}件の新着を取得`);
+    if (added > 0 || refreshed > 0) console.log(`[autoSync] 新規${added}件 / 更新${refreshed}件`);
   } catch (e) {
     console.error('[autoSync] error:', e.message);
   } finally {
