@@ -440,6 +440,35 @@ app.get('/api/ebay/enrich', async (req, res) => {
   }
 });
 
+// ===== 同期判定の診断 =====
+app.get('/api/ebay/diag2', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 3;
+    const ebayMsgs = await ebayApi.getMessagesForApp(days);
+    const sheetTs = await getSheetConvTimestamps();
+    const rows = ebayMsgs.slice(0, 12).map(em => {
+      const cid = String(em.conversationId);
+      const savedTs = sheetTs[cid] || 0;
+      const newTs = new Date(em.timestamp || 0).getTime() || 0;
+      return {
+        buyer: em.buyer,
+        cid,
+        apiTs: em.timestamp,
+        sheetTs: savedTs ? new Date(savedTs).toISOString() : '(なし)',
+        newer: newTs > savedTs,
+      };
+    });
+    res.json({
+      ok: true,
+      apiCount: ebayMsgs.length,
+      sheetConvCount: Object.keys(sheetTs).length,
+      sample: rows,
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 会話取得の診断 =====
 app.get('/api/ebay/diag', async (req, res) => {
   try {
@@ -623,6 +652,7 @@ app.get('/api/ebay/sync', async (req, res) => {
 
     // シート上の既存conversationIdを取得（メモリだけだと再起動後に重複する）
     const sheetTs = await getSheetConvTimestamps();
+    const syncErrors = [];
 
     for (const em of ebayMsgs) {
       const cid = String(em.conversationId);
@@ -634,8 +664,9 @@ app.get('/api/ebay/sync', async (req, res) => {
         // 既にシートにある会話。新しいメッセージが来ていれば行を更新する
         if (force || newTs > savedTs) {
           try {
-            await refreshRowInSheet(em);
+            const r = await refreshRowInSheet(em);
             updated++;
+            if (r === false) console.log('[sync] refreshRow no-op for', cid);
             // メモリ側も更新
             const mm = messages.find(m => m.conversationId === cid);
             if (mm) {
@@ -646,7 +677,7 @@ app.get('/api/ebay/sync', async (req, res) => {
               mm.timestamp = em.timestamp || mm.timestamp;
               if (newTs > savedTs) { mm.read = false; mm.unreadCount = (mm.unreadCount||0)+1; }
             }
-          } catch (e) { console.error('refreshRow error:', e.message); }
+          } catch (e) { console.error('refreshRow error:', e.message); syncErrors.push(e.message); }
         }
         continue;
       }
@@ -679,7 +710,7 @@ app.get('/api/ebay/sync', async (req, res) => {
       appendToSheet(msg).catch(e => console.error('appendToSheet error:', e.message));
     }
     if (messages.length > 300) messages = messages.slice(0, 300);
-    res.json({ ok: true, fetched: ebayMsgs.length, added, updated });
+    res.json({ ok: true, fetched: ebayMsgs.length, added, updated, errors: syncErrors.slice(0,5) });
   } catch (e) {
     console.error('eBay sync error:', e.message);
     res.json({ ok: false, error: e.message });
