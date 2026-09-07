@@ -78,7 +78,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s1-body{flex:1;overflow-y:auto;}
 
-.s1-row{display:grid;gap:0;padding:12px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
+.s1-row{display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0fdfa !important;}
 /* ===== 未読：左に色帯＋濃い文字 ===== */
 .s1-row.unread{background:#fff;box-shadow:inset 2px 0 0 var(--teal);}
@@ -123,6 +123,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-item-ids{font-size:12px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono);}
 /* タグ */
 .s1-tags{display:flex;gap:3px;flex-wrap:wrap;}
+.s1-inline-tags{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px;}
+.s1-inline-tags .tag{font-size:10px;padding:1px 7px;}
 .tag{font-size:12px;padding:3px 8px;border-radius:4px;font-weight:600;white-space:nowrap;}
 .tag-discount{background:#fee2e2;color:#b91c1c;}
 .tag-stock{background:#ccfbf1;color:var(--accent-hover);}
@@ -283,6 +285,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* AI返信案ボタン */
 .btn-ai{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:1px solid #0f766e;font-weight:700;}
+.btn-ai2{background:#fff;color:#0d9488;border:1.5px solid #5eead4;font-weight:700;}
+.btn-ai2:hover{background:#f0fdfa;border-color:#0d9488;}
 .btn-ai:hover{background:linear-gradient(135deg,#0d9488,#0f766e);}
 .reply-col{display:flex;flex-direction:column;gap:5px;min-height:0;}
 .reply-col-label{font-size:12px;color:var(--text);font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0;}
@@ -474,6 +478,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* デモボタン */
 .demo-btn{font-size:11px;padding:6px 14px;border-radius:6px;border:1px dashed var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-weight:500;}
 .demo-btn:hover{border-color:var(--orange);color:var(--orange);}
+
+/* ===== AI情報入力モーダル ===== */
+.ai-modal{background:#fff;border-radius:14px;width:100%;max-width:560px;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,42,40,0.25);overflow:hidden;}
+.ai-body{padding:16px 20px;}
+.ai-guide{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;}
+.ai-hint-input{width:100%;min-height:140px;border:1px solid var(--border2);border-radius:9px;padding:11px 13px;font-size:13px;font-family:var(--sans);line-height:1.7;color:var(--text);outline:none;resize:vertical;}
+.ai-hint-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,0.1);}
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;}
+.ai-chip{font-size:11.5px;padding:4px 11px;border-radius:14px;background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;cursor:pointer;transition:all 0.12s;user-select:none;}
+.ai-chip:hover{background:#ccfbf1;border-color:var(--teal);}
+.ai-foot{padding:13px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg3);}
 
 /* ===== 定型文モーダル ===== */
 .ct-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:900;display:none;align-items:center;justify-content:center;padding:32px;backdrop-filter:blur(2px);}
@@ -748,7 +763,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="v-resizer" id="v-resizer"></div>
       <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
         <div class="reply-top">
-          <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AI返信案を作る</button>
+          <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AIにおまかせ</button>
+          <button class="btn btn-ai2" onclick="openAiHint()" id="btn-ai-hint">&#9998; 情報を伝えて作る</button>
           <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">&#128221; 定型文</button>
           <span class="reply-status" id="d-status"></span>
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
@@ -1101,6 +1117,7 @@ function renderList(){
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
       item: '<div class="s1-item-cell s1-col-item">'
         +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
+        +(tagsHtml?'<div class="s1-inline-tags">'+tagsHtml+'</div>':'')
         +'</div>',
       tags: '<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>',
       buyer: '<div class="s1-buyer-cell s1-col-buyer">'
@@ -2159,8 +2176,30 @@ function deleteCanned(i){
   renderCannedModal();
 }
 
+// ===== AI：情報を伝えて作る =====
+function openAiHint(){
+  if(currentIdx===null){ alert('メッセージを選択してください'); return; }
+  document.getElementById('ai-hint-modal').classList.add('open');
+  setTimeout(function(){document.getElementById('ai-hint-text').focus();},60);
+}
+function closeAiHint(){
+  document.getElementById('ai-hint-modal').classList.remove('open');
+}
+function addAiHint(txt){
+  var el=document.getElementById('ai-hint-text');
+  var v=el.value.trim();
+  el.value=(v?v+'\n':'')+txt;
+  el.focus();
+}
+function generateWithHint(){
+  var hint=document.getElementById('ai-hint-text').value.trim();
+  if(!hint){ alert('伝えたい情報を入力してください'); return; }
+  closeAiHint();
+  generateReply(currentIdx, hint);
+}
+
 // ===== 返信案生成 =====
-async function generateReply(i){
+async function generateReply(i, hint){
   var m=messages[i];
   var sEl=document.getElementById('d-status');
   var rEl=document.getElementById('d-reply');
@@ -2177,6 +2216,7 @@ async function generateReply(i){
   var prompt='あなたはeBay輸出セラーのメッセージ返信アシスタントです。'+manualSection+histSection
     +'\nバイヤー名: '+m.buyer+'\n商品: '+(m.item||'不明')+'\n購入状況: '+(m.sold?'購入済み (SOLD)':'問い合わせのみ（未購入）')
     +'\n新着メッセージ: '+m.msg
+    +(hint?('\n\n【今回の返信で必ず伝える情報】\n'+hint+'\n※この情報を自然な文章に織り込んでください。情報にない事柄を推測で書かないこと。'):'')
     +'\n\n【出力ルール】'
     +'\n- 英語の返信文と、その日本語訳を出力する'
     +'\n- 必ず次の形式で出力（他の説明・前置き・件名は不要）:'
@@ -2188,7 +2228,8 @@ async function generateReply(i){
     +'\n- 確認が必要な事項は「確認してから回答する」旨を伝える'
     +'\n- 過去のやり取りがある場合はその文脈を考慮する'
     +'\n- 丁寧かつ簡潔に'
-    +'\n- 段落間の空行は1行まで';
+    +'\n- 段落間の空行は1行まで'
+    +(hint?'':'\n- 商品名や購入状況から判断できる範囲で回答し、断定できないことは「確認して連絡する」と書く');
   try{
     var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
@@ -2684,6 +2725,34 @@ window.addEventListener('load',function(){
   applyGrid();
 });
 </script>
+<!-- AI情報入力モーダル -->
+<div class="ct-overlay" id="ai-hint-modal" onclick="if(event.target===this)closeAiHint()">
+  <div class="ai-modal">
+    <div class="ct-hdr">
+      <span class="ct-hdr-title">&#9998; 情報を伝えて返信案を作る</span>
+      <button class="ct-close" onclick="closeAiHint()">&#10005;</button>
+    </div>
+    <div class="ai-body">
+      <div class="ai-guide">バイヤーへ伝えたい情報を入力してください。箇条書きや単語だけでも構いません。<br>AIがこれをもとに自然な英文の返信案を作成します。</div>
+      <textarea id="ai-hint-text" class="ai-hint-input" placeholder="例：&#10;在庫あり&#10;発送まで1週間&#10;支払いはPayPalのみ&#10;サイズは全長25cm"></textarea>
+      <div class="ai-chips">
+        <span class="ai-chip" onclick="addAiHint('在庫あり')">在庫あり</span>
+        <span class="ai-chip" onclick="addAiHint('在庫なし・入荷未定')">在庫なし</span>
+        <span class="ai-chip" onclick="addAiHint('発送まで3〜5営業日')">発送3〜5日</span>
+        <span class="ai-chip" onclick="addAiHint('到着まで1〜2週間')">到着1〜2週</span>
+        <span class="ai-chip" onclick="addAiHint('値引き不可')">値引き不可</span>
+        <span class="ai-chip" onclick="addAiHint('確認して後日連絡')">確認後に連絡</span>
+        <span class="ai-chip" onclick="addAiHint('関税は購入者負担')">関税は買主負担</span>
+        <span class="ai-chip" onclick="addAiHint('返品可・送料は購入者負担')">返品可</span>
+      </div>
+    </div>
+    <div class="ai-foot">
+      <button class="btn btn-ai" onclick="generateWithHint()" id="btn-ai-hint-go">&#10024; この情報で作成</button>
+      <button class="btn btn-ghost" onclick="closeAiHint()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- 定型文モーダル -->
 <div class="ct-overlay" id="canned-modal" onclick="if(event.target===this)closeCanned()">
   <div class="ct-modal">
