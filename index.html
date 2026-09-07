@@ -349,6 +349,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-total{border-top:1.5px solid var(--border2) !important;margin-top:3px;padding-top:6px !important;}
 .prod-total .kv-k{font-weight:700;color:var(--text);}
 .prod-total .kv-v{font-weight:700;color:#dc2626;font-size:13px;}
+.unsold-tag{background:#f2f4f7;color:#667085;border:1px solid #e3e8ef;font-size:11px;font-weight:600;padding:2px 9px;border-radius:5px;letter-spacing:0.03em;}
 .sold-tag{background:#dc2626;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;border-radius:5px;letter-spacing:0.04em;}
 
 /* ===== バイヤー詳細：グループ表示 ===== */
@@ -461,45 +462,62 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .demo-btn:hover{border-color:var(--orange);color:var(--orange);}
 
 /* ===== 定型文モーダル ===== */
-.ct-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.42);z-index:900;display:none;align-items:center;justify-content:center;padding:24px;}
+.ct-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:900;display:none;align-items:center;justify-content:center;padding:32px;backdrop-filter:blur(2px);}
 .ct-overlay.open{display:flex;}
-.ct-modal{background:#fff;border-radius:14px;width:100%;max-width:640px;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(15,23,42,0.22);overflow:hidden;}
+.ct-modal{background:#fff;border-radius:14px;width:100%;max-width:1000px;height:min(660px,86vh);display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,23,42,0.25);overflow:hidden;}
 
-.ct-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);}
-.ct-hdr-title{font-size:14px;font-weight:700;color:var(--text);flex:1;}
-.ct-new{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);}
+.ct-hdr{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.ct-hdr-title{font-size:15px;font-weight:700;color:var(--text);flex:1;letter-spacing:0.01em;}
+.ct-new{background:var(--accent);color:#fff;border:none;border-radius:7px;padding:7px 15px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans);}
 .ct-new:hover{background:#1d4ed8;}
-.ct-close{background:transparent;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:4px 7px;border-radius:5px;line-height:1;}
+.ct-close{background:transparent;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:5px 8px;border-radius:6px;line-height:1;}
 .ct-close:hover{background:var(--bg3);color:var(--text);}
 
-.ct-tabs{display:flex;gap:5px;padding:11px 16px;border-bottom:1px solid var(--border);background:var(--bg3);overflow-x:auto;flex-shrink:0;}
-.ct-tab{background:#fff;border:1px solid var(--border2);border-radius:16px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;font-family:var(--sans);display:flex;align-items:center;gap:5px;transition:all 0.12s;}
-.ct-tab:hover{border-color:var(--accent);color:var(--accent);}
-.ct-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
-.ct-count{font-size:10px;opacity:0.7;font-weight:500;}
-.ct-tab.ct-add{padding:5px 11px;font-size:14px;color:var(--text3);}
+.ct-body{flex:1;display:grid;grid-template-columns:170px 240px 1fr;min-height:0;}
 
-.ct-list{flex:1;overflow-y:auto;padding:10px 16px 16px;}
-.ct-item{display:flex;align-items:stretch;gap:6px;border:1px solid var(--border);border-radius:9px;margin-bottom:7px;transition:all 0.12s;overflow:hidden;}
-.ct-item:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(37,99,235,0.09);}
-.ct-item-main{flex:1;min-width:0;padding:10px 12px;cursor:pointer;}
-.ct-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
-.ct-text{font-size:11.5px;color:var(--text3);line-height:1.55;}
-.ct-actions{display:flex;flex-direction:column;border-left:1px solid var(--border);}
-.ct-mini{flex:1;background:var(--bg3);border:none;color:var(--text3);cursor:pointer;padding:0 11px;font-size:12px;transition:all 0.12s;}
-.ct-mini:hover{background:#eff6ff;color:var(--accent);}
-.ct-mini.ct-del:hover{background:#fef2f2;color:#dc2626;}
-.ct-empty{text-align:center;padding:28px;color:var(--text3);font-size:12.5px;}
+/* 左：カテゴリ */
+.ct-side{border-right:1px solid var(--border);padding:14px 10px;overflow-y:auto;background:var(--bg3);display:flex;flex-direction:column;gap:3px;}
+.ct-side-label{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.08em;padding:0 8px 7px;}
+.ct-cat{display:flex;align-items:center;justify-content:space-between;gap:6px;width:100%;background:transparent;border:none;border-radius:7px;padding:8px 10px;font-size:12.5px;font-weight:500;color:var(--text2);cursor:pointer;font-family:var(--sans);text-align:left;transition:all 0.12s;}
+.ct-cat:hover{background:#fff;color:var(--text);}
+.ct-cat.on{background:var(--accent);color:#fff;font-weight:600;}
+.ct-count{font-size:10.5px;opacity:0.65;font-weight:500;}
+.ct-addcat{margin-top:6px;background:transparent;border:1px dashed var(--border2);border-radius:7px;padding:7px;font-size:11.5px;color:var(--text3);cursor:pointer;font-family:var(--sans);}
+.ct-addcat:hover{border-color:var(--accent);color:var(--accent);background:#fff;}
 
-.ct-edit{display:none;border-top:1px solid var(--border);padding:14px 16px;background:var(--bg3);flex-shrink:0;max-height:44vh;overflow-y:auto;}
-.ct-edit.open{display:block;}
-.ct-edit-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:9px;}
-.ct-edit-row{margin-bottom:9px;}
-.ct-edit-row label{display:block;font-size:11px;color:var(--text3);font-weight:600;margin-bottom:3px;}
-.ct-edit-row input,.ct-edit-row textarea{width:100%;border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12.5px;font-family:var(--sans);color:var(--text);outline:none;background:#fff;}
-.ct-edit-row input:focus,.ct-edit-row textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,0.1);}
-.ct-edit-row textarea{min-height:96px;resize:vertical;line-height:1.6;}
-.ct-edit-btns{display:flex;gap:7px;}
+/* 中：一覧 */
+.ct-mid{border-right:1px solid var(--border);overflow-y:auto;padding:10px 8px;}
+.ct-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 11px;border-radius:8px;cursor:pointer;transition:all 0.12s;margin-bottom:2px;}
+.ct-item:hover{background:var(--bg3);}
+.ct-item.on{background:#eff6ff;}
+.ct-item-label{font-size:13px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ct-item.on .ct-item-label{color:var(--accent);font-weight:600;}
+.ct-item-arrow{font-size:9px;color:var(--text3);opacity:0;transition:opacity 0.12s;}
+.ct-item:hover .ct-item-arrow,.ct-item.on .ct-item-arrow{opacity:1;}
+.ct-empty{padding:24px 12px;text-align:center;font-size:12px;color:var(--text3);}
+
+/* 右：詳細 */
+.ct-detail{display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.ct-detail-empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12.5px;}
+.ct-d-hdr{padding:16px 20px 12px;border-bottom:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:9px;}
+.ct-d-title{font-size:15px;font-weight:700;color:var(--text);flex:1;}
+.ct-d-cat{font-size:10.5px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:2px 9px;border-radius:11px;}
+.ct-d-body{flex:1;overflow-y:auto;padding:16px 20px;}
+.ct-d-sec{margin-bottom:16px;}
+.ct-d-sec:last-child{margin-bottom:0;}
+.ct-d-sec-t{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.06em;margin-bottom:6px;}
+.ct-d-en{font-size:13px;line-height:1.75;color:var(--text);white-space:pre-wrap;background:#fff;border:1px solid var(--border);border-radius:9px;padding:12px 14px;}
+.ct-d-ja{font-size:12.5px;line-height:1.8;color:#5b6478;white-space:pre-wrap;background:var(--bg3);border-radius:9px;padding:12px 14px;}
+.ct-d-foot{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;background:var(--bg3);}
+.ct-d-del{color:#dc2626 !important;margin-left:auto;}
+.ct-d-del:hover{background:#fef2f2 !important;border-color:#fecaca !important;}
+
+/* 編集フォーム */
+.ct-e-row{margin-bottom:13px;}
+.ct-e-row label{display:block;font-size:10.5px;font-weight:700;color:var(--text3);letter-spacing:0.05em;margin-bottom:5px;}
+.ct-e-row input,.ct-e-row textarea{width:100%;border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--sans);color:var(--text);outline:none;background:#fff;}
+.ct-e-row input:focus,.ct-e-row textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.09);}
+.ct-e-row textarea{min-height:110px;resize:vertical;line-height:1.7;}
 </style>
 </head>
 <body>
@@ -875,11 +893,11 @@ var replyJaCache = {};
 
 // 定型文（カテゴリ付き）。localStorageで編集・追加可能
 var CANNED_DEFAULT = [
-  {cat:'一般', label:'営業時間外', text:'Thank you for your message. Our store operates Monday to Friday, from 9:00 AM to 6:00 PM (Japan Standard Time). We are closed on weekends and Japanese public holidays. We will respond to your inquiry on the next business day. Thank you for your patience.\n\nBest regards,\nKen'},
-  {cat:'一般', label:'確認します', text:'Thank you for your message. I will check on this and get back to you as soon as possible. Thank you for your patience.\n\nBest regards,\nKen'},
-  {cat:'価格', label:'値引き不可', text:'Thank you for your interest! Unfortunately, the price is already set at our best value and we are unable to offer a discount. If you would like to make an offer, please use the "Make Offer" feature on eBay.\n\nBest regards,\nKen'},
-  {cat:'商品', label:'写真送付不可', text:'Thank you for your inquiry. Unfortunately, the item is stored at a remote warehouse and we are unable to provide additional photos at this time. Please refer to the photos in the listing for details.\n\nBest regards,\nKen'},
-  {cat:'配送', label:'発送完了', text:'Thank you for your purchase! Your order has been shipped. Please allow some time for the tracking information to be updated. If you have any questions, feel free to contact us.\n\nBest regards,\nKen'},
+  {cat:'一般', label:'営業時間外', text:'Thank you for your message. Our store operates Monday to Friday, from 9:00 AM to 6:00 PM (Japan Standard Time). We are closed on weekends and Japanese public holidays. We will respond to your inquiry on the next business day. Thank you for your patience.\n\nBest regards,\nKen', ja:'メッセージありがとうございます。当店の営業時間は月曜〜金曜の9:00〜18:00（日本時間）です。土日祝はお休みをいただいております。翌営業日にご返信いたしますので、少々お待ちください。'},
+  {cat:'一般', label:'確認します', text:'Thank you for your message. I will check on this and get back to you as soon as possible. Thank you for your patience.\n\nBest regards,\nKen', ja:'メッセージありがとうございます。確認のうえ、できるだけ早くご連絡いたします。少々お待ちください。'},
+  {cat:'価格', label:'値引き不可', text:'Thank you for your interest! Unfortunately, the price is already set at our best value and we are unable to offer a discount. If you would like to make an offer, please use the "Make Offer" feature on eBay.\n\nBest regards,\nKen', ja:'ご興味をお持ちいただきありがとうございます。恐れ入りますが、すでに最良の価格を設定しておりお値引きはいたしかねます。オファーをご希望の場合はeBayの「Make Offer」機能をご利用ください。'},
+  {cat:'商品', label:'写真送付不可', text:'Thank you for your inquiry. Unfortunately, the item is stored at a remote warehouse and we are unable to provide additional photos at this time. Please refer to the photos in the listing for details.\n\nBest regards,\nKen', ja:'お問い合わせありがとうございます。恐れ入りますが、商品は遠方の倉庫に保管しており、追加のお写真をお送りすることができません。出品ページの写真をご確認ください。'},
+  {cat:'配送', label:'発送完了', text:'Thank you for your purchase! Your order has been shipped. Please allow some time for the tracking information to be updated. If you have any questions, feel free to contact us.\n\nBest regards,\nKen', ja:'ご購入ありがとうございます。商品を발送いたしました。追跡情報の反映まで少しお時間をいただく場合があります。ご不明な点がありましたらお気軽にご連絡ください。'},
 ];
 
 var CANNED = (function(){
@@ -1201,7 +1219,7 @@ function renderChatDetail(){
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">状況</span>'
     +(m.sold
       ? '<span class="kv-v"><span class="sold-tag">&#10003; SOLD</span></span>'
-      : '<span class="kv-v" style="color:#98a2b3;">未購入</span>'
+      : '<span class="kv-v"><span class="unsold-tag">未購入</span></span>'
     )+'</div>';
 
   // 識別子
@@ -1238,7 +1256,7 @@ function renderChatDetail(){
     cpBuyer.innerHTML=COPY_ICON;
     cpBuyer.onclick=function(){copyValue(m.buyer,this);};
   }
-  document.getElementById('buyer-panel-sub').innerHTML=m.sold ? '' : '<span class="sub-tag">未購入</span>';
+  document.getElementById('buyer-panel-sub').innerHTML='';
 
   // バイヤーリンク（商品パネルに注文番号があるので削除）
   var linksHtml='';
@@ -1753,8 +1771,6 @@ async function loadBuyerDetail(buyer, idx){
       var bits=[];
       if(info.purchased && (info.countryLabel||info.country)){
         bits.push('<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>');
-      } else if(!info.purchased){
-        bits.push('<span class="sub-tag">未購入</span>');
       }
       subEl.innerHTML=bits.join('');
     }
@@ -1970,133 +1986,157 @@ function copyReply(){
   if(el) navigator.clipboard.writeText(el.value).catch(function(){});
 }
 
-// ===== 定型文（タブ切替・編集可能なモーダル） =====
+// ===== 定型文モーダル =====
 var cannedActiveCat = null;
-var cannedEditIdx = null;
+var cannedSelIdx = null;
+var cannedEditing = false;
 
 function toggleCanned(){
   var modal=document.getElementById('canned-modal');
   if(!modal) return;
   if(modal.classList.contains('open')){ closeCanned(); return; }
   cannedActiveCat = cannedActiveCat || (cannedCategories()[0] || '一般');
+  cannedSelIdx=null; cannedEditing=false;
   renderCannedModal();
   modal.classList.add('open');
 }
-
 function closeCanned(){
   var modal=document.getElementById('canned-modal');
   if(modal) modal.classList.remove('open');
-  cannedEditIdx=null;
+  cannedEditing=false;
 }
 
 function renderCannedModal(){
   var cats=cannedCategories();
   if(cats.indexOf(cannedActiveCat)<0) cannedActiveCat=cats[0]||'一般';
 
-  // タブ
-  var tabsEl=document.getElementById('canned-tabs');
-  tabsEl.innerHTML=cats.map(function(cat){
+  // カテゴリ一覧
+  document.getElementById('canned-cats').innerHTML=cats.map(function(cat){
     var n=CANNED.filter(function(x){return (x.cat||'その他')===cat;}).length;
-    return '<button class="ct-tab'+(cat===cannedActiveCat?' on':'')+'" onclick="switchCannedCat(\''+esc(cat).replace(/'/g,"\\'")+'\')">'
-      +esc(cat)+'<span class="ct-count">'+n+'</span></button>';
-  }).join('')
-    +'<button class="ct-tab ct-add" onclick="addCannedCategory()" title="カテゴリを追加">+</button>';
+    var safe=cat.replace(/'/g,"\\'");
+    return '<button class="ct-cat'+(cat===cannedActiveCat?' on':'')+'" onclick="switchCannedCat(\''+esc(safe)+'\')">'
+      +'<span>'+esc(cat)+'</span><span class="ct-count">'+n+'</span></button>';
+  }).join('');
 
-  // リスト
-  var listEl=document.getElementById('canned-list');
+  // 一覧（タイトルのみ）
   var items=CANNED.map(function(x,i){return {x:x,i:i};})
                   .filter(function(o){return (o.x.cat||'その他')===cannedActiveCat;});
+  var listEl=document.getElementById('canned-list');
   if(items.length===0){
-    listEl.innerHTML='<div class="ct-empty">このカテゴリに定型文はありません</div>';
+    listEl.innerHTML='<div class="ct-empty">このカテゴリには定型文がありません</div>';
   } else {
     listEl.innerHTML=items.map(function(o){
-      return '<div class="ct-item">'
-        +'<div class="ct-item-main" onclick="insertCanned('+o.i+')">'
-          +'<div class="ct-label">'+esc(o.x.label)+'</div>'
-          +'<div class="ct-text">'+esc(o.x.text.substring(0,90))+(o.x.text.length>90?'…':'')+'</div>'
-        +'</div>'
-        +'<div class="ct-actions">'
-          +'<button class="ct-mini" onclick="editCanned('+o.i+')" title="編集">&#9998;</button>'
-          +'<button class="ct-mini ct-del" onclick="deleteCanned('+o.i+')" title="削除">&#10005;</button>'
-        +'</div>'
+      return '<div class="ct-item'+(o.i===cannedSelIdx?' on':'')+'" onclick="selectCanned('+o.i+')">'
+        +'<span class="ct-item-label">'+esc(o.x.label)+'</span>'
+        +'<span class="ct-item-arrow">&#9656;</span>'
       +'</div>';
     }).join('');
   }
+
+  if(cannedSelIdx!==null && CANNED[cannedSelIdx]) renderCannedDetail();
+  else if(!cannedEditing) document.getElementById('canned-detail').innerHTML='<div class="ct-detail-empty">左から定型文を選択してください</div>';
 }
 
 function switchCannedCat(cat){
-  cannedActiveCat=cat;
-  cannedEditIdx=null;
-  document.getElementById('canned-edit').classList.remove('open');
+  cannedActiveCat=cat; cannedSelIdx=null; cannedEditing=false;
+  renderCannedModal();
+}
+function selectCanned(i){
+  cannedSelIdx=i; cannedEditing=false;
   renderCannedModal();
 }
 
-function addCannedCategory(){
-  var name=prompt('新しいカテゴリ名を入力してください（例：配送、キャンセル、返品）');
-  if(!name||!name.trim()) return;
-  cannedActiveCat=name.trim();
-  cannedEditIdx=null;
-  openCannedEdit();
-  renderCannedModal();
+function renderCannedDetail(){
+  var x=CANNED[cannedSelIdx];
+  if(!x) return;
+  document.getElementById('canned-detail').innerHTML=
+     '<div class="ct-d-hdr">'
+      +'<div class="ct-d-title">'+esc(x.label)+'</div>'
+      +'<div class="ct-d-cat">'+esc(x.cat||'その他')+'</div>'
+    +'</div>'
+    +'<div class="ct-d-body">'
+      +'<div class="ct-d-sec">'
+        +'<div class="ct-d-sec-t">英語（送信される文）</div>'
+        +'<div class="ct-d-en">'+esc(x.text)+'</div>'
+      +'</div>'
+      +(x.ja?'<div class="ct-d-sec">'
+        +'<div class="ct-d-sec-t">日本語訳</div>'
+        +'<div class="ct-d-ja">'+esc(x.ja)+'</div>'
+      +'</div>':'')
+    +'</div>'
+    +'<div class="ct-d-foot">'
+      +'<button class="btn btn-primary" onclick="useCanned('+cannedSelIdx+')">この文を使う</button>'
+      +'<button class="btn btn-ghost" onclick="editCanned('+cannedSelIdx+')">編集</button>'
+      +'<button class="btn btn-ghost ct-d-del" onclick="deleteCanned('+cannedSelIdx+')">削除</button>'
+    +'</div>';
 }
 
-function insertCanned(i){
+function useCanned(i){
   var el=document.getElementById('d-reply');
   el.value=CANNED[i].text;
+  var jaEl=document.getElementById('d-input-ja');
+  if(jaEl && CANNED[i].ja) jaEl.value=CANNED[i].ja;
   var m=messages[currentIdx];
-  if(m) m.reply=CANNED[i].text;
+  if(m){ m.reply=CANNED[i].text; m.replyJa=CANNED[i].ja||''; }
   closeCanned();
 }
 
-function editCanned(i){
-  cannedEditIdx=i;
-  document.getElementById('ce-cat').value=CANNED[i].cat||'その他';
-  document.getElementById('ce-label').value=CANNED[i].label||'';
-  document.getElementById('ce-text').value=CANNED[i].text||'';
-  openCannedEdit();
+function addCannedCategory(){
+  var name=prompt('新しいカテゴリ名（例：配送、キャンセル、返品）');
+  if(!name||!name.trim()) return;
+  cannedActiveCat=name.trim();
+  cannedSelIdx=null;
+  openCannedEdit(null);
 }
 
-function openCannedEdit(){
-  var box=document.getElementById('canned-edit');
-  if(cannedEditIdx===null){
-    document.getElementById('ce-cat').value=cannedActiveCat||'一般';
-    document.getElementById('ce-label').value='';
-    document.getElementById('ce-text').value='';
-  }
-  box.classList.add('open');
-  document.getElementById('ce-title').textContent=(cannedEditIdx===null?'定型文を追加':'定型文を編集');
-  setTimeout(function(){ document.getElementById('ce-label').focus(); },50);
+function newCanned(){ openCannedEdit(null); }
+function editCanned(i){ openCannedEdit(i); }
+
+function openCannedEdit(i){
+  cannedEditing=true;
+  var x = (i!==null && CANNED[i]) ? CANNED[i] : {cat:cannedActiveCat||'一般',label:'',text:'',ja:''};
+  cannedSelIdx = i;
+  document.getElementById('canned-detail').innerHTML=
+     '<div class="ct-d-hdr"><div class="ct-d-title">'+(i===null?'新規作成':'編集')+'</div></div>'
+    +'<div class="ct-d-body">'
+      +'<div class="ct-e-row"><label>カテゴリ</label><input type="text" id="ce-cat" value="'+esc(x.cat||'')+'" placeholder="例：配送"></div>'
+      +'<div class="ct-e-row"><label>タイトル</label><input type="text" id="ce-label" value="'+esc(x.label||'')+'" placeholder="例：発送完了のお知らせ"></div>'
+      +'<div class="ct-e-row"><label>英語（送信される文）</label><textarea id="ce-text" placeholder="English text...">'+esc(x.text||'')+'</textarea></div>'
+      +'<div class="ct-e-row"><label>日本語訳</label><textarea id="ce-ja" placeholder="日本語の意味...">'+esc(x.ja||'')+'</textarea></div>'
+    +'</div>'
+    +'<div class="ct-d-foot">'
+      +'<button class="btn btn-primary" onclick="saveCannedEdit('+(i===null?'null':i)+')">保存</button>'
+      +'<button class="btn btn-ghost" onclick="cancelCannedEdit()">キャンセル</button>'
+    +'</div>';
+  setTimeout(function(){var e=document.getElementById('ce-label'); if(e) e.focus();},50);
 }
 
-function newCanned(){
-  cannedEditIdx=null;
-  openCannedEdit();
-}
-
-function saveCannedEdit(){
+function saveCannedEdit(i){
   var cat=document.getElementById('ce-cat').value.trim()||'その他';
   var label=document.getElementById('ce-label').value.trim();
   var text=document.getElementById('ce-text').value.trim();
+  var ja=document.getElementById('ce-ja').value.trim();
   if(!label){ alert('タイトルを入力してください'); return; }
-  if(!text){ alert('本文を入力してください'); return; }
-  if(cannedEditIdx===null) CANNED.push({cat:cat,label:label,text:text});
-  else CANNED[cannedEditIdx]={cat:cat,label:label,text:text};
+  if(!text){ alert('英語の本文を入力してください'); return; }
+  var obj={cat:cat,label:label,text:text,ja:ja};
+  if(i===null||i===undefined){ CANNED.push(obj); cannedSelIdx=CANNED.length-1; }
+  else { CANNED[i]=obj; cannedSelIdx=i; }
   saveCanned();
   cannedActiveCat=cat;
-  cannedEditIdx=null;
-  document.getElementById('canned-edit').classList.remove('open');
+  cannedEditing=false;
   renderCannedModal();
 }
 
 function cancelCannedEdit(){
-  cannedEditIdx=null;
-  document.getElementById('canned-edit').classList.remove('open');
+  cannedEditing=false;
+  renderCannedModal();
 }
 
 function deleteCanned(i){
   if(!confirm('「'+CANNED[i].label+'」を削除しますか？')) return;
   CANNED.splice(i,1);
   saveCanned();
+  cannedSelIdx=null;
   renderCannedModal();
 }
 
@@ -2628,32 +2668,29 @@ window.addEventListener('load',function(){
 <!-- 定型文モーダル -->
 <div class="ct-overlay" id="canned-modal" onclick="if(event.target===this)closeCanned()">
   <div class="ct-modal">
+    <!-- ヘッダー -->
     <div class="ct-hdr">
-      <span class="ct-hdr-title">&#128221; 定型文</span>
-      <button class="ct-new" onclick="newCanned()">+ 新規追加</button>
+      <span class="ct-hdr-title">定型文</span>
+      <button class="ct-new" onclick="newCanned()">+ 新規作成</button>
       <button class="ct-close" onclick="closeCanned()">&#10005;</button>
     </div>
-    <div class="ct-tabs" id="canned-tabs"></div>
-    <div class="ct-list" id="canned-list"></div>
 
-    <!-- 編集フォーム -->
-    <div class="ct-edit" id="canned-edit">
-      <div class="ct-edit-title" id="ce-title">定型文を追加</div>
-      <div class="ct-edit-row">
-        <label>カテゴリ</label>
-        <input type="text" id="ce-cat" placeholder="例：配送、キャンセル、返品">
+    <div class="ct-body">
+      <!-- 左：カテゴリ -->
+      <div class="ct-side">
+        <div class="ct-side-label">カテゴリ</div>
+        <div id="canned-cats"></div>
+        <button class="ct-addcat" onclick="addCannedCategory()">+ カテゴリ追加</button>
       </div>
-      <div class="ct-edit-row">
-        <label>タイトル</label>
-        <input type="text" id="ce-label" placeholder="例：発送完了のお知らせ">
+
+      <!-- 中：一覧 -->
+      <div class="ct-mid">
+        <div id="canned-list"></div>
       </div>
-      <div class="ct-edit-row">
-        <label>本文</label>
-        <textarea id="ce-text" placeholder="英語の定型文を入力..."></textarea>
-      </div>
-      <div class="ct-edit-btns">
-        <button class="btn btn-primary" onclick="saveCannedEdit()">保存</button>
-        <button class="btn btn-ghost" onclick="cancelCannedEdit()">キャンセル</button>
+
+      <!-- 右：詳細 -->
+      <div class="ct-detail" id="canned-detail">
+        <div class="ct-detail-empty">左から定型文を選択してください</div>
       </div>
     </div>
   </div>
