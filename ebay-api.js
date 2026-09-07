@@ -331,6 +331,7 @@ function countryName(code) {
 }
 
 // 英語の正式国名（配送先コピー用）
+// eBay公式の CountryCodeType 表記に準拠（オーダー情報と同じ綴り）
 const COUNTRY_EN = {
   US:'United States', CA:'Canada', GB:'United Kingdom', AU:'Australia', DE:'Germany',
   FR:'France', IT:'Italy', ES:'Spain', NL:'Netherlands', BE:'Belgium', CH:'Switzerland',
@@ -340,13 +341,28 @@ const COUNTRY_EN = {
   EE:'Estonia', LV:'Latvia', LT:'Lithuania', LU:'Luxembourg', MT:'Malta',
   CY:'Cyprus', IS:'Iceland', JP:'Japan', CN:'China', KR:'South Korea', TW:'Taiwan',
   HK:'Hong Kong', SG:'Singapore', MY:'Malaysia', TH:'Thailand', ID:'Indonesia',
-  PH:'Philippines', VN:'Vietnam', IN:'India', NZ:'New Zealand', BR:'Brazil',
+  PH:'Philippines', VN:'Viet Nam', IN:'India', NZ:'New Zealand', BR:'Brazil',
   MX:'Mexico', AR:'Argentina', CL:'Chile', CO:'Colombia', PE:'Peru',
   VE:'Venezuela', EC:'Ecuador', UY:'Uruguay', PY:'Paraguay', BO:'Bolivia',
   CR:'Costa Rica', PA:'Panama', GT:'Guatemala', DO:'Dominican Republic',
-  PR:'Puerto Rico', RU:'Russia', UA:'Ukraine', TR:'Turkey', IL:'Israel',
+  PR:'Puerto Rico', RU:'Russian Federation', UA:'Ukraine', TR:'Turkey', IL:'Israel',
   SA:'Saudi Arabia', AE:'United Arab Emirates', QA:'Qatar', KW:'Kuwait',
   ZA:'South Africa', EG:'Egypt', NG:'Nigeria', KE:'Kenya', MA:'Morocco',
+  LI:'Liechtenstein', MC:'Monaco', SM:'San Marino', AD:'Andorra', VA:'Vatican City',
+  RS:'Serbia', BA:'Bosnia and Herzegovina', MK:'Macedonia', AL:'Albania', ME:'Montenegro',
+  BY:'Belarus', MD:'Moldova', GE:'Georgia', AM:'Armenia', AZ:'Azerbaijan',
+  KZ:'Kazakhstan', UZ:'Uzbekistan', PK:'Pakistan', BD:'Bangladesh', LK:'Sri Lanka',
+  NP:'Nepal', MM:'Myanmar', KH:'Cambodia', LA:'Laos', BN:'Brunei Darussalam',
+  MO:'Macau', MN:'Mongolia', JO:'Jordan', LB:'Lebanon', OM:'Oman', BH:'Bahrain',
+  IQ:'Iraq', IR:'Iran', SY:'Syria', YE:'Yemen', AF:'Afghanistan',
+  TN:'Tunisia', DZ:'Algeria', LY:'Libya', SD:'Sudan', ET:'Ethiopia',
+  GH:'Ghana', TZ:'Tanzania', UG:'Uganda', ZW:'Zimbabwe', ZM:'Zambia',
+  MU:'Mauritius', SN:'Senegal', CI:'Cote d\'Ivoire', CM:'Cameroon',
+  FJ:'Fiji', PG:'Papua New Guinea', NC:'New Caledonia', PF:'French Polynesia',
+  GU:'Guam', VI:'Virgin Islands (U.S.)', BM:'Bermuda', BS:'Bahamas',
+  JM:'Jamaica', TT:'Trinidad and Tobago', BB:'Barbados', KY:'Cayman Islands',
+  HN:'Honduras', NI:'Nicaragua', SV:'El Salvador', BZ:'Belize',
+  GP:'Guadeloupe', MQ:'Martinique', RE:'Reunion', GF:'French Guiana',
 };
 function countryNameEn(code) {
   if (!code) return '';
