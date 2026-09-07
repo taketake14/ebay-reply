@@ -213,9 +213,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 吹き出しごとの翻訳ボタン */
 /* 翻訳ボタン：メタ情報に馴染む控えめなテキストボタン */
-.bbl-tr-btn{font-size:11px;font-weight:500;padding:1px 7px;border-radius:4px;border:none;background:transparent;color:#98a2b3;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.12s;}
-.bbl-tr-btn:hover{background:#f2f4f7;color:#475467;}
-.bbl-tr-btn.on{background:#f2f4f7;color:#475467;font-weight:600;}
+.bbl-tr-btn{font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:12px;border:1px solid #e3e8ef;background:#fff;color:#667085;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.12s;display:inline-flex;align-items:center;gap:3px;}
+.bbl-tr-btn::before{content:'🇯🇵';font-size:9px;}
+.bbl-tr-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
+.bbl-tr-btn.on{background:#475569;border-color:#475569;color:#fff;}
+.bbl-tr-btn.on::before{content:'↩';font-size:10px;}
 .bbl-tr-btn:disabled{opacity:0.5;cursor:wait;}
 
 /* 翻訳文の表示 */
@@ -314,6 +316,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-panel-row{display:flex;align-items:center;gap:9px;}
 .buyer-panel-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;}
 .sub-country{font-size:12px;font-weight:600;color:var(--text);}
+.sub-reg{font-size:10.5px;color:var(--text3);}
+.buyer-panel-sub{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;}
+
+/* バイヤーIDの横に出す評価・リピーター */
+.id-fb{font-size:11px;font-weight:600;color:#475467;background:#f2f4f7;padding:1px 6px;border-radius:10px;white-space:nowrap;}
+.repeat-tag{font-size:10px;font-weight:700;color:#6941c6;background:#f4f0ff;border:1px solid #e4d9ff;padding:1px 6px;border-radius:4px;white-space:nowrap;}
 .sub-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
 .sub-tag.sold{background:#fee2e2;color:#dc2626;border-color:#fecaca;font-weight:700;}
 
@@ -583,22 +591,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="panel-body" style="gap:0;padding:0;overflow-y:auto;">
 
         <!-- 商品セクション -->
-        <div class="rp-section" id="rp-section-product">
-          <div class="rp-section-hdr" onclick="toggleRpSection('product')">
-            <span class="rp-section-title">&#128230; 商品</span>
-            <span class="rp-toggle-icon" id="rp-icon-product">&#9660;</span>
-          </div>
-          <div class="rp-section-body" id="rp-body-product">
-            <div class="prod-img-wrap" id="prod-img-wrap">&#128230;</div>
-            <div class="prod-name-row">
-              <div class="prod-name" id="prod-name">—</div>
-              <button class="cp-btn" id="cp-prod-name" title="商品名をコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>
-            </div>
-            <div class="prod-kv" id="prod-kv"></div>
-          </div>
-        </div>
-
-        <!-- バイヤーセクション -->
         <div class="rp-section" id="rp-section-buyer">
           <div class="rp-section-hdr" onclick="toggleRpSection('buyer')">
             <span class="rp-section-title">&#128100; バイヤー</span>
@@ -618,6 +610,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         </div>
 
         <!-- メモセクション -->
+        <div class="rp-section" id="rp-section-product">
+          <div class="rp-section-hdr" onclick="toggleRpSection('product')">
+            <span class="rp-section-title">&#128230; 商品</span>
+            <span class="rp-toggle-icon" id="rp-icon-product">&#9660;</span>
+          </div>
+          <div class="rp-section-body" id="rp-body-product">
+            <div class="prod-img-wrap" id="prod-img-wrap">&#128230;</div>
+            <div class="prod-name-row">
+              <div class="prod-name" id="prod-name">—</div>
+              <button class="cp-btn" id="cp-prod-name" title="商品名をコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button>
+            </div>
+            <div class="prod-kv" id="prod-kv"></div>
+          </div>
+        </div>
+
+        <!-- バイヤーセクション -->
         <div class="rp-section" id="rp-section-memo">
           <div class="rp-section-hdr" onclick="toggleRpSection('memo')">
             <span class="rp-section-title" style="display:flex;align-items:center;gap:6px;flex:1;">&#128221; メモ <span id="memo-badge" style="display:none;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px;margin-left:4px;letter-spacing:0.02em;">📝 メモあり</span></span>
@@ -1096,12 +1104,13 @@ function renderChatDetail(){
   if(m.itemId) kvHtml+=kvRow('Item ID', m.itemId, {link:'https://www.ebay.com/itm/'+esc(m.itemId)});
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" id="prod-sku">—</span>'
     +'<button class="cp-btn" id="cp-sku" title="SKUをコピー"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2H3.5A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5"/></svg></button></div>';
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">価格</span><span class="kv-v" id="prod-price">—</span></div>';
+
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">販売状況</span>'
     +(m.sold
       ? '<span class="kv-v"><span class="sold-tag">&#10003; SOLD</span></span>'
       : '<span class="kv-v" style="color:var(--text2);">未購入</span>'
     )+'</div>';
+  kvHtml+='<div id="order-inline"></div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
 
   var cpSku=document.getElementById('cp-sku');
@@ -1122,7 +1131,9 @@ function renderChatDetail(){
   // バイヤー名＋SOLDバッジ
   var soldBadge='';  // SOLDは注文ブロックに表示するため、ここでは出さない
   var buyerLink='<a href="https://www.ebay.com/usr/'+encodeURIComponent(m.buyer)+'" target="_blank" style="color:inherit;text-decoration:none;border-bottom:1px solid #93c5fd;">'+esc(m.buyer)+'</a>';
-  document.getElementById('buyer-panel-name').innerHTML=buyerLink+soldBadge;
+  var nEl=document.getElementById('buyer-panel-name');
+  nEl.setAttribute('data-base', buyerLink+soldBadge);
+  nEl.innerHTML=buyerLink+soldBadge;
   var cpBuyer=document.getElementById('cp-buyer-name');
   if(cpBuyer){
     cpBuyer.innerHTML=COPY_ICON;
@@ -1206,7 +1217,7 @@ async function translateText(text){
     +'原文が既に日本語の場合はそのまま出力してください。改行は原文の構造を保ってください。\n\n'+text;
 
   var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,messages:[{role:'user',content:prompt}]})});
+    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
   var data=await res.json();
   var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
   if(ja){ translationCache[key]=ja; saveTranslationCache(); }
@@ -1484,7 +1495,7 @@ async function translateToJapanese(){
   try{
     var prompt='以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力し、説明や前置きは不要です。段落間の空行は1行までにしてください。\n\n'+en;
     var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim().replace(/\n{3,}/g,'\n\n');
     document.getElementById('d-input-ja').value=ja;
@@ -1513,7 +1524,7 @@ async function translateToEnglish(){
       +(manual?'\n【対応方針・注意点】\n'+manual+'\n':'')
       +'\n【翻訳する日本語】\n'+ja;
     var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var en=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
     en=en.replace(/\n{3,}/g,'\n\n');
@@ -1613,52 +1624,52 @@ async function loadBuyerDetail(buyer, idx){
       return '<div class="bd-block"><div class="bd-block-t">'+title+'</div>'+rows+'</div>';
     }
 
-    var html='';
-
-    // 未購入バイヤーはバイヤー情報のみ
-    if(!info.purchased){
-      var bx='';
+    // --- バイヤーID行に評価情報を追記 ---
+    var nameEl=document.getElementById('buyer-panel-name');
+    if(nameEl){
+      var fbTxt='';
       if(info.feedbackScore!==null&&info.feedbackScore!==undefined&&info.feedbackScore!==''){
-        var fbx=info.feedbackScore;
-        if(info.positivePercent) fbx+=' / Feedback '+Math.round(parseFloat(info.positivePercent))+'%';
-        bx+=r('評価数', fbx, false);
+        fbTxt=' <span class="id-fb">'+esc(String(info.feedbackScore));
+        if(info.positivePercent) fbTxt+=' / '+Math.round(parseFloat(info.positivePercent))+'%';
+        fbTxt+='</span>';
+      }
+      var repeat=(info.orderCount&&info.orderCount>1)
+        ? ' <span class="repeat-tag">リピーター '+info.orderCount+'回</span>' : '';
+      nameEl.innerHTML=nameEl.getAttribute('data-base')+fbTxt+repeat;
+    }
+
+    // --- サブ行：登録日 ＋ 配送先の国 ---
+    var subEl=document.getElementById('buyer-panel-sub');
+    if(subEl){
+      var bits=[];
+      if(info.purchased && (info.countryLabel||info.country)){
+        bits.push('<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>');
+      } else if(!info.purchased){
+        bits.push('<span class="sub-tag">未購入</span>');
       }
       if(info.registrationDate){
-        var rdx=new Date(info.registrationDate);
-        var yx=Math.floor((Date.now()-rdx.getTime())/(365.25*86400000));
-        bx+=r('eBay歴', rdx.toLocaleDateString('ja-JP')+(yx>0?'（'+yx+'年）':''), false);
+        var rd=new Date(info.registrationDate);
+        bits.push('<span class="sub-reg">登録 '+rd.toLocaleDateString('ja-JP')+'</span>');
       }
-      html+=block('バイヤー情報', bx);
+      subEl.innerHTML=bits.join('');
+    }
+
+    // アイコン画像
+    if(info.photoUrl){
+      var av=document.getElementById('buyer-avatar');
+      if(av) av.innerHTML='<img src="'+esc(info.photoUrl)+'" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.remove()">';
+    }
+
+    var html='';
+
+    if(!info.purchased){
       html+='<div class="bd-empty">購入履歴なし（未購入バイヤー）</div>';
       el2.innerHTML=html;
+      renderOrderInline(null);
       return;
     }
 
-    // ① 注文
-    var b2='';
-    if(info.orderId){
-      b2+=r('オーダーID', info.orderId, true,
-        'https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId));
-    }
-    if(info.salesRecordNo) b2+=r('レコードNo', info.salesRecordNo, true);
-    if(info.orderDate) b2+=r('注文日', new Date(info.orderDate).toLocaleDateString('ja-JP'), false);
-    if(info.shipByDate) b2+=r('発送期限', new Date(info.shipByDate).toLocaleDateString('ja-JP'), false);
-    if(info.marketplace) b2+=r('購入サイト', info.marketplace, false);
-    html+=block('注文 <span class="blk-sold">&#10003; SOLD</span>', b2);
-
-    // ② 金額（eBayのオーダーページと同じ内訳）
-    var b3='';
-    if(info.itemSubtotal) b3+=r('商品代金', info.itemSubtotal, false);
-    if(info.shippingCost) b3+=r('送料', info.shippingCost, false);
-    if(info.taxBreakdown && info.taxBreakdown.length>0){
-      info.taxBreakdown.forEach(function(t){ b3+=r(t.label, t.value, false); });
-    } else if(info.taxTotal){
-      b3+=r('税', info.taxTotal, false);
-    }
-    if(info.total) b3+='<div class="bd-row bd-total"><span class="bd-k">合計</span><span class="bd-v">'+esc(info.total)+'</span></div>';
-    html+=block('金額', b3);
-
-    // ③ 配送先
+    // --- 配送先（最優先で表示） ---
     var b4='';
     b4+=r('氏名', info.name, true);
     var addrLines=[
@@ -1674,38 +1685,53 @@ async function loadBuyerDetail(buyer, idx){
     if(addrLines.length){
       var full=addrLines.join('\n');
       var fullCopy=copyLines.join('\n');
-      b4+='<div class="bd-row bd-addr"><span class="bd-k">配送先</span>'
+      b4+='<div class="bd-row bd-addr"><span class="bd-k">住所</span>'
         +'<span class="bd-v" style="white-space:pre-line;">'+esc(full)+'</span>'
         +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）">'+COPY_ICON+'</button></div>';
     }
     b4+=r('電話', info.phone, true);
-    if(info.email){
-      b4+='<div class="bd-row"><span class="bd-k">メール</span>'
-        +'<span class="bd-v" style="font-size:11px;">'+esc(info.email)
-        +'<br><span class="bd-note">eBay転送用（実アドレスは取得不可）</span></span>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.email)+'" title="コピー">'+COPY_ICON+'</button></div>';
-    } else {
-      b4+='<div class="bd-row"><span class="bd-k">メール</span>'
-        +'<span class="bd-v bd-note">期限切れのため取得不可（注文から一定期間で削除されます）</span></div>';
-    }
     html+=block('配送先', b4);
 
-    // ④ バイヤー情報
-    var b1='';
-    if(info.feedbackScore!==null&&info.feedbackScore!==undefined&&info.feedbackScore!==''){
-      var fb=info.feedbackScore;
-      if(info.positivePercent) fb+=' / Feedback '+Math.round(parseFloat(info.positivePercent))+'%';
-      b1+=r('評価数', fb, false);
+    // --- 金額 ---
+    var b3='';
+    if(info.itemSubtotal) b3+=r('商品代金', info.itemSubtotal, false);
+    if(info.shippingCost) b3+=r('送料', info.shippingCost, false);
+    if(info.taxBreakdown && info.taxBreakdown.length>0){
+      info.taxBreakdown.forEach(function(t){ b3+=r(t.label, t.value, false); });
+    } else if(info.taxTotal){
+      b3+=r('税', info.taxTotal, false);
     }
-    if(info.registrationDate){
-      var rd=new Date(info.registrationDate);
-      var years=Math.floor((Date.now()-rd.getTime())/(365.25*86400000));
-      b1+=r('eBay歴', rd.toLocaleDateString('ja-JP')+(years>0?'（'+years+'年）':''), false);
-    }
-    if(info.orderCount) b1+=r('注文回数', info.orderCount+'件', false);
-    html+=block('バイヤー情報', b1);
+    if(info.total) b3+='<div class="bd-row bd-total"><span class="bd-k">合計</span><span class="bd-v">'+esc(info.total)+'</span></div>';
+    html+=block('金額', b3);
 
     el2.innerHTML=html;
+
+    // 商品パネル側に注文情報をコンパクト表示
+    renderOrderInline(info);
+  }
+
+  // 注文情報を商品パネル内にコンパクト表示
+  function renderOrderInline(info){
+    var slot=document.getElementById('order-inline');
+    if(!slot) return;
+    if(!info || !info.purchased){ slot.innerHTML=''; return; }
+    var h='';
+    if(info.orderId){
+      h+='<div class="prod-kv-row"><span class="kv-k">Order ID</span>'
+        +'<a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId)+'" target="_blank">'+esc(info.orderId)+'</a>'
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.orderId)+'" title="コピー">'+COPY_ICON+'</button></div>';
+    }
+    if(info.salesRecordNo){
+      h+='<div class="prod-kv-row"><span class="kv-k">レコードNo</span><span class="kv-v">'+esc(info.salesRecordNo)+'</span>'
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.salesRecordNo)+'" title="コピー">'+COPY_ICON+'</button></div>';
+    }
+    // 注文日と発送期限を1行に
+    var dates=[];
+    if(info.orderDate) dates.push('注文 '+new Date(info.orderDate).toLocaleDateString('ja-JP'));
+    if(info.shipByDate) dates.push('期限 '+new Date(info.shipByDate).toLocaleDateString('ja-JP'));
+    if(dates.length) h+='<div class="prod-kv-row"><span class="kv-k">日程</span><span class="kv-v" style="font-size:11.5px;">'+esc(dates.join('　/　'))+'</span></div>';
+    if(info.marketplace) h+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v" style="font-size:11.5px;">'+esc(info.marketplace)+'</span></div>';
+    slot.innerHTML=h;
   }
 
   if(buyerDetailCache[buyer]!==undefined){ render(buyerDetailCache[buyer]); return; }
@@ -1866,7 +1892,7 @@ async function generateReply(i){
     +'\n- 丁寧かつ簡潔に'
     +'\n- 段落間の空行は1行まで';
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1200,messages:[{role:'user',content:prompt}]})});
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
     var data=await res.json();
     var raw=(data.content&&data.content[0]&&data.content[0].text)||'';
     if(!raw){ throw new Error('empty'); }
@@ -1910,7 +1936,7 @@ async function translateReply(i){
   if(replyJaCache[m.id][cacheKey]){jaEl.textContent=replyJaCache[m.id][cacheKey];return;}
   jaEl.textContent='翻訳中...';
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:600,messages:[{role:'user',content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply}]})});
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,messages:[{role:'user',content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply}]})});
     var data=await res.json();
     var text=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
     replyJaCache[m.id][cacheKey]=text;
