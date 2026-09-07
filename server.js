@@ -1201,10 +1201,30 @@ app.get('/api/messages', async (req, res) => {
       };
     });
 
+    // バイヤーからの最終受信日時を求める（自分の送信は並び順に影響させない）
+    threads.forEach(t => {
+      let last = 0;
+      if (t.msgFrom !== 'me' && t.timestamp) {
+        const v = new Date(t.timestamp).getTime();
+        if (!isNaN(v)) last = v;
+      }
+      (t.history || []).forEach(h => {
+        if (h.from === 'me') return;
+        const v = new Date(h.time || 0).getTime();
+        if (!isNaN(v) && v > last) last = v;
+      });
+      t.lastBuyerAt = last;               // 0 = バイヤーからの受信なし
+      t.hasBuyerMsg = last > 0;
+    });
+
     threads.sort((a, b) => {
+      // バイヤーからの受信がない会話は下にまとめる
+      if (a.hasBuyerMsg !== b.hasBuyerMsg) return a.hasBuyerMsg ? -1 : 1;
+      if (a.hasBuyerMsg) return b.lastBuyerAt - a.lastBuyerAt;
+      // 受信なし同士は自分の送信日時で
       const ta = new Date(a.timestamp || 0).getTime() || 0;
       const tb = new Date(b.timestamp || 0).getTime() || 0;
-      return tb - ta;   // 新しい順
+      return tb - ta;
     });
 
     // 表示上位の商品情報を先読みしてキャッシュに載せる（次回以降が正確になる）
