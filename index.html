@@ -263,6 +263,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-info{flex:1;min-width:0;}
 .mini-top{display:flex;align-items:center;gap:6px;}
 .mini-top .unread-pill{margin-left:auto;flex-shrink:0;}
+/* ミニリスト：未読バッジ／既読アイコンをボタン化 */
+.unread-pill.clickable{border:none;cursor:pointer;font-family:var(--sans);transition:transform 0.1s,box-shadow 0.12s;}
+.unread-pill.clickable:hover{box-shadow:0 2px 7px rgba(249,115,22,0.5);}
+.unread-pill.clickable:active{transform:scale(0.9);}
+.mini-read-btn{margin-left:auto;flex-shrink:0;background:none;border:none;cursor:pointer;color:#c4ccd6;padding:3px;line-height:0;border-radius:5px;display:flex;align-items:center;justify-content:center;transition:all 0.12s;}
+.mini-read-btn:hover{color:#f97316;background:#fff7ed;}
+.mini-read-btn:active{transform:scale(0.9);}
 .mini-buyer{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;font-weight:600;}
 .mini-time{font-size:10px;color:var(--text3);flex-shrink:0;font-family:var(--mono);}
 .mini-date{font-size:13.5px;font-weight:700;color:#0f172a;margin-top:3px;font-family:var(--mono);}
@@ -1374,7 +1381,11 @@ function renderMiniList(){
       +'<div class="mini-info">'
         +'<div class="mini-top">'
           +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
-          +((!m.read&&m.unreadCount>0)?'<span class="unread-pill mini">'+m.unreadCount+'</span>':'')
+          +((!m.read&&m.unreadCount>0)
+            ? '<button class="unread-pill mini clickable" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">'+m.unreadCount+'</button>'
+            : '<button class="mini-read-btn" onclick="event.stopPropagation();markUnreadIdx('+ri+')" title="未読に戻す">'
+              +'<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg>'
+              +'</button>')
         +'</div>'
         +'<div class="mini-date">'+esc(dstr)+' <span class="mini-hm">'+(m.time||'')+'</span></div>'
         +(mtagHtml?'<div class="mini-tags">'+mtagHtml+'</div>':'')
@@ -1564,7 +1575,10 @@ function renderChatDetail(){
   renderChatBubbles();
   updateReplyHistorySelect();
 
-  // 返信エリアをクリア
+  // 返信エリアをクリア（別の会話に移るので戻す履歴も破棄）
+  clearedBackup=null;
+  var ubtn=document.getElementById('btn-undo-reply');
+  if(ubtn) ubtn.disabled=true;
   document.getElementById('d-input-ja').value='';
   if(m.reply){
     document.getElementById('d-reply').value=m.reply;
