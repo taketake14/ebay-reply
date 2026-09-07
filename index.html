@@ -145,8 +145,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-buyer-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;}
 
 /* 未読件数バッジ：バイヤー名の直後に置く角丸ピル */
-.unread-pill{display:inline-flex;align-items:center;justify-content:center;min-width:19px;height:19px;padding:0 6px;background:var(--teal);color:#fff;font-size:11px;font-weight:700;border-radius:10px;font-family:var(--sans);line-height:1;flex-shrink:0;letter-spacing:0;}
+.unread-pill{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;background:var(--teal);color:#fff;font-size:11px;font-weight:700;border-radius:10px;font-family:var(--sans);line-height:1;flex-shrink:0;letter-spacing:0;}
 .unread-pill.mini{min-width:17px;height:17px;font-size:10px;padding:0 5px;}
+
+/* ステータス列：未読数とSOLDを縦に整列 */
+.s1-status-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;}
+.unread-slot{width:20px;height:20px;}
+.sold-circle{display:inline-flex;align-items:center;justify-content:center;width:19px;height:19px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;border-radius:50%;line-height:1;flex-shrink:0;}
+.s1-row.read .sold-circle{opacity:0.55;}
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
 .s1-star-btn.on{color:#e8a838;}
@@ -198,6 +204,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-buyer{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
 .mini-time{font-size:10px;color:var(--text3);flex-shrink:0;font-family:var(--mono);}
 .mini-date{font-size:12px;font-weight:600;color:var(--text2);margin-top:3px;font-family:var(--mono);}
+.mini-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:4px;}
+.mini-tags .tag{font-size:9.5px;padding:1px 6px;}
+.sold-circle.mini{width:16px;height:16px;font-size:9px;}
 .mini-hm{font-size:11px;font-weight:400;color:var(--text3);}
 .mini-item.read .mini-date{color:#b6bfcc;}
 .mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
@@ -214,7 +223,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .h-resizer{width:5px;background:var(--border);cursor:col-resize;flex-shrink:0;transition:background 0.1s;}
 .h-resizer:hover,.h-resizer.dragging{background:var(--orange);}
 
-.chat-area{padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;}
+.chat-wrap{position:relative;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+.scroll-btm{position:absolute;left:50%;bottom:14px;transform:translateX(-50%) translateY(6px);width:38px;height:38px;border-radius:50%;background:var(--teal);color:#fff;border:none;box-shadow:0 3px 12px rgba(13,148,136,0.32);cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 0.18s,transform 0.18s,background 0.15s;z-index:10;}
+.scroll-btm.show{opacity:1;pointer-events:auto;transform:translateX(-50%) translateY(0);}
+.scroll-btm:hover{background:var(--teal-dark);box-shadow:0 4px 16px rgba(13,148,136,0.42);}
+.scroll-btm:active{transform:translateX(-50%) scale(0.93);}
+.chat-area{flex:1;padding:18px 22px;display:flex;flex-direction:column;gap:14px;overflow-y:auto;background:#fafbfc;}
 .bbl-wrap{display:flex;flex-direction:column;gap:3px;}
 .bbl-wrap.mine{align-items:flex-end;}
 .bbl-wrap.theirs{align-items:flex-start;}
@@ -244,9 +258,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 翻訳文の表示 */
 /* 訳文：原文の付属情報として一段引いた見せ方（枠なし・細いライン1本） */
-.bbl-ja{max-width:74%;margin-top:5px;padding:2px 0 2px 11px;border-radius:0;font-size:12.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:#5b6478;background:none;border:none;}
-.bbl-wrap.theirs .bbl-ja{border-left:2px solid #d5dbe5;}
-.bbl-wrap.mine .bbl-ja{padding:2px 11px 2px 0;border-left:none;border-right:2px solid #7dd3c8;text-align:left;}
+/* 訳文：原文より一段控えめだが、作業に支障のない濃さを確保 */
+.bbl-ja{max-width:74%;margin-top:5px;padding:3px 0 3px 12px;border-radius:0;font-size:13px;line-height:1.78;white-space:pre-wrap;word-break:break-word;background:none;border:none;}
+.bbl-wrap.theirs .bbl-ja{border-left:2px solid #cbd5e1;color:#334155;}
+.bbl-wrap.mine .bbl-ja{padding:3px 12px 3px 0;border-left:none;border-right:2px solid #5eead4;text-align:left;color:#134e4a;}
 .new-badge{font-size:11px;font-weight:600;color:#b54708;text-align:center;padding:3px 12px;margin:4px 0;background:#fffaeb;border:1px solid #fedf89;border-radius:20px;display:inline-block;align-self:center;letter-spacing:0.02em;}
 
 /* 返信エリア */
@@ -480,14 +495,25 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .demo-btn:hover{border-color:var(--orange);color:var(--orange);}
 
 /* ===== AI情報入力モーダル ===== */
-.ai-modal{background:#fff;border-radius:14px;width:100%;max-width:560px;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,42,40,0.25);overflow:hidden;}
-.ai-body{padding:16px 20px;}
+.ai-modal{background:#fff;border-radius:14px;width:100%;max-width:720px;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(15,42,40,0.25);overflow:hidden;}
+.ai-body{padding:16px 20px;overflow-y:auto;flex:1;min-height:0;}
 .ai-guide{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:12px;}
 .ai-hint-input{width:100%;min-height:140px;border:1px solid var(--border2);border-radius:9px;padding:11px 13px;font-size:13px;font-family:var(--sans);line-height:1.7;color:var(--text);outline:none;resize:vertical;}
 .ai-hint-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(13,148,136,0.1);}
-.ai-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;}
-.ai-chip{font-size:11.5px;padding:4px 11px;border-radius:14px;background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;cursor:pointer;transition:all 0.12s;user-select:none;}
+.ai-chips-hdr{display:flex;align-items:center;justify-content:space-between;margin-top:14px;margin-bottom:7px;}
+.ai-chips-label{font-size:10.5px;font-weight:700;color:var(--text3);letter-spacing:0.04em;}
+.ai-chip-edit{font-size:11px;padding:3px 11px;border-radius:6px;border:1px solid var(--border2);background:#fff;color:var(--text2);cursor:pointer;font-family:var(--sans);}
+.ai-chip-edit:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;}
+.ai-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.ai-chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;padding:5px 12px;border-radius:14px;background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;cursor:pointer;transition:all 0.12s;user-select:none;}
 .ai-chip:hover{background:#ccfbf1;border-color:var(--teal);}
+.ai-chip.editing{cursor:default;background:#fff;border-style:dashed;}
+.ai-chip.editing:hover{background:#fff;}
+.chip-del{border:none;background:transparent;color:#dc2626;cursor:pointer;font-size:10px;padding:0 0 0 2px;line-height:1;}
+.chip-del:hover{color:#991b1b;}
+.ai-chip-add{display:none;gap:7px;margin-top:9px;}
+.ai-chip-add input{flex:1;border:1px solid var(--border2);border-radius:7px;padding:7px 11px;font-size:12.5px;font-family:var(--sans);outline:none;}
+.ai-chip-add input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(13,148,136,0.1);}
 .ai-foot{padding:13px 20px;border-top:1px solid var(--border);display:flex;gap:8px;background:var(--bg3);}
 
 /* ===== 定型文モーダル ===== */
@@ -626,9 +652,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
     <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
       <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
       <div class="s1-th s1-col-time" data-col="time" title="ドラッグで列を移動" style="cursor:grab;">時刻<div class="col-resizer" data-col="time"></div></div>
+      <div class="s1-th s1-col-status" data-col="status" style="cursor:default;"></div>
       <div class="s1-th s1-col-thumb" data-col="thumb" title="ドラッグで列を移動" style="cursor:grab;">画像<div class="col-resizer" data-col="thumb"></div></div>
       <div class="s1-th s1-col-item" data-col="item" title="ドラッグで列を移動" style="cursor:grab;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
-      <div class="s1-th s1-col-tags" data-col="tags" title="ドラッグで列を移動" style="cursor:grab;">タグ<div class="col-resizer" data-col="tags"></div></div>
       <div class="s1-th s1-col-buyer" data-col="buyer" title="ドラッグで列を移動" style="cursor:grab;">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
       <div class="s1-th s1-col-flag" data-col="flag" title="ドラッグで列を移動" style="cursor:grab;">フラグ<div class="col-resizer" data-col="flag"></div></div>
     </div>
@@ -759,12 +785,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
     <!-- 右カラム：チャット＋返信 -->
     <div class="s2-chat-col" id="chat-col" style="flex:1;">
-      <div class="chat-area" id="chat-area" style="flex:1.8;"></div>
+      <div class="chat-wrap" id="chat-wrap" style="flex:1.8;">
+        <div class="chat-area" id="chat-area"></div>
+        <button class="scroll-btm" id="scroll-btm" onclick="scrollChatToBottom()" title="最新メッセージへ">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v9.5M3.8 8.8L8 13l4.2-4.2"/></svg>
+        </button>
+      </div>
       <div class="v-resizer" id="v-resizer"></div>
       <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
         <div class="reply-top">
           <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AIにおまかせ</button>
-          <button class="btn btn-ai2" onclick="openAiHint()" id="btn-ai-hint">&#9998; 情報を伝えて作る</button>
+          <button class="btn btn-ai2" onclick="openAiHint()" id="btn-ai-hint">&#10024; AIに情報を渡す</button>
           <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">&#128221; 定型文</button>
           <span class="reply-status" id="d-status"></span>
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
@@ -1109,23 +1140,24 @@ function renderList(){
           if(!isNaN(dt.getTime())) md=(dt.getMonth()+1)+'/'+dt.getDate();
         }
         return '<div class="s1-time-cell s1-col-time">'
-          +(m.read?'<div class="s1-read-dot"></div>':'<div class="s1-unread-dot"></div>')
           +'<span class="s1-date">'+md+'</span>'
           +'<span class="s1-time">'+(m.time||'')+'</span>'
           +'</div>';
       })(),
+      status: '<div class="s1-status-cell s1-col-status">'
+        +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'<span class="unread-slot"></span>')
+        +(m.sold?'<span class="sold-circle" title="購入済み">&#10003;</span>':'')
+        +'</div>',
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
       item: '<div class="s1-item-cell s1-col-item">'
         +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
         +(tagsHtml?'<div class="s1-inline-tags">'+tagsHtml+'</div>':'')
         +'</div>',
-      tags: '<div class="s1-tags s1-col-tags">'+tagsHtml+'</div>',
       buyer: '<div class="s1-buyer-cell s1-col-buyer">'
         +'<div class="s1-avatar" style="'+avatarStyle+'">'+initials+'</div>'
         +'<div class="s1-buyer-info">'
           +'<div class="s1-buyer-name">'+esc(m.buyer)
-            +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'')
-            +soldTag+(m.replied?'<span class="s1-replied-badge" style="margin-left:5px;">&#10003; 返信済み</span>':'')+'</div>'
+            +(m.replied?'<span class="s1-replied-badge" style="margin-left:5px;">&#10003; 返信済み</span>':'')+'</div>'
           +'<div class="s1-preview">'+esc(m.memo?'📝 '+m.memo:m.msg)+'</div>'
         +'</div></div>',
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
@@ -1168,16 +1200,20 @@ function renderMiniList(){
       var dt=new Date(m.timestamp);
       if(!isNaN(dt.getTime())) dstr=(dt.getMonth()+1)+'/'+dt.getDate();
     }
+    // タグを算出
+    var mtags=TAG_DEFS.filter(function(t){return t.test(m.msg||'');}).slice(0,2);
+    var mtagHtml=mtags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
+
     return '<div class="mini-item '+(m.read?'read':'unread')+(active?' active':'')+'" onclick="selectMsg('+ri+')">'
       +thumb
       +'<div class="mini-info">'
         +'<div class="mini-top">'
-          +(m.read?'':'<span class="mini-dot"></span>')
           +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
           +((!m.read&&m.unreadCount>0)?'<span class="unread-pill mini">'+m.unreadCount+'</span>':'')
-          +(m.sold?'<span class="mini-sold">SOLD</span>':'')
+          +(m.sold?'<span class="sold-circle mini">&#10003;</span>':'')
         +'</div>'
         +'<div class="mini-date">'+esc(dstr)+' <span class="mini-hm">'+(m.time||'')+'</span></div>'
+        +(mtagHtml?'<div class="mini-tags">'+mtagHtml+'</div>':'')
       +'</div>'
     +'</div>';
   }).join('');
@@ -1459,6 +1495,35 @@ async function toggleChatTranslate(){
   if(chatTranslateMode) btn.textContent='🇯🇵 日本語表示中（クリックで戻す）';
 }
 
+// ===== チャットを最下部へスクロール =====
+function scrollChatToBottom(){
+  var el=document.getElementById('chat-area');
+  if(!el) return;
+  var start=el.scrollTop;
+  var end=el.scrollHeight-el.clientHeight;
+  var dist=end-start;
+  if(dist<=0) return;
+  var dur=Math.min(320, Math.max(160, dist*0.18));  // 距離に応じて160〜320ms
+  var t0=performance.now();
+  function step(now){
+    var p=Math.min((now-t0)/dur,1);
+    var e=1-Math.pow(1-p,3);   // ease-out
+    el.scrollTop=start+dist*e;
+    if(p<1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// スクロール位置に応じてボタンを出し入れ
+function updateScrollBtn(){
+  var el=document.getElementById('chat-area');
+  var btn=document.getElementById('scroll-btm');
+  if(!el||!btn) return;
+  var gap=el.scrollHeight-el.clientHeight-el.scrollTop;
+  if(gap>160) btn.classList.add('show');
+  else btn.classList.remove('show');
+}
+
 function fmtTime(t){
   if(!t) return '';
   var d=new Date(t);
@@ -1512,6 +1577,7 @@ function renderChatBubbles(){
   });
   el.innerHTML=html;
   el.scrollTop=el.scrollHeight;
+  setTimeout(updateScrollBtn,50);
 }
 
 
@@ -1613,7 +1679,8 @@ function resetLayout(){
   var ra=document.getElementById('reply-area');
   var cc=document.getElementById('chat-col');
   var rp=document.getElementById('right-panel');
-  if(ca){ ca.style.flex='1.8'; ca.style.height='auto'; }
+  var cw=document.getElementById('chat-wrap');
+  if(cw){ cw.style.flex='1.8'; cw.style.height='auto'; }
   if(ra){ ra.style.flex='1'; ra.style.height='auto'; }
   if(cc){ cc.style.flex='1'; cc.style.width='auto'; }
   if(rp){ rp.style.flex='none'; rp.style.width='240px'; }
@@ -2177,8 +2244,61 @@ function deleteCanned(i){
 }
 
 // ===== AI：情報を伝えて作る =====
+// クイック入力（カスタマイズ可能）
+var AI_CHIPS_DEFAULT = ['在庫あり','在庫なし・入荷未定','発送まで3〜5営業日','到着まで1〜2週間',
+  '値引き不可','確認して後日連絡','関税は購入者負担','返品可・送料は購入者負担'];
+var AI_CHIPS = (function(){
+  try{
+    var s=localStorage.getItem('ebay_ai_chips');
+    if(s){ var a=JSON.parse(s); if(Array.isArray(a)) return a; }
+  }catch(e){}
+  return AI_CHIPS_DEFAULT.slice();
+})();
+var chipEditMode=false;
+
+function saveChips(){
+  try{ localStorage.setItem('ebay_ai_chips', JSON.stringify(AI_CHIPS)); }catch(e){}
+}
+function renderChips(){
+  var el=document.getElementById('ai-chips');
+  if(!el) return;
+  el.innerHTML=AI_CHIPS.map(function(t,i){
+    var safe=String(t).replace(/'/g,"\\'");
+    return '<span class="ai-chip'+(chipEditMode?' editing':'')+'" '
+      +(chipEditMode?'':'onclick="addAiHint(\''+esc(safe)+'\')"')+'>'
+      +esc(t)
+      +(chipEditMode?'<button class="chip-del" onclick="delChip('+i+')">&#10005;</button>':'')
+      +'</span>';
+  }).join('');
+  var add=document.getElementById('ai-chip-add');
+  if(add) add.style.display=chipEditMode?'flex':'none';
+  var btn=document.getElementById('btn-chip-edit');
+  if(btn) btn.textContent=chipEditMode?'完了':'編集';
+}
+function toggleChipEdit(){
+  chipEditMode=!chipEditMode;
+  renderChips();
+}
+function addChip(){
+  var inp=document.getElementById('new-chip-text');
+  var v=inp.value.trim();
+  if(!v) return;
+  AI_CHIPS.push(v);
+  saveChips();
+  inp.value='';
+  renderChips();
+  inp.focus();
+}
+function delChip(i){
+  AI_CHIPS.splice(i,1);
+  saveChips();
+  renderChips();
+}
+
 function openAiHint(){
   if(currentIdx===null){ alert('メッセージを選択してください'); return; }
+  chipEditMode=false;
+  renderChips();
   document.getElementById('ai-hint-modal').classList.add('open');
   setTimeout(function(){document.getElementById('ai-hint-text').focus();},60);
 }
@@ -2333,9 +2453,9 @@ async function syncFromEbay(){
 // 列定義: key, デフォルト幅(px), frかpxか
 var COL_DEFS = [
   {key:'time',  label:'時刻',     w:80,  fr:false},
+  {key:'status', label:'',        w:46,  fr:false},
   {key:'thumb', label:'画像',     w:76,  fr:false},
   {key:'item',  label:'商品名',   w:260, fr:false},
-  {key:'tags',  label:'タグ',     w:130, fr:false},
   {key:'buyer', label:'バイヤー', w:300, fr:false},
   {key:'flag',  label:'フラグ',   w:52,  fr:false},
 ];
@@ -2568,7 +2688,7 @@ document.addEventListener('mousedown',function(e){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(function(){
       var main=document.querySelector('.s2-main');
-      var ca=document.getElementById('chat-area');
+      var ca=document.getElementById('chat-wrap');
       var ra=document.getElementById('reply-area');
       if(!main||!ca||!ra) return;
       var avail=main.getBoundingClientRect().height;
@@ -2586,7 +2706,7 @@ document.addEventListener('mousedown',function(e){
 
   // 縦リサイザー（チャット↕返信）
   var vRes=document.getElementById('v-resizer');
-  var chatArea=document.getElementById('chat-area');
+  var chatArea=document.getElementById('chat-wrap');
   var replyArea=document.getElementById('reply-area');
   var vDragging=false, vStartY=0, vStartChatH=0, vStartReplyH=0;
   vRes.addEventListener('mousedown',function(e){
@@ -2718,6 +2838,9 @@ window.addEventListener('load',function(){
     }catch(e){}
     autoRefreshBusy=false;
   },90000);
+  var chatEl=document.getElementById('chat-area');
+  if(chatEl) chatEl.addEventListener('scroll', updateScrollBtn);
+
   var saved=localStorage.getItem('ebay_manual');
   if(saved) document.getElementById('manual-text').value=saved;
   reorderHeaderDOM();
@@ -2729,21 +2852,20 @@ window.addEventListener('load',function(){
 <div class="ct-overlay" id="ai-hint-modal" onclick="if(event.target===this)closeAiHint()">
   <div class="ai-modal">
     <div class="ct-hdr">
-      <span class="ct-hdr-title">&#9998; 情報を伝えて返信案を作る</span>
+      <span class="ct-hdr-title">&#10024; AIに情報を渡して返信案を作る</span>
       <button class="ct-close" onclick="closeAiHint()">&#10005;</button>
     </div>
     <div class="ai-body">
       <div class="ai-guide">バイヤーへ伝えたい情報を入力してください。箇条書きや単語だけでも構いません。<br>AIがこれをもとに自然な英文の返信案を作成します。</div>
       <textarea id="ai-hint-text" class="ai-hint-input" placeholder="例：&#10;在庫あり&#10;発送まで1週間&#10;支払いはPayPalのみ&#10;サイズは全長25cm"></textarea>
-      <div class="ai-chips">
-        <span class="ai-chip" onclick="addAiHint('在庫あり')">在庫あり</span>
-        <span class="ai-chip" onclick="addAiHint('在庫なし・入荷未定')">在庫なし</span>
-        <span class="ai-chip" onclick="addAiHint('発送まで3〜5営業日')">発送3〜5日</span>
-        <span class="ai-chip" onclick="addAiHint('到着まで1〜2週間')">到着1〜2週</span>
-        <span class="ai-chip" onclick="addAiHint('値引き不可')">値引き不可</span>
-        <span class="ai-chip" onclick="addAiHint('確認して後日連絡')">確認後に連絡</span>
-        <span class="ai-chip" onclick="addAiHint('関税は購入者負担')">関税は買主負担</span>
-        <span class="ai-chip" onclick="addAiHint('返品可・送料は購入者負担')">返品可</span>
+      <div class="ai-chips-hdr">
+        <span class="ai-chips-label">よく使う情報（クリックで追加）</span>
+        <button class="ai-chip-edit" onclick="toggleChipEdit()" id="btn-chip-edit">編集</button>
+      </div>
+      <div class="ai-chips" id="ai-chips"></div>
+      <div class="ai-chip-add" id="ai-chip-add">
+        <input type="text" id="new-chip-text" placeholder="新しい項目を入力（例：追跡番号は発送後に連絡）">
+        <button class="btn btn-primary" onclick="addChip()">追加</button>
       </div>
     </div>
     <div class="ai-foot">
