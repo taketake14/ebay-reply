@@ -2,42 +2,51 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>eBayReply</title>
+<title>ReplAI</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
-  --navy:#0f172a;--navy2:#1e293b;--navy3:#334155;
-  --orange:#fb923c;--orange2:#ea7c25;--orange-light:#fff7ed;--orange-border:#fed7aa;
-  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;
-  --border:#e2e8f0;--border2:#cbd5e1;
-  --text:#0f172a;--text2:#475569;--text3:#94a3b8;
-  --accent:#2563eb;--success:#059669;--danger:#dc2626;--warn:#d97706;
+  /* ===== ReplAI テーマ：ティール基調 ===== */
+  --teal:#0d9488;        /* メインアクセント */
+  --teal-dark:#0f766e;   /* ホバー・押下 */
+  --teal-deep:#134e4a;   /* 濃色（ヘッダー等） */
+  --teal-light:#f0fdfa;  /* 薄い背景 */
+  --teal-border:#99f6e4; /* 淡い枠線 */
+  --teal-mid:#5eead4;    /* 中間色 */
+
+  --navy:#134e4a;--navy2:#115e59;--navy3:#0f766e;
+  --orange:#f59e0b;--orange2:#d97706;--orange-light:#fffbeb;--orange-border:#fde68a;
+  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f4f7f8;
+  --border:#e4e9ec;--border2:#cbd5e1;
+  --text:#0f2e2b;--text2:#4a5c5a;--text3:#94a3b8;
+  --accent:#0d9488;--accent-hover:#0f766e;--accent-light:#f0fdfa;
+  --success:#059669;--danger:#dc2626;--warn:#d97706;
   --sans:'Noto Sans JP',sans-serif;--mono:'IBM Plex Mono',monospace;
-  --radius:8px;--shadow:0 1px 4px rgba(0,0,0,0.08);--shadow2:0 4px 16px rgba(0,0,0,0.1);
+  --radius:8px;--shadow:0 1px 4px rgba(15,42,40,0.07);--shadow2:0 4px 16px rgba(15,42,40,0.1);
 }
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
 body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;line-height:1.6;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 /* ===== ログイン ===== */
-#login-screen{position:fixed;inset:0;background:var(--navy);display:flex;align-items:center;justify-content:center;z-index:9999;}
+#login-screen{position:fixed;inset:0;background:linear-gradient(140deg,#134e4a 0%,#0f766e 55%,#0d9488 100%);display:flex;align-items:center;justify-content:center;z-index:9999;}
 .login-box{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:44px;width:380px;text-align:center;}
 .login-logo{font-size:22px;font-weight:700;color:#fff;margin-bottom:6px;}
-.login-logo em{color:var(--orange);font-style:normal;}
+.login-logo em{color:var(--teal-mid);font-style:normal;}
 .login-sub{font-size:13px;color:#94a3b8;margin-bottom:26px;}
 .login-field{position:relative;margin-bottom:12px;}
 .login-field input{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px 42px 12px 14px;color:#e2e8f0;font-size:14px;outline:none;}
 .login-field input:focus{border-color:var(--orange);}
 .eye-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;font-size:16px;padding:2px 4px;line-height:1;}
 .eye-btn:hover{color:var(--orange);}
-.login-btn{width:100%;background:var(--orange);color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
+.login-btn{width:100%;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:6px;transition:background 0.15s;}
 .login-btn:hover{background:var(--orange2);}
 .login-btn.loading{background:#475569;cursor:not-allowed;}
 .login-error{color:#f87171;font-size:12px;margin-top:8px;display:none;padding:9px;background:#1c0606;border-radius:8px;}
 
 /* ===== グローバルヘッダー ===== */
-.app-header{height:46px;background:var(--navy);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:100;}
+.app-header{height:46px;background:var(--teal-deep);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:100;}
 .app-logo{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.01em;white-space:nowrap;}
-.app-logo em{color:var(--orange);font-style:normal;}
+.app-logo em{color:var(--teal-mid);font-style:normal;}
 .header-search{flex:1;max-width:320px;background:var(--navy2);border:1px solid var(--navy3);border-radius:7px;padding:6px 12px;font-size:12px;color:#94a3b8;outline:none;}
 .header-search:focus{border-color:var(--orange);}
 .header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
@@ -70,9 +79,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-body{flex:1;overflow-y:auto;}
 
 .s1-row{display:grid;gap:0;padding:12px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
-.s1-row:hover{background:#f0f7ff !important;}
+.s1-row:hover{background:#f0fdfa !important;}
 /* ===== 未読：左に色帯＋濃い文字 ===== */
-.s1-row.unread{background:#fff;box-shadow:inset 3px 0 0 var(--orange);}
+.s1-row.unread{background:#fff;box-shadow:inset 3px 0 0 var(--teal);}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:#101828;}
 .s1-row.unread .s1-item-name{font-weight:500;color:#344054;}
 .s1-row.unread .s1-preview{color:#475467;}
@@ -103,7 +112,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-time-cell{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
 .s1-time{font-size:11px;color:var(--text3);font-weight:400;font-family:var(--mono);}
 .s1-date{font-size:13px;font-weight:700;color:var(--text);font-family:var(--mono);}
-.s1-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);margin-bottom:3px;}
+.s1-unread-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);margin-bottom:3px;}
 .s1-read-dot{width:6px;height:6px;margin-bottom:3px;}
 /* 商品画像 */
 .s1-thumb{width:64px;height:64px;border-radius:6px;border:1px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden;flex-shrink:0;}
@@ -116,7 +125,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-tags{display:flex;gap:3px;flex-wrap:wrap;}
 .tag{font-size:12px;padding:3px 8px;border-radius:4px;font-weight:600;white-space:nowrap;}
 .tag-discount{background:#fee2e2;color:#b91c1c;}
-.tag-stock{background:#dbeafe;color:#1d4ed8;}
+.tag-stock{background:#ccfbf1;color:var(--accent-hover);}
 .tag-ship{background:#e0f2fe;color:#0369a1;}
 .tag-complaint{background:#fee2e2;color:#dc2626;}
 .tag-spec{background:#ede9fe;color:#6d28d9;}
@@ -126,7 +135,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 状態 */
 .s1-status-cell{display:flex;flex-direction:column;gap:3px;}
 .s1-sold-badge{font-size:11px;padding:3px 8px;border-radius:4px;background:#dc2626;color:#fff;font-weight:700;white-space:nowrap;display:inline-block;}
-.s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#dbeafe;color:#1e40af;font-weight:600;white-space:nowrap;display:inline-block;}
+.s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#ccfbf1;color:#1e40af;font-weight:600;white-space:nowrap;display:inline-block;}
 /* バイヤー */
 .s1-buyer-cell{display:flex;align-items:center;gap:8px;min-width:0;}
 .s1-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
@@ -166,13 +175,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 折りたたみ時に出る展開ボタン */
 .mini-expand{display:none;width:20px;flex-shrink:0;border:none;border-right:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:12px;padding:0;}
-.mini-expand:hover{background:#eff6ff;color:var(--accent);}
+.mini-expand:hover{background:var(--accent-light);color:var(--accent);}
 .mini-list.collapsed + .mini-expand{display:block;}
 
 /* リスト項目 */
 .mini-item{display:flex;gap:9px;padding:10px 10px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;align-items:flex-start;}
-.mini-item:hover{background:#f0f7ff;}
-.mini-item.active{background:#e8effa;box-shadow:inset 3px 0 0 var(--accent);}
+.mini-item:hover{background:#f0fdfa;}
+.mini-item.active{background:#e6fffa;box-shadow:inset 3px 0 0 var(--teal);}
 .mini-item.unread .mini-buyer{font-weight:800;color:#0f172a;}
 .mini-item.read .mini-buyer{font-weight:400;color:#94a3b8;}
 .mini-item.read .mini-preview{color:#b6bfcc;}
@@ -186,7 +195,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-hm{font-size:11px;font-weight:400;color:var(--text3);}
 .mini-item.read .mini-date{color:#b6bfcc;}
 .mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
-.mini-dot{width:6px;height:6px;border-radius:50%;background:var(--orange);flex-shrink:0;}
+.mini-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;}
 
 /* チャットカラム（リサイズ対応） */
 .s2-chat-col{display:flex;flex-direction:column;min-width:360px;overflow:hidden;}
@@ -209,7 +218,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl{position:relative;}
 
 /* --- 自分（右側）：塗りつぶしで存在感を出す --- */
-.bbl.mine{background:#e8effa;color:#1a2540;border-radius:16px 16px 4px 16px;border:none;}
+.bbl.mine{background:#e6fffa;color:#0f2e2b;border-radius:16px 16px 4px 16px;border:1px solid #b8ebe4;}
 
 /* --- バイヤー（左側）：白地＋細い枠で軽く --- */
 .bbl.theirs{background:#ffffff;color:#1e2939;border-radius:16px 16px 16px 4px;border:1px solid #e3e8ef;box-shadow:0 1px 2px rgba(16,24,40,0.04);}
@@ -231,7 +240,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 訳文：原文の付属情報として一段引いた見せ方（枠なし・細いライン1本） */
 .bbl-ja{max-width:74%;margin-top:5px;padding:2px 0 2px 11px;border-radius:0;font-size:12.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;color:#5b6478;background:none;border:none;}
 .bbl-wrap.theirs .bbl-ja{border-left:2px solid #d5dbe5;}
-.bbl-wrap.mine .bbl-ja{padding:2px 11px 2px 0;border-left:none;border-right:2px solid #b9c6de;text-align:left;}
+.bbl-wrap.mine .bbl-ja{padding:2px 11px 2px 0;border-left:none;border-right:2px solid #7dd3c8;text-align:left;}
 .new-badge{font-size:11px;font-weight:600;color:#b54708;text-align:center;padding:3px 12px;margin:4px 0;background:#fffaeb;border:1px solid #fedf89;border-radius:20px;display:inline-block;align-self:center;letter-spacing:0.02em;}
 
 /* 返信エリア */
@@ -253,10 +262,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .arrow-btn:disabled{background:#e2e8f0 !important;color:#94a3b8 !important;border-color:#cbd5e1 !important;cursor:not-allowed;transform:none;}
 .arrow-mark{font-size:19px;line-height:1;font-weight:700;}
 .arrow-txt{font-size:11px;font-weight:700;letter-spacing:0.02em;}
-.arrow-en{background:#7c3aed;color:#fff;border-color:#6d28d9;}
-.arrow-en:hover{background:#6d28d9;}
-.arrow-ja{background:#0891b2;color:#fff;border-color:#0e7490;}
-.arrow-ja:hover{background:#0e7490;}
+.arrow-en{background:#0d9488;color:#fff;border-color:#0f766e;}
+.arrow-en:hover{background:#0f766e;}
+.arrow-ja{background:#64748b;color:#fff;border-color:#475569;}
+.arrow-ja:hover{background:#475569;}
 
 /* フォーム見出し内の小さいコピーボタン */
 .reply-col-label{position:relative;}
@@ -269,8 +278,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .send-float{position:absolute;right:8px;bottom:8px;box-shadow:0 2px 8px rgba(0,0,0,0.12);z-index:2;}
 
 /* AI返信案ボタン */
-.btn-ai{background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;border:1px solid #ea580c;font-weight:700;}
-.btn-ai:hover{background:linear-gradient(135deg,#d97706,#ea580c);}
+.btn-ai{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:1px solid #0f766e;font-weight:700;}
+.btn-ai:hover{background:linear-gradient(135deg,#0d9488,#0f766e);}
 .reply-col{display:flex;flex-direction:column;gap:5px;min-height:0;}
 .reply-col-label{font-size:12px;color:var(--text);font-weight:600;display:flex;align-items:center;gap:5px;flex-shrink:0;}
 .reply-col-dot{width:7px;height:7px;border-radius:50%;}
@@ -280,7 +289,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .reply-input-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
 .reply-input-ja:focus{border-color:#34d399;box-shadow:0 0 0 2px rgba(52,211,153,0.15);}
 .reply-input-en{flex:1;background:#fff;border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.7;color:var(--text);resize:none;font-family:var(--sans);min-height:0;outline:none;}
-.reply-input-en:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,0.12);}
+.reply-input-en:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(13,148,136,0.12);}
 .btn-trans2{background:#0891b2;color:#fff;border:1px solid #0e7490;font-weight:700;}
 .btn-trans2:hover{background:#0e7490;}
 .btn-trans2:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
@@ -289,8 +298,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .btn-trans:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
 .reply-box-ja{flex:1;background:#f0fdf4;border:1px solid #a7f3d0;border-radius:8px;padding:10px 12px;font-size:14px;line-height:1.75;color:var(--text2);overflow-y:auto;white-space:pre-wrap;min-height:0;}
 .reply-actions{padding:6px 18px 12px;display:flex;gap:6px;align-items:center;position:relative;flex-shrink:0;}
-.btn-send{background:#059669;color:#fff;border:1px solid #047857;font-weight:700;}
-.btn-send:hover{background:#047857;}
+.btn-send{background:#0d9488;color:#fff;border:1px solid #0f766e;font-weight:700;}
+.btn-send:hover{background:#0f766e;}
 .btn-send:disabled{background:#94a3b8;border-color:#94a3b8;cursor:not-allowed;}
 .btn{padding:7px 14px;border-radius:7px;font-size:13px;cursor:pointer;border:1px solid var(--border2);font-family:var(--sans);font-weight:600;transition:all 0.12s;}
 .btn-primary{background:var(--orange);color:#fff;border-color:var(--orange);}
@@ -310,7 +319,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* ===== 左パネル：コピーボタン ===== */
 .cp-btn{flex-shrink:0;width:24px;height:24px;padding:0;border:1px solid transparent;background:transparent;border-radius:5px;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;opacity:0.45;transition:all 0.13s;}
-.cp-btn:hover{opacity:1;background:#eff6ff;border-color:#bfdbfe;color:var(--accent);}
+.cp-btn:hover{opacity:1;background:var(--accent-light);border-color:#99f6e4;color:var(--accent);}
 .cp-btn:active{transform:scale(0.92);}
 .cp-btn.done{background:#dcfce7;border-color:#86efac;color:#16a34a;opacity:1;}
 .cp-btn svg{display:block;}
@@ -369,7 +378,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* メモバー（パネル最上部に固定） */
 .memo-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:7px;padding:8px 12px;background:var(--bg3);border-bottom:1px solid var(--border);cursor:pointer;flex-shrink:0;transition:all 0.15s;}
-.memo-bar:hover{background:#eff6ff;}
+.memo-bar:hover{background:var(--accent-light);}
 .memo-bar-icon{font-size:13px;flex-shrink:0;opacity:0.5;}
 .memo-bar-text{font-size:12px;color:var(--text3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
@@ -430,7 +439,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .buyer-links{display:flex;flex-direction:column;gap:6px;}
 .buyer-link-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);text-decoration:none;color:var(--accent);font-size:11px;font-weight:500;}
-.buyer-link-chip:hover{background:#eff6ff;border-color:var(--accent);}
+.buyer-link-chip:hover{background:var(--accent-light);border-color:var(--accent);}
 
 /* メモパネル */
 .memo-panel{display:flex;flex-direction:column;gap:8px;}
@@ -442,7 +451,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* マニュアル・Zapierタブ */
 .nav-tabs-wrap{display:flex;gap:2px;padding:8px 18px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
 .nav-tab-btn{padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;border:none;background:transparent;color:var(--text2);font-weight:500;font-family:var(--sans);}
-.nav-tab-btn.on{background:#eff6ff;color:var(--accent);font-weight:700;}
+.nav-tab-btn.on{background:var(--accent-light);color:var(--accent);font-weight:700;}
 .nav-tab-btn:hover:not(.on){background:var(--bg3);}
 .tab-content{display:none;flex:1;overflow-y:auto;padding:22px;}
 .tab-content.on{display:block;}
@@ -469,7 +478,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ct-hdr{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
 .ct-hdr-title{font-size:15px;font-weight:700;color:var(--text);flex:1;letter-spacing:0.01em;}
 .ct-new{background:var(--accent);color:#fff;border:none;border-radius:7px;padding:7px 15px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans);}
-.ct-new:hover{background:#1d4ed8;}
+.ct-new:hover{background:var(--accent-hover);}
 .ct-close{background:transparent;border:none;color:var(--text3);font-size:16px;cursor:pointer;padding:5px 8px;border-radius:6px;line-height:1;}
 .ct-close:hover{background:var(--bg3);color:var(--text);}
 
@@ -489,7 +498,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ct-mid{border-right:1px solid var(--border);overflow-y:auto;padding:10px 8px;}
 .ct-item{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:10px 11px;border-radius:8px;cursor:pointer;transition:all 0.12s;margin-bottom:2px;}
 .ct-item:hover{background:var(--bg3);}
-.ct-item.on{background:#eff6ff;}
+.ct-item.on{background:var(--accent-light);}
 .ct-item-label{font-size:13px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ct-item.on .ct-item-label{color:var(--accent);font-weight:600;}
 .ct-item-arrow{font-size:9px;color:var(--text3);opacity:0;transition:opacity 0.12s;}
@@ -516,7 +525,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ct-e-row{margin-bottom:13px;}
 .ct-e-row label{display:block;font-size:10.5px;font-weight:700;color:var(--text3);letter-spacing:0.05em;margin-bottom:5px;}
 .ct-e-row input,.ct-e-row textarea{width:100%;border:1px solid var(--border2);border-radius:8px;padding:9px 12px;font-size:13px;font-family:var(--sans);color:var(--text);outline:none;background:#fff;}
-.ct-e-row input:focus,.ct-e-row textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,0.09);}
+.ct-e-row input:focus,.ct-e-row textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(13,148,136,0.09);}
 .ct-e-row textarea{min-height:110px;resize:vertical;line-height:1.7;}
 </style>
 </head>
@@ -525,7 +534,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 <!-- ログイン -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">eBay<em>Reply</em></div>
+    <div class="login-logo">Repl<em>AI</em></div>
     <div class="login-sub">IDとパスワードを入力してください</div>
     <div class="login-field">
       <input type="email" id="id-input" placeholder="メールアドレス（ID）" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
@@ -541,7 +550,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 <!-- グローバルヘッダー -->
 <div class="app-header">
-  <span class="app-logo">eBay<em>Reply</em></span>
+  <span class="app-logo">Repl<em>AI</em></span>
   <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / 注文番号で検索..." oninput="onSearch(this.value)">
   <div class="header-right">
     <div class="h-badge-wrap">未読 <span class="h-badge h-badge-orange" id="h-unread-count">0</span></div>
@@ -934,7 +943,7 @@ function getTags(msg) {
   return found.length ? found : [{key:'other',label:'その他',cls:'tag-other'}];
 }
 
-var AVATAR_COLORS = ['#dbeafe:#1e40af','#d1fae5:#065f46','#fef3c7:#92400e','#ede9fe:#6d28d9','#fee2e2:#b91c1c','#e0f2fe:#0369a1','#ffedd5:#9a3412'];
+var AVATAR_COLORS = ['#ccfbf1:#1e40af','#d1fae5:#065f46','#fef3c7:#92400e','#ede9fe:#6d28d9','#fee2e2:#b91c1c','#e0f2fe:#0369a1','#ffedd5:#9a3412'];
 function getAvatarStyle(buyer) {
   var i = buyer.charCodeAt(0) % AVATAR_COLORS.length;
   var parts = AVATAR_COLORS[i].split(':');
@@ -1247,7 +1256,7 @@ function renderChatDetail(){
 
   // バイヤー名＋SOLDバッジ
   var soldBadge='';  // SOLDは注文ブロックに表示するため、ここでは出さない
-  var buyerLink='<a href="https://www.ebay.com/usr/'+encodeURIComponent(m.buyer)+'" target="_blank" style="color:inherit;text-decoration:none;border-bottom:1px solid #93c5fd;">'+esc(m.buyer)+'</a>';
+  var buyerLink='<a href="https://www.ebay.com/usr/'+encodeURIComponent(m.buyer)+'" target="_blank" style="color:inherit;text-decoration:none;border-bottom:1px solid #5eead4;">'+esc(m.buyer)+'</a>';
   var nEl=document.getElementById('buyer-panel-name');
   nEl.setAttribute('data-base', buyerLink+soldBadge);
   nEl.innerHTML=buyerLink+soldBadge;
