@@ -78,6 +78,28 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .s1-body{flex:1;overflow-y:auto;}
 
+/* ===== 受信トレイ：左サイドバー（フィルター） ===== */
+.s1-main{flex:1;display:flex;min-height:0;overflow:hidden;}
+.s1-side{width:168px;flex-shrink:0;background:#f7fdfc;border-right:1px solid #d5efeb;padding:10px 8px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;}
+.side-filter{display:flex;align-items:center;gap:8px;width:100%;padding:9px 11px;border:none;background:transparent;border-radius:8px;cursor:pointer;font-family:var(--sans);font-size:13px;color:var(--text2);text-align:left;transition:all 0.12s;}
+.side-filter:hover{background:#e6f7f4;color:var(--text);}
+.side-filter.on{background:var(--teal);color:#fff;font-weight:700;}
+.sf-icon{font-size:13px;flex-shrink:0;width:16px;text-align:center;}
+.sf-label{flex:1;min-width:0;white-space:nowrap;}
+.sf-count{font-size:11px;font-weight:700;color:var(--text3);background:#fff;border:1px solid var(--border);padding:1px 7px;border-radius:9px;min-width:22px;text-align:center;}
+.side-filter.on .sf-count{background:rgba(255,255,255,0.22);border-color:transparent;color:#fff;}
+.s1-listwrap{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;}
+
+/* 列見出し：左端にゆとりを持たせる */
+.s1-th{padding-left:10px;}
+.s1-th.th-center{text-align:center;padding-left:0;}
+.s1-th .col-resizer{left:auto;}
+
+/* SOLD列 */
+.s1-sold-cell{display:flex;align-items:center;justify-content:center;}
+.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#fff;color:#dc2626;border:1.5px solid #dc2626;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:3px 9px;border-radius:5px;line-height:1.3;white-space:nowrap;}
+.s1-row.read .sold-mark{opacity:0.75;}
+
 .s1-row{display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0fdfa !important;}
 /* ===== 未読：左に色帯＋濃い文字 ===== */
@@ -198,12 +220,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-item:hover{background:#f0fdfa;}
 .mini-item.active{background:#e6fffa;box-shadow:inset 3px 0 0 var(--teal);}
 .mini-item.unread .mini-buyer{font-weight:800;color:#0f172a;}
-.mini-item.read .mini-buyer{font-weight:400;color:#94a3b8;}
-.mini-item.read .mini-preview{color:#b6bfcc;}
+.mini-item.read .mini-buyer{font-weight:400;color:#0f172a;}
 .mini-thumb-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;}
 .mini-thumb{width:56px;height:56px;border-radius:6px;border:1px solid var(--border);background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
 .mini-sold-tag{display:block;width:56px;text-align:center;background:#dc2626;color:#fff;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1.5px 0;border-radius:3px;line-height:1.3;}
-.mini-item.read .mini-sold-tag{background:#e88a8a;}
+
 .mini-thumb img{width:100%;height:100%;object-fit:contain;}
 .mini-info{flex:1;min-width:0;}
 .mini-top{display:flex;align-items:center;gap:6px;}
@@ -214,8 +235,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-tags{display:flex;gap:3px;flex-wrap:wrap;margin-top:5px;justify-content:flex-end;}
 .mini-tags .tag{font-size:9.5px;padding:1px 6px;white-space:nowrap;}
 .sold-circle.mini{width:16px;height:16px;font-size:9px;}
-.mini-hm{font-size:11px;font-weight:400;color:var(--text3);}
-.mini-item.read .mini-date{color:#b6bfcc;}
+.mini-hm{font-size:11.5px;font-weight:500;color:var(--text2);}
+.mini-item.read .mini-date{color:var(--text2);}
 .mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
 .mini-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0;}
 
@@ -635,14 +656,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkSetFlag(false)">☆外す</button>
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="clearAllChecks()">×解除</button>
       </div>
-      <div class="s1-filters">
-        <button class="s1-filter on" onclick="setFilter('all',this)">すべて</button>
-        <button class="s1-filter" onclick="setFilter('unread',this)">未読</button>
-        <button class="s1-filter" onclick="setFilter('starred',this)">フラグ</button>
-        <button class="s1-filter" onclick="setFilter('sold',this)">SOLD</button>
-        <button class="s1-filter" onclick="setFilter('urgent',this)">要対応</button>
-        <button class="s1-filter" onclick="setFilter('replied',this)">返信済み</button>
-      </div>
       <button class="col-toggle-btn" onclick="syncFromEbay()" id="btn-ebay-sync" style="margin-left:8px;">&#8635; eBayから取得</button>
       <div style="position:relative;margin-left:8px;">
         <button class="col-toggle-btn" onclick="toggleColDropdown(event)" id="col-toggle-btn">&#9776; 表示列</button>
@@ -650,22 +663,36 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <div class="col-toggle-item"><input type="checkbox" id="col-time" checked onchange="updateColVisibility()"><label for="col-time" style="cursor:pointer;">時刻</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-thumb" checked onchange="updateColVisibility()"><label for="col-thumb" style="cursor:pointer;">商品画像</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-item" checked onchange="updateColVisibility()"><label for="col-item" style="cursor:pointer;">商品名</label></div>
-          <div class="col-toggle-item"><input type="checkbox" id="col-tags" checked onchange="updateColVisibility()"><label for="col-tags" style="cursor:pointer;">タグ</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-status" checked onchange="updateColVisibility()"><label for="col-status" style="cursor:pointer;">未読数</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-sold" checked onchange="updateColVisibility()"><label for="col-sold" style="cursor:pointer;">販売状況</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-buyer" checked onchange="updateColVisibility()"><label for="col-buyer" style="cursor:pointer;">バイヤー</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-flag" checked onchange="updateColVisibility()"><label for="col-flag" style="cursor:pointer;">フラグ</label></div>
         </div>
       </div>
     </div>
-    <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
+    <div class="s1-main">
+      <div class="s1-side">
+        <button class="side-filter on" onclick="setFilter('all',this)"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-all">0</span></button>
+        <button class="side-filter" onclick="setFilter('unread',this)"><span class="sf-icon">&#128235;</span><span class="sf-label">未読</span><span class="sf-count" id="cnt-unread">0</span></button>
+        <button class="side-filter" onclick="setFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="cnt-urgent">0</span></button>
+        <button class="side-filter" onclick="setFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="cnt-starred">0</span></button>
+        <button class="side-filter" onclick="setFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="cnt-sold">0</span></button>
+        <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon">&#10003;</span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span></button>
+      </div>
+      <div class="s1-listwrap">
+        <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
       <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
-      <div class="s1-th s1-col-time" data-col="time" style="cursor:default;">時刻<div class="col-resizer" data-col="time"></div></div>
-      <div class="s1-th s1-col-status" data-col="status" style="cursor:default;"></div>
-      <div class="s1-th s1-col-thumb" data-col="thumb" style="cursor:default;">画像<div class="col-resizer" data-col="thumb"></div></div>
-      <div class="s1-th s1-col-item" data-col="item" style="cursor:default;">商品名 / No.<div class="col-resizer" data-col="item"></div></div>
-      <div class="s1-th s1-col-buyer" data-col="buyer" style="cursor:default;">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
-      <div class="s1-th s1-col-flag" data-col="flag" style="cursor:default;">フラグ<div class="col-resizer" data-col="flag"></div></div>
+      <div class="s1-th s1-col-time th-center" data-col="time">時刻<div class="col-resizer" data-col="time"></div></div>
+      <div class="s1-th s1-col-status th-center" data-col="status">未読<div class="col-resizer" data-col="status"></div></div>
+      <div class="s1-th s1-col-thumb th-center" data-col="thumb">画像<div class="col-resizer" data-col="thumb"></div></div>
+      <div class="s1-th s1-col-item" data-col="item">商品名<div class="col-resizer" data-col="item"></div></div>
+      <div class="s1-th s1-col-sold th-center" data-col="sold">販売<div class="col-resizer" data-col="sold"></div></div>
+      <div class="s1-th s1-col-buyer" data-col="buyer">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
+      <div class="s1-th s1-col-flag th-center" data-col="flag">フラグ<div class="col-resizer" data-col="flag"></div></div>
     </div>
     <div class="s1-body" id="msg-list"></div>
+      </div>
+    </div>
   </div>
 
   <!-- マニュアルタブ -->
@@ -1072,9 +1099,20 @@ function showMainTab(name, btn){
 // ===== フィルター・検索 =====
 function setFilter(f,btn){
   currentFilter=f;
-  document.querySelectorAll('.s1-filter').forEach(function(b){b.classList.remove('on');});
-  btn.classList.add('on');
+  document.querySelectorAll('.side-filter').forEach(function(b){b.classList.remove('on');});
+  if(btn) btn.classList.add('on');
   renderList();
+}
+
+// サイドバーの件数を更新
+function updateFilterCounts(){
+  function set(id,n){ var e=document.getElementById(id); if(e) e.textContent=n; }
+  set('cnt-all', messages.length);
+  set('cnt-unread', messages.filter(function(m){return !m.read;}).length);
+  set('cnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
+  set('cnt-starred', messages.filter(function(m){return m.starred;}).length);
+  set('cnt-sold', messages.filter(function(m){return m.sold;}).length);
+  set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 function onSearch(q){
   searchQuery=q.toLowerCase();
@@ -1083,6 +1121,7 @@ function onSearch(q){
 
 // ===== 一覧レンダリング =====
 function renderList(){
+  if(typeof updateFilterCounts==='function') updateFilterCounts();
   // チャット画面を開いている場合はミニリストも同期
   setTimeout(function(){
     var sc=document.getElementById('screen-chat');
@@ -1133,10 +1172,7 @@ function renderList(){
     var thumbInner = m.imgUrl
       ? '<img src="'+esc(ebayImg(m.imgUrl,140))+'" loading="lazy" onerror="this.parentElement.innerHTML=\'&#128230;\'">'
       : '&#128230;';
-    var thumbHtml='<div class="s1-thumb-col">'
-      +'<div class="s1-thumb">'+thumbInner+'</div>'
-      +(m.sold?'<span class="s1-sold-tag">SOLD</span>':'')
-      +'</div>';
+    var thumbHtml='<div class="s1-thumb">'+thumbInner+'</div>';
 
     // colOrderの順番に従ってセルを生成
     var cellMap={
@@ -1155,6 +1191,9 @@ function renderList(){
         +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'')
         +'</div>',
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
+      sold: '<div class="s1-sold-cell s1-col-sold">'
+        +(m.sold?'<span class="sold-mark">&#10003; SOLD</span>':'')
+        +'</div>',
       item: '<div class="s1-item-cell s1-col-item">'
         +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
         +(tagsHtml?'<div class="s1-inline-tags">'+tagsHtml+'</div>':'')
@@ -2462,12 +2501,13 @@ async function syncFromEbay(){
 // ===== 列管理（一本化版）=====
 // 列定義: key, デフォルト幅(px), frかpxか
 var COL_DEFS = [
-  {key:'time',  label:'時刻',     w:80,  fr:false},
-  {key:'status', label:'',        w:46,  fr:false},
-  {key:'thumb', label:'画像',     w:76,  fr:false},
-  {key:'item',  label:'商品名',   w:260, fr:false},
-  {key:'buyer', label:'バイヤー', w:300, fr:false},
-  {key:'flag',  label:'フラグ',   w:52,  fr:false},
+  {key:'time',   label:'時刻',     w:80,  fr:false, align:'center'},
+  {key:'status', label:'未読',     w:50,  fr:false, align:'center'},
+  {key:'thumb',  label:'画像',     w:76,  fr:false, align:'center'},
+  {key:'item',   label:'商品名',   w:260, fr:false, align:'left'},
+  {key:'sold',   label:'販売',     w:88,  fr:false, align:'center'},
+  {key:'buyer',  label:'バイヤー / メッセージ', w:320, fr:false, align:'left'},
+  {key:'flag',   label:'フラグ',   w:56,  fr:false, align:'center'},
 ];
 var colOrder = COL_DEFS.map(function(c){return c.key;});
 var colWidths = {};
