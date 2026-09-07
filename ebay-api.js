@@ -93,19 +93,63 @@ async function callMessageAPI(pathAndQuery, options) {
   return json;
 }
 
+const PAGE_LIMIT = 50;   // eBay APIの1リクエスト上限
+
+// 指定期間の会話を1回だけ取得
+async function fetchConversationRange(startDate, endDate) {
+  const q = new URLSearchParams({
+    conversation_type: 'FROM_MEMBERS',
+    limit: String(PAGE_LIMIT),
+    start_time: startDate.toISOString(),
+    end_time: endDate.toISOString(),
+  });
+  return await callMessageAPI('/conversation?' + q.toString());
+}
+
+// 期間を分割して取りこぼしなく取得する
+// 1回50件の上限に達したら、その期間を半分に割って再取得する
 async function getConversations(daysBack, want) {
   daysBack = daysBack || 7;
-  const PAGE = 50;   // eBay APIの上限
   const end = new Date();
   const start = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
-  const q = new URLSearchParams({
-    conversation_type: 'FROM_MEMBERS',
-    limit: String(PAGE),
-    start_time: start.toISOString(),
-    end_time: end.toISOString(),
+  const seen = {};        // conversationId -> conversation
+  let totalReported = 0;
+  let calls = 0;
+  const MAX_CALLS = 24;   // 安全弁
+
+  async function walk(s, e, depth) {
+    if (calls >= MAX_CALLS) return;
+    calls++;
+    let res;
+    try {
+      res = await fetchConversationRange(s, e);
+    } catch (err) {
+      console.error('fetchConversationRange error:', err.message);
+      return;
+    }
+    const batch = (res && res.conversations) || [];
+    if (res && res.total) totalReported = Math.max(totalReported, res.total);
+    batch.forEach(cv => { if (cv && cv.conversationId) seen[cv.conversationId] = cv; });
+
+    // 上限まで埋まった＝取りこぼしの可能性がある。期間を半分にして再取得
+    const spanMs = e.getTime() - s.getTime();
+    if (batch.length >= PAGE_LIMIT && depth < 5 && spanMs > 60 * 60 * 1000) {
+      const mid = new Date(s.getTime() + Math.floor(spanMs / 2));
+      await walk(mid, e, depth + 1);   // 新しい側を先に
+      await walk(s, mid, depth + 1);
+    }
+  }
+
+  await walk(start, end, 0);
+
+  const list = Object.values(seen).sort((a, b) => {
+    const ta = new Date((a.latestMessage && a.latestMessage.createdDate) || a.createdDate || 0).getTime() || 0;
+    const tb = new Date((b.latestMessage && b.latestMessage.createdDate) || b.createdDate || 0).getTime() || 0;
+    return tb - ta;   // 新しい順
   });
-  return await callMessageAPI('/conversation?' + q.toString());
+
+  return { conversations: list, total: totalReported || list.length, _calls: calls };
 }
 
 async function getConversation(conversationId) {
