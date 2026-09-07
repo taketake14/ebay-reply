@@ -4,6 +4,13 @@ const path = require('path');
 const ebayApi = require('./ebay-api');
 const app = express();
 let autoSyncRunning = false;
+let lastSyncAt = 0;          // 最後に同期が成功した時刻（ミリ秒）
+let syncLog = [];            // 直近の同期履歴（監査用）
+
+function recordSync(entry) {
+  syncLog.unshift(Object.assign({ at: new Date().toISOString() }, entry));
+  if (syncLog.length > 30) syncLog = syncLog.slice(0, 30);
+}
 app.use(express.json());
 
 app.get('/', (req, res) => {
@@ -440,6 +447,16 @@ app.get('/api/ebay/enrich', async (req, res) => {
   }
 });
 
+// ===== 同期履歴（取りこぼし監査用） =====
+app.get('/api/ebay/synclog', (req, res) => {
+  res.json({
+    ok: true,
+    lastSyncAt: lastSyncAt ? new Date(lastSyncAt).toISOString() : null,
+    minutesAgo: lastSyncAt ? Math.round((Date.now()-lastSyncAt)/60000) : null,
+    log: syncLog,
+  });
+});
+
 // ===== 同期判定の診断 =====
 app.get('/api/ebay/diag2', async (req, res) => {
   try {
@@ -473,13 +490,15 @@ app.get('/api/ebay/diag2', async (req, res) => {
 app.get('/api/ebay/diag', async (req, res) => {
   try {
     const days = parseInt(req.query.days) || 3;
-    const convs = await ebayApi.getConversations(days, 50);
+    const convs = await ebayApi.getConversations(days, 500);
     const list = (convs && convs.conversations) || [];
     res.json({
       ok: true,
       days,
       total: convs ? convs.total : null,
       fetched: list.length,
+      apiCalls: convs ? convs._calls : null,
+      complete: (convs && convs.total) ? (list.length >= convs.total) : null,
       buyers: list.map(c => {
         const lm = c.latestMessage || {};
         return (lm.senderUsername || '?') + ' @' + (lm.createdDate || '').substring(5, 16);
@@ -710,6 +729,8 @@ app.get('/api/ebay/sync', async (req, res) => {
       appendToSheet(msg).catch(e => console.error('appendToSheet error:', e.message));
     }
     if (messages.length > 300) messages = messages.slice(0, 300);
+    lastSyncAt = Date.now();
+    recordSync({ type: 'manual', days, fetched: ebayMsgs.length, added, refreshed: updated });
     res.json({ ok: true, fetched: ebayMsgs.length, added, updated, errors: syncErrors.slice(0,5) });
   } catch (e) {
     console.error('eBay sync error:', e.message);
@@ -1389,7 +1410,13 @@ async function autoSyncFromEbay() {
   if (autoSyncRunning) return;
   autoSyncRunning = true;
   try {
-    const ebayMsgs = await ebayApi.getMessagesForApp(2);
+    // 差分同期：前回同期からの経過時間だけを取りに行く（最低1日・最大7日）
+    const elapsedDays = lastSyncAt
+      ? (Date.now() - lastSyncAt) / 86400000
+      : 3;
+    const days = Math.min(Math.max(Math.ceil(elapsedDays) + 1, 1), 7);
+
+    const ebayMsgs = await ebayApi.getMessagesForApp(days);
     const sheetTs = await getSheetConvTimestamps();
     let added = 0, refreshed = 0;
     for (const em of ebayMsgs) {
@@ -1445,7 +1472,9 @@ async function autoSyncFromEbay() {
       await appendToSheet(msg).catch(e => console.error('appendToSheet:', e.message));
     }
     if (messages.length > 300) messages = messages.slice(0, 300);
-    if (added > 0 || refreshed > 0) console.log(`[autoSync] 新規${added}件 / 更新${refreshed}件`);
+    lastSyncAt = Date.now();
+    recordSync({ type: 'auto', days, fetched: ebayMsgs.length, added, refreshed });
+    if (added > 0 || refreshed > 0) console.log(`[autoSync] ${days}日分 / 新規${added}件 / 更新${refreshed}件`);
   } catch (e) {
     console.error('[autoSync] error:', e.message);
   } finally {
@@ -1453,13 +1482,27 @@ async function autoSyncFromEbay() {
   }
 }
 
+// 起動時：シート上の最新メッセージ時刻を「最終同期時刻」として復元
+// （再起動しても取りこぼしが起きないように）
+setTimeout(async () => {
+  try {
+    const map = await getSheetConvTimestamps();
+    let latest = 0;
+    Object.values(map).forEach(t => { if (t > latest) latest = t; });
+    if (latest > 0) {
+      lastSyncAt = latest;
+      console.log('[startup] 最終同期時刻を復元:', new Date(latest).toISOString());
+    }
+  } catch (e) { console.error('[startup] restore lastSyncAt:', e.message); }
+}, 2000);
+
 // 起動直後に購入者リストを先読み（SOLD表示のタイムラグ解消）
 setTimeout(() => { refreshBuyerSet().catch(() => {}); }, 1000);
 // 10分ごとに購入者リストを更新
 setInterval(() => { refreshBuyerSet().catch(() => {}); }, 10 * 60 * 1000);
 
 // 3分ごとに実行
-setInterval(autoSyncFromEbay, 3 * 60 * 1000);
+setInterval(autoSyncFromEbay, 2 * 60 * 1000);
 // 起動30秒後に初回実行
 setTimeout(autoSyncFromEbay, 30 * 1000);
 
