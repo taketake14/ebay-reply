@@ -60,7 +60,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 #screen-list{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 #screen-chat{flex:1;display:none;flex-direction:column;overflow:hidden;}
 
-.s1-toolbar{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg2);flex-shrink:0;}
+.s1-toolbar{padding:10px 18px;border-bottom:1px solid #d5efeb;display:flex;align-items:center;gap:10px;background:#f7fdfc;flex-shrink:0;}
 .s1-title{font-size:15px;font-weight:600;color:var(--text);}
 .s1-count-badge{font-size:11px;background:var(--orange);color:#fff;border-radius:20px;padding:2px 8px;font-weight:700;}
 .s1-filters{display:flex;gap:5px;margin-left:auto;}
@@ -129,7 +129,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tag-ship{background:#e0f2fe;color:#0369a1;}
 .tag-complaint{background:#fee2e2;color:#dc2626;}
 .tag-spec{background:#ede9fe;color:#6d28d9;}
-.tag-cancel{background:#fef3c7;color:#92400e;}
+.tag-cancel{background:#fdf3e0;color:#8a5a12;}
 .tag-urgent{background:#dc2626;color:#fff;font-weight:700;}
 .tag-other{background:#f1f5f9;color:var(--text2);}
 /* 状態 */
@@ -143,12 +143,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-buyer-name{font-size:15px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .s1-star-btn{background:none;border:none;cursor:pointer;font-size:15px;color:var(--text3);padding:0;line-height:1;}
-.s1-star-btn.on{color:#f59e0b;}
-.s1-star-btn:hover{color:#f59e0b;}
+.s1-star-btn.on{color:#e8a838;}
+.s1-star-btn:hover{color:#e8a838;}
 .s1-empty{padding:40px;text-align:center;color:var(--text3);font-size:13px;}
 
 /* ===== SCREEN 2: チャット全画面 ===== */
-.s2-header{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg2);flex-shrink:0;}
+.s2-header{padding:10px 18px;border-bottom:1px solid #d5efeb;display:flex;align-items:center;gap:10px;background:#f7fdfc;flex-shrink:0;}
 .s2-back{font-size:13px;color:var(--orange);cursor:pointer;display:flex;align-items:center;gap:4px;font-weight:600;padding:4px 8px;border-radius:6px;border:1px solid var(--orange-border);background:var(--orange-light);white-space:nowrap;}
 .s2-back:hover{background:var(--orange-border);}
 .s2-sep{width:1px;height:18px;background:var(--border);}
@@ -157,7 +157,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s2-header-actions{margin-left:auto;display:flex;gap:6px;align-items:center;}
 .s2-btn{font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid var(--border2);color:var(--text2);background:transparent;cursor:pointer;font-weight:500;transition:all 0.1s;}
 .s2-btn:hover{background:var(--bg3);}
-.s2-btn.on{color:#f59e0b;border-color:#fde68a;background:#fffbeb;}
+.s2-btn.on{color:var(--teal);border-color:#99f6e4;background:#f0fdfa;}
 .s2-btn-primary{background:var(--orange);color:#fff;border-color:var(--orange);}
 .s2-btn-primary:hover{background:var(--orange2);}
 .s2-btn-primary.done{background:var(--success);border-color:var(--success);}
@@ -167,8 +167,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* ===== ミニ受信リスト（チャット画面の最左） ===== */
 .mini-list{width:240px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
 .mini-list.collapsed{width:0;border-right:none;}
-.mini-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid var(--border);background:var(--bg3);flex-shrink:0;}
-.mini-list-title{font-size:12px;font-weight:700;color:var(--text2);white-space:nowrap;}
+.mini-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid #d5efeb;background:#eefaf8;flex-shrink:0;}
+.mini-list-title{font-size:12px;font-weight:700;color:#12554e;white-space:nowrap;}
 .mini-collapse{border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:4px;line-height:1;}
 .mini-collapse:hover{background:var(--bg2);color:var(--text);}
 .mini-list-body{flex:1;overflow-y:auto;overflow-x:hidden;}
@@ -383,13 +383,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .memo-bar-text{font-size:12px;color:var(--text3);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 /* メモあり：琥珀色のアクセント */
-.memo-bar.has-memo{background:linear-gradient(90deg,#fffbeb 0%,#fef8e7 100%);border-bottom:1px solid #fcd34d;border-left:3px solid #f59e0b;padding-left:9px;}
-.memo-bar.has-memo:hover{background:linear-gradient(90deg,#fef3c7 0%,#fdeec4 100%);}
+.memo-bar.has-memo{background:#fffaf0;border-bottom:1px solid #f5dfae;border-left:3px solid #e8a838;padding-left:9px;}
+.memo-bar.has-memo:hover{background:#fef5e4;}
 .memo-bar.has-memo .memo-bar-icon{opacity:1;}
 .memo-bar.has-memo .memo-bar-text{color:#92400e;font-weight:600;}
 
 /* メモありバッジ（下部のバッジと同じ見た目） */
-.memo-badge-inline{display:none;background:#f59e0b;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0;letter-spacing:0.02em;}
+.memo-badge-inline{display:none;background:#e8a838;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;flex-shrink:0;letter-spacing:0.02em;}
 .memo-bar.has-memo .memo-badge-inline{display:inline-block;}
 .memo-bar.has-memo .memo-bar-icon{display:none;}
 
@@ -397,12 +397,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .blk-sold{display:inline-block;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:4px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle;}
 
 /* メモありインジケーター（折りたたみ時も見える） */
-.memo-dot{display:none;width:7px;height:7px;border-radius:50%;background:#f59e0b;margin-left:5px;flex-shrink:0;}
+.memo-dot{display:none;width:7px;height:7px;border-radius:50%;background:#e8a838;margin-left:5px;flex-shrink:0;}
 .memo-dot.on{display:inline-block;}
-.rp-section-hdr{padding:9px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#eef1f6;border-top:1px solid #dde3ec;border-bottom:1px solid #dde3ec;user-select:none;transition:background 0.12s;}
-.rp-section-hdr:hover{background:#e3e9f2;}
-.rp-section-title{font-size:12px;font-weight:700;color:#344054;letter-spacing:0.02em;}
-.rp-toggle-icon{font-size:10px;color:#98a2b3;transition:transform 0.15s;}
+/* セクション見出し：薄いティール地＋左のアクセント線で構造を示す */
+.rp-section-hdr{padding:9px 12px 9px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#eefaf8;border-top:1px solid #d5efeb;border-bottom:1px solid #d5efeb;border-left:3px solid var(--teal);user-select:none;transition:background 0.12s;}
+.rp-section-hdr:hover{background:#dff5f1;}
+.rp-section-title{font-size:12px;font-weight:700;color:#12554e;letter-spacing:0.02em;}
+.rp-toggle-icon{font-size:10px;color:#5f8f89;transition:transform 0.15s;}
 
 /* バイヤー固定エリア */
 .buyer-fixed{padding:12px 12px 11px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -444,9 +445,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* メモパネル */
 .memo-panel{display:flex;flex-direction:column;gap:8px;}
 .memo-label{font-size:10px;font-weight:700;color:var(--warn);display:flex;align-items:center;gap:5px;}
-.memo-textarea{flex-shrink:0;width:100%;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:9px 10px;font-size:12px;color:var(--text);font-family:var(--sans);resize:vertical;min-height:80px;outline:none;line-height:1.6;}
-.memo-save-btn{font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid #fde68a;background:#fef3c7;color:#92400e;cursor:pointer;font-weight:600;align-self:flex-start;}
-.memo-save-btn:hover{background:#fde68a;}
+.memo-textarea{flex-shrink:0;width:100%;background:#fffaf0;border:1px solid #f5dfae;border-radius:8px;padding:9px 10px;font-size:12px;color:var(--text);font-family:var(--sans);resize:vertical;min-height:80px;outline:none;line-height:1.6;}
+.memo-save-btn{font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid #f5dfae;background:#fdf3e0;color:#8a5a12;cursor:pointer;font-weight:600;align-self:flex-start;}
+.memo-save-btn:hover{background:#f5dfae;}
 
 /* マニュアル・Zapierタブ */
 .nav-tabs-wrap{display:flex;gap:2px;padding:8px 18px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
@@ -574,8 +575,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <span class="s1-title">受信トレイ</span>
       <span class="s1-count-badge" id="msg-count">0</span>
       <!-- 一括操作（チェック時のみ表示。ツールバー内なのでリストがずれない） -->
-      <div id="bulk-bar" style="display:none;align-items:center;gap:6px;margin-left:12px;padding:3px 10px;background:#fff8ed;border:1px solid #fed7aa;border-radius:7px;">
-        <span id="bulk-count" style="font-size:12px;font-weight:700;color:#c2410c;white-space:nowrap;">0件</span>
+      <div id="bulk-bar" style="display:none;align-items:center;gap:6px;margin-left:12px;padding:3px 10px;background:#fffaf0;border:1px solid #f5dfae;border-radius:7px;">
+        <span id="bulk-count" style="font-size:12px;font-weight:700;color:#8a5a12;white-space:nowrap;">0件</span>
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkMarkRead(true)">✓既読</button>
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkMarkRead(false)">○未読</button>
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkSetFlag(true)">★付ける</button>
@@ -722,7 +723,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <!-- バイヤーセクション -->
         <div class="rp-section" id="rp-section-memo">
           <div class="rp-section-hdr" onclick="toggleRpSection('memo')">
-            <span class="rp-section-title" style="display:flex;align-items:center;gap:6px;flex:1;">&#128221; メモ <span id="memo-badge" style="display:none;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px;margin-left:4px;letter-spacing:0.02em;">📝 メモあり</span></span>
+            <span class="rp-section-title" style="display:flex;align-items:center;gap:6px;flex:1;">&#128221; メモ <span id="memo-badge" style="display:none;background:#e8a838;color:#fff;font-size:11px;font-weight:700;padding:2px 10px;border-radius:4px;margin-left:4px;letter-spacing:0.02em;">📝 メモあり</span></span>
             <span class="rp-toggle-icon" id="rp-icon-memo">&#9660;</span>
           </div>
           <div class="rp-section-body" id="rp-body-memo">
