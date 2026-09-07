@@ -331,10 +331,22 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-name-row{display:flex;align-items:flex-start;gap:6px;}
 .prod-name-row .prod-name{flex:1;min-width:0;}
 
-.prod-kv-row{display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--border);}
-.prod-kv-row:last-child{border-bottom:none;}
-.prod-kv-row .kv-k{flex-shrink:0;min-width:62px;}
-.prod-kv-row .kv-v{flex:1;min-width:0;word-break:break-all;}
+/* 商品パネルの行：罫線をなくしてラベルを薄く小さく */
+.prod-kv-row{display:flex;align-items:baseline;gap:8px;padding:4px 0;border:none;}
+.prod-kv-row .kv-k{flex-shrink:0;min-width:66px;font-size:10.5px;color:#98a2b3;font-weight:500;letter-spacing:0.02em;}
+.prod-kv-row .kv-v{flex:1;min-width:0;word-break:break-all;font-size:12.5px;color:#1d2939;font-weight:500;}
+
+/* 注文情報ブロック（薄い背景で1グループに見せる） */
+.order-box{background:#f8fafc;border:1px solid #eef2f6;border-radius:8px;padding:9px 11px;margin-top:9px;}
+.order-box .prod-kv-row{padding:3px 0;}
+
+/* 金額カード */
+.price-card{background:#fff;border:1px solid #eef2f6;border-radius:8px;padding:10px 12px;margin-top:9px;}
+.price-sub{display:flex;align-items:baseline;gap:6px;font-size:11.5px;color:#667085;flex-wrap:wrap;}
+.price-sub b{font-weight:600;color:#475467;}
+.price-total{display:flex;align-items:baseline;justify-content:space-between;margin-top:7px;padding-top:8px;border-top:1px solid #eef2f6;}
+.price-total-label{font-size:11px;color:#667085;font-weight:600;}
+.price-total-value{font-size:16px;font-weight:700;color:#0f172a;letter-spacing:-0.01em;}
 .prod-total{border-top:1.5px solid var(--border2) !important;margin-top:3px;padding-top:6px !important;}
 .prod-total .kv-k{font-weight:700;color:var(--text);}
 .prod-total .kv-v{font-weight:700;color:#dc2626;font-size:13px;}
@@ -1729,34 +1741,54 @@ async function loadBuyerDetail(buyer, idx){
     var slot=document.getElementById('order-inline');
     if(!slot) return;
     if(!info || !info.purchased){ slot.innerHTML=''; return; }
-    var h='';
+
+    var cp=function(v,title){
+      return '<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(String(v))+'" title="'+(title||'コピー')+'">'+COPY_ICON+'</button>';
+    };
+
+    // --- 注文情報ブロック ---
+    var ob='';
     if(info.orderId){
-      h+='<div class="prod-kv-row"><span class="kv-k">Order ID</span>'
+      ob+='<div class="prod-kv-row"><span class="kv-k">Order ID</span>'
         +'<a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId)+'" target="_blank">'+esc(info.orderId)+'</a>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.orderId)+'" title="コピー">'+COPY_ICON+'</button></div>';
+        +cp(info.orderId)+'</div>';
     }
     if(info.salesRecordNo){
-      h+='<div class="prod-kv-row"><span class="kv-k">レコードNo</span><span class="kv-v">'+esc(info.salesRecordNo)+'</span>'
-        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.salesRecordNo)+'" title="コピー">'+COPY_ICON+'</button></div>';
+      ob+='<div class="prod-kv-row"><span class="kv-k">レコードNo</span><span class="kv-v">'+esc(info.salesRecordNo)+'</span>'+cp(info.salesRecordNo)+'</div>';
     }
-    // 注文日と発送期限を1行に
     var dates=[];
-    if(info.orderDate) dates.push('注文 '+new Date(info.orderDate).toLocaleDateString('ja-JP'));
-    if(info.shipByDate) dates.push('期限 '+new Date(info.shipByDate).toLocaleDateString('ja-JP'));
-    if(dates.length) h+='<div class="prod-kv-row"><span class="kv-k">日程</span><span class="kv-v" style="font-size:11.5px;">'+esc(dates.join('　/　'))+'</span></div>';
-    if(info.marketplace) h+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v" style="font-size:11.5px;">'+esc(info.marketplace)+'</span></div>';
+    if(info.orderDate) dates.push('注文 '+new Date(info.orderDate).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}));
+    if(info.shipByDate) dates.push('発送期限 '+new Date(info.shipByDate).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}));
+    if(dates.length){
+      ob+='<div class="prod-kv-row"><span class="kv-k">日程</span><span class="kv-v">'+esc(dates.join('　→　'))+'</span></div>';
+    }
+    if(info.marketplace){
+      ob+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v">'+esc(info.marketplace)+'</span></div>';
+    }
 
-    // 金額の内訳
-    if(info.itemSubtotal) h+='<div class="prod-kv-row"><span class="kv-k">商品代金</span><span class="kv-v">'+esc(info.itemSubtotal)+'</span></div>';
-    if(info.shippingCost) h+='<div class="prod-kv-row"><span class="kv-k">送料</span><span class="kv-v">'+esc(info.shippingCost)+'</span></div>';
+    var h = ob ? '<div class="order-box">'+ob+'</div>' : '';
+
+    // --- 金額カード ---
+    var subs=[];
+    if(info.itemSubtotal) subs.push('商品 <b>'+esc(info.itemSubtotal.replace(/ [A-Z]{3}$/,''))+'</b>');
+    if(info.shippingCost) subs.push('送料 <b>'+esc(info.shippingCost.replace(/ [A-Z]{3}$/,''))+'</b>');
     if(info.taxBreakdown && info.taxBreakdown.length>0){
       info.taxBreakdown.forEach(function(t){
-        h+='<div class="prod-kv-row"><span class="kv-k">'+esc(t.label)+'</span><span class="kv-v">'+esc(t.value)+'</span></div>';
+        subs.push(esc(t.label.replace(/（.*）/,''))+' <b>'+esc(t.value.replace(/ [A-Z]{3}$/,''))+'</b>');
       });
     } else if(info.taxTotal){
-      h+='<div class="prod-kv-row"><span class="kv-k">税</span><span class="kv-v">'+esc(info.taxTotal)+'</span></div>';
+      subs.push('税 <b>'+esc(info.taxTotal.replace(/ [A-Z]{3}$/,''))+'</b>');
     }
-    if(info.total) h+='<div class="prod-kv-row prod-total"><span class="kv-k">合計</span><span class="kv-v">'+esc(info.total)+'</span></div>';
+
+    if(info.total || subs.length){
+      h+='<div class="price-card">';
+      if(subs.length) h+='<div class="price-sub">'+subs.join('<span style="color:#d0d5dd;">/</span>')+'</div>';
+      if(info.total){
+        h+='<div class="price-total"><span class="price-total-label">合計</span>'
+          +'<span class="price-total-value">'+esc(info.total)+'</span></div>';
+      }
+      h+='</div>';
+    }
 
     slot.innerHTML=h;
   }
