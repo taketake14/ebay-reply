@@ -106,7 +106,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-row{display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
 .s1-row:hover{background:#f0fdfa !important;}
 /* ===== 未読：左に色帯＋濃い文字 ===== */
-.s1-row.unread{background:#fff;box-shadow:inset 2px 0 0 var(--teal);}
+.s1-row.unread{background:#fff;box-shadow:inset 3px 0 0 var(--teal);}
 .s1-row.unread .s1-buyer-name{font-weight:700;color:#101828;}
 .s1-row.unread .s1-item-name{font-weight:500;color:#344054;}
 .s1-row.unread .s1-preview{color:#475467;}
@@ -177,11 +177,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 未読化ボタン列 */
 .s1-col-unread{display:flex;align-items:center;justify-content:center;}
-.s1-unread-btn{background:none;border:none;cursor:pointer;font-size:16px;color:#cbd5e1;padding:4px;line-height:1;border-radius:5px;transition:all 0.12s;}
+.s1-unread-btn{background:none;border:none;cursor:pointer;color:#b6c2cc;padding:5px;line-height:0;border-radius:6px;transition:all 0.13s;display:flex;align-items:center;justify-content:center;}
 .s1-unread-btn:hover{color:var(--teal);background:#f0fdfa;}
-.s1-unread-btn.done{color:var(--teal);}
-.s1-unread-btn.done:hover{color:#94a3b8;background:var(--bg3);}
-.s1-unread-btn:active{transform:scale(0.88);}
+.s1-unread-btn.active{color:var(--teal);}
+.s1-unread-btn.active:hover{color:#94a3b8;background:var(--bg3);}
+.s1-unread-btn:active{transform:scale(0.9);}
 
 /* SOLD：サムネイル画像の下部に重ねる帯（他要素に一切干渉しない） */
 /* サムネイル列：画像の下にSOLD（画像に重ねない） */
@@ -680,6 +680,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <div class="col-toggle-item"><input type="checkbox" id="col-sold" checked onchange="updateColVisibility()"><label for="col-sold" style="cursor:pointer;">販売状況</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-buyer" checked onchange="updateColVisibility()"><label for="col-buyer" style="cursor:pointer;">バイヤー</label></div>
           <div class="col-toggle-item"><input type="checkbox" id="col-flag" checked onchange="updateColVisibility()"><label for="col-flag" style="cursor:pointer;">フラグ</label></div>
+          <div class="col-toggle-item"><input type="checkbox" id="col-unread" checked onchange="updateColVisibility()"><label for="col-unread" style="cursor:pointer;">既読切替</label></div>
         </div>
       </div>
     </div>
@@ -703,7 +704,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="s1-th s1-col-item" data-col="item">商品名<div class="col-resizer" data-col="item"></div></div>
       <div class="s1-th s1-col-buyer" data-col="buyer">バイヤー / メッセージ<div class="col-resizer" data-col="buyer"></div></div>
       <div class="s1-th s1-col-flag th-center" data-col="flag">フラグ<div class="col-resizer" data-col="flag"></div></div>
-      <div class="s1-th s1-col-unread th-center" data-col="unread">未読化<div class="col-resizer" data-col="unread"></div></div>
+      <div class="s1-th s1-col-unread th-center" data-col="unread">既読<div class="col-resizer" data-col="unread"></div></div>
     </div>
     <div class="s1-body" id="msg-list"></div>
       </div>
@@ -1225,8 +1226,12 @@ function renderList(){
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
       unread: '<div class="s1-col-unread">'
         +(m.read
-          ? '<button class="s1-unread-btn" onclick="event.stopPropagation();markUnreadIdx('+ri+')" title="未読に戻す">&#9711;</button>'
-          : '<button class="s1-unread-btn done" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">&#9679;</button>')
+          ? '<button class="s1-unread-btn" onclick="event.stopPropagation();markUnreadIdx('+ri+')" title="未読に戻す">'
+            +'<svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg>'
+            +'</button>'
+          : '<button class="s1-unread-btn active" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">'
+            +'<svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 8.2V15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8.2"/><path d="M2.5 8.2L10 3l7.5 5.2"/><path d="M2.5 8.2L10 13l7.5-4.8"/></svg>'
+            +'</button>')
         +'</div>',
     };
     var cells=colOrder.filter(function(k){return colVisible[k];}).map(function(k){return cellMap[k]||'';}).join('');
@@ -2586,7 +2591,7 @@ var COL_DEFS = [
   {key:'item',   label:'商品名',   w:260, fr:false, align:'left'},
   {key:'buyer',  label:'バイヤー / メッセージ', w:320, fr:false, align:'left'},
   {key:'flag',   label:'フラグ',   w:56,  fr:false, align:'center'},
-  {key:'unread', label:'未読化',   w:60,  fr:false, align:'center'},
+  {key:'unread', label:'既読',     w:58,  fr:false, align:'center'},
 ];
 var colOrder = COL_DEFS.map(function(c){return c.key;});
 var colWidths = {};
