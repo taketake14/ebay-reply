@@ -95,7 +95,7 @@ async function callMessageAPI(pathAndQuery, options) {
 
 async function getConversations(daysBack, limit) {
   daysBack = daysBack || 7;
-  limit = limit || 50;
+  limit = Math.min(limit || 50, 200);
   const end = new Date();
   const start = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
   const q = new URLSearchParams({
@@ -652,8 +652,18 @@ function formatOrder(o) {
         return { label: taxLabel(x.type), value: x.value.toFixed(2) + ' ' + x.currency };
       });
     })(),
-    total: (o.pricingSummary && o.pricingSummary.total)
-      ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
+    total: (function(){
+      const ps = o.pricingSummary || {};
+      if (!ps.total || !ps.total.value) return '';
+      const base = parseFloat(ps.total.value) || 0;
+      const cur = ps.total.currency || '';
+      // pricingSummary.total は税抜のことがあるため、代理徴収税を加算して総額にする
+      const t = sumOrderTaxes(o);
+      const psTax = (ps.tax && ps.tax.value) ? parseFloat(ps.tax.value) : 0;
+      const taxAmt = psTax > 0 ? 0 : t.total;   // ps.tax があれば total に含まれている想定
+      const grand = base + taxAmt;
+      return grand.toFixed(2) + ' ' + cur;
+    })(),
   };
 }
 
@@ -884,8 +894,16 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
           return { label: taxLabel(x.type), value: x.value.toFixed(2) + ' ' + x.currency };
         });
       })(),
-      total: o.pricingSummary && o.pricingSummary.total
-        ? (o.pricingSummary.total.value + ' ' + o.pricingSummary.total.currency) : '',
+      total: (function(){
+        const ps = o.pricingSummary || {};
+        if (!ps.total || !ps.total.value) return '';
+        const base = parseFloat(ps.total.value) || 0;
+        const cur = ps.total.currency || '';
+        const t = sumOrderTaxes(o);
+        const psTax = (ps.tax && ps.tax.value) ? parseFloat(ps.tax.value) : 0;
+        const taxAmt = psTax > 0 ? 0 : t.total;
+        return (base + taxAmt).toFixed(2) + ' ' + cur;
+      })(),
     };
     orderCache[key] = info;
     return info;
