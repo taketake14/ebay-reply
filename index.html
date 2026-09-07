@@ -300,11 +300,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .btn-ghost:hover{background:var(--bg3);}
 .btn-warn{background:transparent;color:var(--warn);border-color:#fde68a;}
 .btn-warn:hover{background:#fffbeb;}
-.canned-panel{position:absolute;bottom:100%;left:18px;right:18px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:8px;z-index:200;display:none;flex-direction:column;gap:3px;margin-bottom:6px;box-shadow:var(--shadow2);}
-.canned-panel.open{display:flex;}
-.canned-item{padding:7px 10px;border-radius:7px;font-size:12px;cursor:pointer;color:var(--text2);line-height:1.5;}
-.canned-item:hover{background:var(--bg3);color:var(--text);}
-.canned-item strong{display:block;font-size:10px;color:var(--orange);font-family:var(--mono);margin-bottom:2px;font-weight:700;}
 
 /* 右パネル アコーディオン */
 .s2-right-panel{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;overflow-x:hidden;flex-shrink:0;display:flex;flex-direction:column;}
@@ -464,6 +459,47 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* デモボタン */
 .demo-btn{font-size:11px;padding:6px 14px;border-radius:6px;border:1px dashed var(--border2);background:transparent;color:var(--text3);cursor:pointer;font-weight:500;}
 .demo-btn:hover{border-color:var(--orange);color:var(--orange);}
+
+/* ===== 定型文モーダル ===== */
+.ct-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.42);z-index:900;display:none;align-items:center;justify-content:center;padding:24px;}
+.ct-overlay.open{display:flex;}
+.ct-modal{background:#fff;border-radius:14px;width:100%;max-width:640px;max-height:84vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(15,23,42,0.22);overflow:hidden;}
+
+.ct-hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);}
+.ct-hdr-title{font-size:14px;font-weight:700;color:var(--text);flex:1;}
+.ct-new{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--sans);}
+.ct-new:hover{background:#1d4ed8;}
+.ct-close{background:transparent;border:none;color:var(--text3);font-size:15px;cursor:pointer;padding:4px 7px;border-radius:5px;line-height:1;}
+.ct-close:hover{background:var(--bg3);color:var(--text);}
+
+.ct-tabs{display:flex;gap:5px;padding:11px 16px;border-bottom:1px solid var(--border);background:var(--bg3);overflow-x:auto;flex-shrink:0;}
+.ct-tab{background:#fff;border:1px solid var(--border2);border-radius:16px;padding:5px 13px;font-size:12px;font-weight:600;color:var(--text2);cursor:pointer;white-space:nowrap;font-family:var(--sans);display:flex;align-items:center;gap:5px;transition:all 0.12s;}
+.ct-tab:hover{border-color:var(--accent);color:var(--accent);}
+.ct-tab.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.ct-count{font-size:10px;opacity:0.7;font-weight:500;}
+.ct-tab.ct-add{padding:5px 11px;font-size:14px;color:var(--text3);}
+
+.ct-list{flex:1;overflow-y:auto;padding:10px 16px 16px;}
+.ct-item{display:flex;align-items:stretch;gap:6px;border:1px solid var(--border);border-radius:9px;margin-bottom:7px;transition:all 0.12s;overflow:hidden;}
+.ct-item:hover{border-color:var(--accent);box-shadow:0 2px 8px rgba(37,99,235,0.09);}
+.ct-item-main{flex:1;min-width:0;padding:10px 12px;cursor:pointer;}
+.ct-label{font-size:13px;font-weight:600;color:var(--text);margin-bottom:3px;}
+.ct-text{font-size:11.5px;color:var(--text3);line-height:1.55;}
+.ct-actions{display:flex;flex-direction:column;border-left:1px solid var(--border);}
+.ct-mini{flex:1;background:var(--bg3);border:none;color:var(--text3);cursor:pointer;padding:0 11px;font-size:12px;transition:all 0.12s;}
+.ct-mini:hover{background:#eff6ff;color:var(--accent);}
+.ct-mini.ct-del:hover{background:#fef2f2;color:#dc2626;}
+.ct-empty{text-align:center;padding:28px;color:var(--text3);font-size:12.5px;}
+
+.ct-edit{display:none;border-top:1px solid var(--border);padding:14px 16px;background:var(--bg3);flex-shrink:0;max-height:44vh;overflow-y:auto;}
+.ct-edit.open{display:block;}
+.ct-edit-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:9px;}
+.ct-edit-row{margin-bottom:9px;}
+.ct-edit-row label{display:block;font-size:11px;color:var(--text3);font-weight:600;margin-bottom:3px;}
+.ct-edit-row input,.ct-edit-row textarea{width:100%;border:1px solid var(--border2);border-radius:7px;padding:7px 10px;font-size:12.5px;font-family:var(--sans);color:var(--text);outline:none;background:#fff;}
+.ct-edit-row input:focus,.ct-edit-row textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(37,99,235,0.1);}
+.ct-edit-row textarea{min-height:96px;resize:vertical;line-height:1.6;}
+.ct-edit-btns{display:flex;gap:7px;}
 </style>
 </head>
 <body>
@@ -681,7 +717,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="reply-area" id="reply-area" style="flex:1;min-height:140px;">
         <div class="reply-top">
           <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AI返信案を作る</button>
-          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">定型文</button>
+          <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">&#128221; 定型文</button>
           <span class="reply-status" id="d-status"></span>
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
             <option value="-1">最新の返信案</option>
@@ -719,9 +755,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
             </div>
           </div>
         </div>
-        <div class="reply-actions">
-          <div class="canned-panel" id="canned-panel"></div>
-        </div>
+        <div class="reply-actions"></div>
       </div>
     </div>
   </div>
@@ -838,15 +872,35 @@ function getFiltered(){
 var searchQuery = '';
 var translationCache = {};
 var replyJaCache = {};
-var cannedOpen = false;
 
-var CANNED = [
-  {label:'営業時間外', text:'Thank you for your message. Our store operates Monday to Friday, from 9:00 AM to 6:00 PM (Japan Standard Time). We are closed on weekends and Japanese public holidays. We will respond to your inquiry on the next business day. Thank you for your patience.\n\nBest regards,\nKen'},
-  {label:'確認します', text:'Thank you for your message. I will check on this and get back to you as soon as possible. Thank you for your patience.\n\nBest regards,\nKen'},
-  {label:'値引き不可', text:'Thank you for your interest! Unfortunately, the price is already set at our best value and we are unable to offer a discount. If you would like to make an offer, please use the "Make Offer" feature on eBay.\n\nBest regards,\nKen'},
-  {label:'写真送付不可', text:'Thank you for your inquiry. Unfortunately, the item is stored at a remote warehouse and we are unable to provide additional photos at this time. Please refer to the photos in the listing for details.\n\nBest regards,\nKen'},
-  {label:'発送完了', text:'Thank you for your purchase! Your order has been shipped. Please allow some time for the tracking information to be updated. If you have any questions, feel free to contact us.\n\nBest regards,\nKen'},
+// 定型文（カテゴリ付き）。localStorageで編集・追加可能
+var CANNED_DEFAULT = [
+  {cat:'一般', label:'営業時間外', text:'Thank you for your message. Our store operates Monday to Friday, from 9:00 AM to 6:00 PM (Japan Standard Time). We are closed on weekends and Japanese public holidays. We will respond to your inquiry on the next business day. Thank you for your patience.\n\nBest regards,\nKen'},
+  {cat:'一般', label:'確認します', text:'Thank you for your message. I will check on this and get back to you as soon as possible. Thank you for your patience.\n\nBest regards,\nKen'},
+  {cat:'価格', label:'値引き不可', text:'Thank you for your interest! Unfortunately, the price is already set at our best value and we are unable to offer a discount. If you would like to make an offer, please use the "Make Offer" feature on eBay.\n\nBest regards,\nKen'},
+  {cat:'商品', label:'写真送付不可', text:'Thank you for your inquiry. Unfortunately, the item is stored at a remote warehouse and we are unable to provide additional photos at this time. Please refer to the photos in the listing for details.\n\nBest regards,\nKen'},
+  {cat:'配送', label:'発送完了', text:'Thank you for your purchase! Your order has been shipped. Please allow some time for the tracking information to be updated. If you have any questions, feel free to contact us.\n\nBest regards,\nKen'},
 ];
+
+var CANNED = (function(){
+  try{
+    var s=localStorage.getItem('ebay_canned');
+    if(s){
+      var arr=JSON.parse(s);
+      if(Array.isArray(arr)&&arr.length>0) return arr;
+    }
+  }catch(e){}
+  return CANNED_DEFAULT.slice();
+})();
+
+function saveCanned(){
+  try{ localStorage.setItem('ebay_canned', JSON.stringify(CANNED)); }catch(e){}
+}
+function cannedCategories(){
+  var set=[];
+  CANNED.forEach(function(x){ if(set.indexOf(x.cat||'その他')<0) set.push(x.cat||'その他'); });
+  return set;
+}
 
 var TAG_DEFS = [
   {key:'discount', label:'値引き', cls:'tag-discount', test:function(m){return /price|discount|cheaper|mejor precio|prezzo|offer|reduce/i.test(m);}},
@@ -1726,7 +1780,7 @@ async function loadBuyerDetail(buyer, idx){
     var addrLines=[
       [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
       [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
-      info.countryLabel||info.country
+      info.countryEn||info.country      // eBayオーダー情報と同じ英語表記
     ].filter(Boolean);
     var copyLines=[
       [info.addressLine1, info.addressLine2].filter(Boolean).join(' '),
@@ -1916,27 +1970,134 @@ function copyReply(){
   if(el) navigator.clipboard.writeText(el.value).catch(function(){});
 }
 
-// ===== 定型文 =====
+// ===== 定型文（タブ切替・編集可能なモーダル） =====
+var cannedActiveCat = null;
+var cannedEditIdx = null;
+
 function toggleCanned(){
-  cannedOpen=!cannedOpen;
-  var panel=document.getElementById('canned-panel');
-  var btn=document.getElementById('btn-canned');
-  if(cannedOpen){
-    panel.innerHTML=CANNED.map(function(c,i){
-      return '<div class="canned-item" onclick="insertCanned('+i+')">'
-        +'<strong>'+c.label+'</strong>'+esc(c.text.substring(0,55))+'...'
-        +'</div>';
-    }).join('');
-    panel.classList.add('open');btn.style.color='var(--orange)';
-  } else {closeCanned();}
+  var modal=document.getElementById('canned-modal');
+  if(!modal) return;
+  if(modal.classList.contains('open')){ closeCanned(); return; }
+  cannedActiveCat = cannedActiveCat || (cannedCategories()[0] || '一般');
+  renderCannedModal();
+  modal.classList.add('open');
 }
-function closeCanned(){cannedOpen=false;document.getElementById('canned-panel').classList.remove('open');document.getElementById('btn-canned').style.color='';}
+
+function closeCanned(){
+  var modal=document.getElementById('canned-modal');
+  if(modal) modal.classList.remove('open');
+  cannedEditIdx=null;
+}
+
+function renderCannedModal(){
+  var cats=cannedCategories();
+  if(cats.indexOf(cannedActiveCat)<0) cannedActiveCat=cats[0]||'一般';
+
+  // タブ
+  var tabsEl=document.getElementById('canned-tabs');
+  tabsEl.innerHTML=cats.map(function(cat){
+    var n=CANNED.filter(function(x){return (x.cat||'その他')===cat;}).length;
+    return '<button class="ct-tab'+(cat===cannedActiveCat?' on':'')+'" onclick="switchCannedCat(\''+esc(cat).replace(/'/g,"\\'")+'\')">'
+      +esc(cat)+'<span class="ct-count">'+n+'</span></button>';
+  }).join('')
+    +'<button class="ct-tab ct-add" onclick="addCannedCategory()" title="カテゴリを追加">+</button>';
+
+  // リスト
+  var listEl=document.getElementById('canned-list');
+  var items=CANNED.map(function(x,i){return {x:x,i:i};})
+                  .filter(function(o){return (o.x.cat||'その他')===cannedActiveCat;});
+  if(items.length===0){
+    listEl.innerHTML='<div class="ct-empty">このカテゴリに定型文はありません</div>';
+  } else {
+    listEl.innerHTML=items.map(function(o){
+      return '<div class="ct-item">'
+        +'<div class="ct-item-main" onclick="insertCanned('+o.i+')">'
+          +'<div class="ct-label">'+esc(o.x.label)+'</div>'
+          +'<div class="ct-text">'+esc(o.x.text.substring(0,90))+(o.x.text.length>90?'…':'')+'</div>'
+        +'</div>'
+        +'<div class="ct-actions">'
+          +'<button class="ct-mini" onclick="editCanned('+o.i+')" title="編集">&#9998;</button>'
+          +'<button class="ct-mini ct-del" onclick="deleteCanned('+o.i+')" title="削除">&#10005;</button>'
+        +'</div>'
+      +'</div>';
+    }).join('');
+  }
+}
+
+function switchCannedCat(cat){
+  cannedActiveCat=cat;
+  cannedEditIdx=null;
+  document.getElementById('canned-edit').classList.remove('open');
+  renderCannedModal();
+}
+
+function addCannedCategory(){
+  var name=prompt('新しいカテゴリ名を入力してください（例：配送、キャンセル、返品）');
+  if(!name||!name.trim()) return;
+  cannedActiveCat=name.trim();
+  cannedEditIdx=null;
+  openCannedEdit();
+  renderCannedModal();
+}
+
 function insertCanned(i){
-  var m=messages[currentIdx];
   var el=document.getElementById('d-reply');
   el.value=CANNED[i].text;
+  var m=messages[currentIdx];
   if(m) m.reply=CANNED[i].text;
   closeCanned();
+}
+
+function editCanned(i){
+  cannedEditIdx=i;
+  document.getElementById('ce-cat').value=CANNED[i].cat||'その他';
+  document.getElementById('ce-label').value=CANNED[i].label||'';
+  document.getElementById('ce-text').value=CANNED[i].text||'';
+  openCannedEdit();
+}
+
+function openCannedEdit(){
+  var box=document.getElementById('canned-edit');
+  if(cannedEditIdx===null){
+    document.getElementById('ce-cat').value=cannedActiveCat||'一般';
+    document.getElementById('ce-label').value='';
+    document.getElementById('ce-text').value='';
+  }
+  box.classList.add('open');
+  document.getElementById('ce-title').textContent=(cannedEditIdx===null?'定型文を追加':'定型文を編集');
+  setTimeout(function(){ document.getElementById('ce-label').focus(); },50);
+}
+
+function newCanned(){
+  cannedEditIdx=null;
+  openCannedEdit();
+}
+
+function saveCannedEdit(){
+  var cat=document.getElementById('ce-cat').value.trim()||'その他';
+  var label=document.getElementById('ce-label').value.trim();
+  var text=document.getElementById('ce-text').value.trim();
+  if(!label){ alert('タイトルを入力してください'); return; }
+  if(!text){ alert('本文を入力してください'); return; }
+  if(cannedEditIdx===null) CANNED.push({cat:cat,label:label,text:text});
+  else CANNED[cannedEditIdx]={cat:cat,label:label,text:text};
+  saveCanned();
+  cannedActiveCat=cat;
+  cannedEditIdx=null;
+  document.getElementById('canned-edit').classList.remove('open');
+  renderCannedModal();
+}
+
+function cancelCannedEdit(){
+  cannedEditIdx=null;
+  document.getElementById('canned-edit').classList.remove('open');
+}
+
+function deleteCanned(i){
+  if(!confirm('「'+CANNED[i].label+'」を削除しますか？')) return;
+  CANNED.splice(i,1);
+  saveCanned();
+  renderCannedModal();
 }
 
 // ===== 返信案生成 =====
@@ -2464,5 +2625,38 @@ window.addEventListener('load',function(){
   applyGrid();
 });
 </script>
+<!-- 定型文モーダル -->
+<div class="ct-overlay" id="canned-modal" onclick="if(event.target===this)closeCanned()">
+  <div class="ct-modal">
+    <div class="ct-hdr">
+      <span class="ct-hdr-title">&#128221; 定型文</span>
+      <button class="ct-new" onclick="newCanned()">+ 新規追加</button>
+      <button class="ct-close" onclick="closeCanned()">&#10005;</button>
+    </div>
+    <div class="ct-tabs" id="canned-tabs"></div>
+    <div class="ct-list" id="canned-list"></div>
+
+    <!-- 編集フォーム -->
+    <div class="ct-edit" id="canned-edit">
+      <div class="ct-edit-title" id="ce-title">定型文を追加</div>
+      <div class="ct-edit-row">
+        <label>カテゴリ</label>
+        <input type="text" id="ce-cat" placeholder="例：配送、キャンセル、返品">
+      </div>
+      <div class="ct-edit-row">
+        <label>タイトル</label>
+        <input type="text" id="ce-label" placeholder="例：発送完了のお知らせ">
+      </div>
+      <div class="ct-edit-row">
+        <label>本文</label>
+        <textarea id="ce-text" placeholder="英語の定型文を入力..."></textarea>
+      </div>
+      <div class="ct-edit-btns">
+        <button class="btn btn-primary" onclick="saveCannedEdit()">保存</button>
+        <button class="btn btn-ghost" onclick="cancelCannedEdit()">キャンセル</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
