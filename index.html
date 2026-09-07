@@ -363,6 +363,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* AI返信案ボタン */
 .btn-ai{background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff;border:1px solid #0f766e;font-weight:700;}
 .btn-ai2{background:#fff;color:#0d9488;border:1.5px solid #5eead4;font-weight:700;}
+.btn-clear{margin-left:auto;background:#fff;color:var(--text3);border:1px solid var(--border2);font-weight:600;}
+.btn-clear:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
 .btn-ai2:hover{background:#f0fdfa;border-color:#0d9488;}
 .btn-ai:hover{background:linear-gradient(135deg,#0d9488,#0f766e);}
 .reply-col{display:flex;flex-direction:column;gap:5px;min-height:0;}
@@ -883,6 +885,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
             <option value="-1">最新の返信案</option>
           </select>
+          <button class="btn btn-clear" onclick="clearReplyFields()" id="btn-clear-reply" title="日本語・英語の入力欄を空にする">&#10005; クリア</button>
         </div>
         <div class="reply-split">
           <!-- 左：日本語 -->
@@ -2450,6 +2453,22 @@ function deleteCanned(i){
   saveCanned();
   cannedSelIdx=null;
   renderCannedModal();
+}
+
+// ===== 入力欄をクリア =====
+function clearReplyFields(){
+  var ja=document.getElementById('d-input-ja');
+  var en=document.getElementById('d-reply');
+  var hasText=(ja&&ja.value.trim())||(en&&en.value.trim());
+  if(!hasText) return;
+  if(!confirm('日本語と英語の入力内容を消します。よろしいですか？')) return;
+  if(ja) ja.value='';
+  if(en) en.value='';
+  var m=messages[currentIdx];
+  if(m){ m.reply=''; m.replyJa=''; m.status='pending'; }
+  var s=document.getElementById('d-status');
+  if(s){ s.className='reply-status'; s.textContent=''; }
+  if(ja) ja.focus();
 }
 
 // ===== AI：情報を伝えて作る =====
