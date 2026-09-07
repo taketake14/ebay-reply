@@ -95,34 +95,17 @@ async function callMessageAPI(pathAndQuery, options) {
 
 async function getConversations(daysBack, want) {
   daysBack = daysBack || 7;
-  const target = Math.min(want || 50, 500);   // 取得したい総件数
-  const PAGE = 50;                            // eBay APIの1回あたり上限
+  const PAGE = 50;   // eBay APIの上限
   const end = new Date();
   const start = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
-  const all = [];
-  let offset = 0;
-  let total = 0;
-  let first = null;
-
-  for (let p = 0; p < 10 && all.length < target; p++) {
-    const q = new URLSearchParams({
-      conversation_type: 'FROM_MEMBERS',
-      limit: String(PAGE),
-      offset: String(offset),
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-    });
-    const res = await callMessageAPI('/conversation?' + q.toString());
-    if (!first) first = res;
-    const batch = (res && res.conversations) || [];
-    all.push(...batch);
-    total = (res && res.total) || total;
-    if (batch.length < PAGE) break;
-    offset += PAGE;
-  }
-
-  return Object.assign({}, first || {}, { conversations: all.slice(0, target), total });
+  const q = new URLSearchParams({
+    conversation_type: 'FROM_MEMBERS',
+    limit: String(PAGE),
+    start_time: start.toISOString(),
+    end_time: end.toISOString(),
+  });
+  return await callMessageAPI('/conversation?' + q.toString());
 }
 
 async function getConversation(conversationId) {
@@ -154,7 +137,7 @@ async function updateConversationRead(conversationId, isRead) {
 
 async function getMessagesForApp(daysBack) {
   daysBack = daysBack || 7;
-  const convs = await getConversations(daysBack, 200);
+  const convs = await getConversations(daysBack, 50);
   const list = (convs && convs.conversations) || [];
   const out = [];
   const SELF = String(process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142').toLowerCase();
