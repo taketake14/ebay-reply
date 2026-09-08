@@ -644,6 +644,9 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
 app.get('/api/ebay/order-extras/:orderId', async (req, res) => {
   try {
     const ex = await ebayApi.getOrderExtras(req.params.orderId);
+    if (req.query.raw === '1') {
+      return res.type('text/plain').send(ebayApi.getLastTradingRaw() || '(空)');
+    }
     res.json({ ok: true, extras: ex });
   } catch (e) {
     res.json({ ok: false, error: e.message });
