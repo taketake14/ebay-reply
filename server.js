@@ -693,6 +693,10 @@ app.get('/api/ebay/order-search', async (req, res) => {
     if (!order) return res.json({ ok: false, error: '該当する注文が見つかりません' });
 
     const formatted = ebayApi.formatOrder(order);
+    if (formatted && !formatted.taxId) {
+      const tid = await ebayApi.getBuyerTaxId(order.legacyOrderId || order.orderId).catch(() => null);
+      if (tid) formatted.taxId = tid;
+    }
     const buyerName = (order.buyer && order.buyer.username) || '';
     const li = (order.lineItems && order.lineItems[0]) || {};
 
@@ -826,6 +830,14 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
         }
       }
       order = ebayApi.formatOrder(full);
+
+      // 納税者番号（CPF/RFC等）はTrading APIからしか取れない
+      if (order && !order.taxId && (full.legacyOrderId || full.orderId)) {
+        try {
+          const tid = await ebayApi.getBuyerTaxId(full.legacyOrderId || full.orderId);
+          if (tid) order.taxId = tid;
+        } catch (e) { console.error('[buyer] taxId:', e.message); }
+      }
 
       // Fulfillment APIで日時が取れない場合はPost-Order APIから補完
       if (order && order.cancelState && order.cancelState !== 'NONE_REQUESTED' && !order.cancelRequestedAt) {
