@@ -920,6 +920,7 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
               if (!order.countryEn && a.countryName) order.countryEn = a.countryName;
             }
             if (!order.email && ex.email) order.email = ex.email;
+            if (ex.tooOld && !order.addressLine1) order.addressTooOld = true;
           }
         } catch (e) { console.error('[buyer] extras:', e.message); }
       }
