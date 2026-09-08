@@ -633,6 +633,25 @@ async function getOrderDetail(orderId) {
   }
 }
 
+// キャンセル理由の日本語ラベル
+const CANCEL_REASONS = {
+  WONT_ARRIVE_IN_TIME: '到着が間に合わない',
+  ORDER_MISTAKE: '注文間違い',
+  FOUND_CHEAPER_PRICE: '他店で安く見つけた',
+  WRONG_PAYMENT_METHOD: '支払い方法の誤り',
+  WRONG_SHIPPING_ADDRESS: '配送先の誤り',
+  WRONG_SHIPPING_METHOD: '配送方法の誤り',
+  ADDRESS_ISSUES: '住所に問題あり（セラー都合）',
+  BUYER_ASKED_CANCEL: 'バイヤーの依頼による（セラー操作）',
+  ORDER_UNPAID: '未払いのため',
+  OUT_OF_STOCK_OR_CANNOT_FULFILL: '在庫切れ・出荷不可',
+  OTHER: 'その他',
+};
+function cancelReasonLabel(r) {
+  if (!r) return '';
+  return CANCEL_REASONS[r] || r;
+}
+
 // ===== Post-Order API: キャンセル情報を取得 =====
 // Fulfillment API では cancelRequests が空のため、こちらから取得する
 const cancelSearchCache = { data: null, at: 0 };
@@ -750,6 +769,10 @@ const CANCEL_STATES = {
   CANCEL_CLOSED_FOR_COMMITMENT: { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続',           kind: 'keep'   },
   CANCEL_REJECTED:              { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続',           kind: 'keep'   },
   DECLINED:                     { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続',           kind: 'keep'   },
+  CANCEL_SUCCESS_NO_REFUND:     { label: 'キャンセル成立（返金なし・取引終了）', short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_SUCCESS:               { label: 'キャンセルが成立しました（取引終了）', short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_COMPLETE:              { label: 'キャンセルが成立しました（取引終了）', short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_FAILED:                { label: 'キャンセルが失敗しました',             short: 'キャンセル失敗',     kind: 'keep'   },
 };
 function cancelInfo(state) {
   if (!state) return { label: '', short: '', kind: '' };
@@ -1119,8 +1142,10 @@ module.exports = {
   formatOrder: formatOrder,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
+  cancelReasonLabel: cancelReasonLabel,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
+  cancelReasonLabel: cancelReasonLabel,
   marketplaceName: marketplaceName,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
