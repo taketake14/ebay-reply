@@ -1170,7 +1170,7 @@ function getFiltered(){
     if(currentFilter==='sold') return m.sold;
     if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
     if(currentFilter==='memo') return !!(m.memo && m.memo.trim());
-    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
+    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(tagSourceText(m));}
     if(currentFilter==='replied') return m.replied;
     return true;
   });
@@ -1219,6 +1219,19 @@ var TAG_DEFS = [
   {key:'discount', label:'値引き', cls:'tag-discount', test:function(m){return /price|discount|cheaper|mejor precio|prezzo|offer|reduce/i.test(m);}},
   {key:'spec', label:'仕様確認', cls:'tag-spec', test:function(m){return /weight|spec|dimension|size|compatible|casting|max|mm|watt|volt|lens|model|drawing|written|language/i.test(m);}},
 ];
+// タグ判定に使う本文（バイヤーからのメッセージのみ）
+function tagSourceText(m){
+  if(!m) return '';
+  var parts=[];
+  // 最新メッセージがバイヤー発なら含める
+  if(m.msgFrom!=='me' && m.msg) parts.push(m.msg);
+  // 履歴もバイヤー発のみ
+  (m.history||[]).forEach(function(h){
+    if(h.from!=='me' && h.text) parts.push(h.text);
+  });
+  return parts.join(' ');
+}
+
 function getTags(msg) {
   var found = TAG_DEFS.filter(function(t){return t.test(msg);});
   return found.length ? found : [{key:'other',label:'その他',cls:'tag-other'}];
@@ -1306,7 +1319,7 @@ function updateFilterCounts(){
   function set(id,n){ var e=document.getElementById(id); if(e) e.textContent=n; }
   set('cnt-all', messages.length);
   set('cnt-unread', messages.filter(function(m){return !m.read;}).length);
-  set('cnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
+  set('cnt-urgent', messages.filter(function(m){return getTags(tagSourceText(m)).some(function(t){return t.key==='urgent';});}).length);
   set('cnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('cnt-sold', messages.filter(function(m){return m.sold;}).length);
   set('cnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
@@ -1422,7 +1435,7 @@ function renderList(){
   },0);
   var el=document.getElementById('msg-list');
   var unread=messages.filter(function(m){return !m.read;}).length;
-  var urgent=messages.filter(function(m){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}).length;
+  var urgent=messages.filter(function(m){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(tagSourceText(m));}).length;
   document.getElementById('msg-count').textContent=messages.length+'件 / 未読'+unread;
   document.getElementById('h-unread-count').textContent=unread;
   document.getElementById('h-urgent-count').textContent=urgent;
@@ -1433,7 +1446,7 @@ function renderList(){
     if(currentFilter==='sold') return m.sold;
     if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
     if(currentFilter==='memo') return !!(m.memo && m.memo.trim());
-    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
+    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(tagSourceText(m));}
     if(currentFilter==='replied') return m.replied;
     return true;
   });
@@ -1450,7 +1463,7 @@ function renderList(){
   el.innerHTML=filtered.map(function(m,rowIdx){
     var ri=messages.indexOf(m);
     var isEven=rowIdx%2===0;
-    var tags=getTags(m.msg);
+    var tags=getTags(tagSourceText(m));
     var tagsHtml=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
     var initials=m.buyer.charAt(0).toUpperCase();
     var avatarStyle=getAvatarStyle(m.buyer);
@@ -1582,7 +1595,7 @@ function getMiniFiltered(){
     if(miniFilter==='sold') return m.sold;
     if(miniFilter==='cancel') return !!(m.cancel && m.cancel.short);
     if(miniFilter==='memo') return !!(m.memo && m.memo.trim());
-    if(miniFilter==='urgent') return getTags(m.msg||'').some(function(t){return t.key==='urgent';});
+    if(miniFilter==='urgent') return getTags(tagSourceText(m)).some(function(t){return t.key==='urgent';});
     if(miniFilter==='replied') return m.replied;
     return true;
   });
@@ -1591,7 +1604,7 @@ function updateMiniCounts(){
   function set(id,n){var e=document.getElementById(id); if(e) e.textContent=n;}
   set('mcnt-all', messages.length);
   set('mcnt-unread', messages.filter(function(m){return !m.read;}).length);
-  set('mcnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
+  set('mcnt-urgent', messages.filter(function(m){return getTags(tagSourceText(m)).some(function(t){return t.key==='urgent';});}).length);
   set('mcnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('mcnt-sold', messages.filter(function(m){return m.sold;}).length);
   set('mcnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
@@ -1629,7 +1642,7 @@ function renderMiniList(){
       if(!isNaN(dt.getTime())) dstr=(dt.getMonth()+1)+'/'+dt.getDate();
     }
     // タグを算出
-    var mtags=TAG_DEFS.filter(function(t){return t.test(m.msg||'');});
+    var mtags=TAG_DEFS.filter(function(t){return t.test(tagSourceText(m));});
     var mtagHtml=mtags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
 
     return '<div class="mini-item '+(m.read?'read':'unread')+(active?' active':'')+'" onclick="selectMsg('+ri+')">'
@@ -1731,7 +1744,7 @@ function renderChatDetail(){
 
   // ヘッダー
   document.getElementById('d-name').textContent=m.buyer;
-  var tags=getTags(m.msg);
+  var tags=getTags(tagSourceText(m));
   document.getElementById('d-header-tags').innerHTML=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
   updateStarBtn();
   var repliedBtn=document.getElementById('btn-replied');
