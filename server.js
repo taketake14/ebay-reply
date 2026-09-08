@@ -676,8 +676,17 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
             order.cancelRequestedAt = hit.requestedAt || order.cancelRequestedAt;
             order.cancelClosedAt = hit.closedAt || order.cancelClosedAt;
             order.cancelReason = hit.reason || order.cancelReason;
+            order.cancelReasonLabel = ebayApi.cancelReasonLabel(hit.reason || order.cancelReason);
             order.cancelRequestedBy = hit.initiator || order.cancelRequestedBy;
             order.cancelId = hit.cancelId || '';
+            // Post-Orderの状態の方が正確なので上書きする
+            if (hit.state) {
+              const ci = ebayApi.cancelInfo(hit.state);
+              order.cancelState = hit.state;
+              order.cancelLabel = ci.label;
+              order.cancelShort = ci.short;
+              order.cancelKind = ci.kind;
+            }
           }
         } catch (e) { console.error('[buyer] cancellation search:', e.message); }
       }
