@@ -222,7 +222,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .status-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .cancel-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap;}
 .cancel-tag.open{background:#dc2626;color:#fff;}
-.cancel-tag.done{background:#e8ecf0;color:#475569;border:1px solid #cbd5e1;}
+.cancel-tag.closed{background:#e8ecf0;color:#475569;border:1px solid #cbd5e1;}
 .cancel-tag.keep{background:#d1fae5;color:#047857;border:1px solid #6ee7b7;}
 
 /* ミニリストの返信済み */
@@ -1885,21 +1885,23 @@ function renderChatBubbles(){
 
   // キャンセルイベント
   if(m.cancelLabel){
+    var reqTs=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
+
     if(m.cancelKind==='open'){
-      var ct=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
+      // リクエストが届いた時点に配置（日時が取れていれば必ずその位置へ）
       var noTime=false;
-      if(isNaN(ct)){ ct=lastTsOf()+1000; noTime=true; }
-      evts.push({type:'event',kind:'cancel-open',text:m.cancelLabel,ts:ct,ord:98,noTime:noTime});
-    } else if(m.cancelKind==='closed'){
-      var rt=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
-      if(!isNaN(rt)){
-        evts.push({type:'event',kind:'cancel-open',text:'キャンセル依頼が届きました',ts:rt,ord:98});
+      if(isNaN(reqTs)){ reqTs=lastTsOf()+1000; noTime=true; }
+      evts.push({type:'event',kind:'cancel-open',text:m.cancelLabel,ts:reqTs,ord:0,noTime:noTime});
+    } else {
+      // 決着済み：依頼と結果の2つを時系列に置く
+      if(!isNaN(reqTs)){
+        evts.push({type:'event',kind:'cancel-open',text:'キャンセルリクエストが届きました',ts:reqTs,ord:0});
       }
       var xt=m.cancelClosedAt ? new Date(m.cancelClosedAt).getTime() : NaN;
       var noTime2=false;
       if(isNaN(xt)){ xt=lastTsOf()+2000; noTime2=true; }
-      var closedKind=(m.cancelLabel.indexOf('拒否')>=0)?'cancel-keep':'cancel-done';
-      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:xt,ord:99,noTime:noTime2});
+      var closedKind=(m.cancelKind==='keep')?'cancel-keep':'cancel-done';
+      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:xt,ord:1,noTime:noTime2});
     }
   }
 
@@ -2220,6 +2222,7 @@ async function loadBuyerDetail(buyer, idx){
       mm.orderIdForEvent=info.orderId||'';
       mm.cancelLabel=info.cancelLabel||'';
       mm.cancelKind=info.cancelKind||'';
+      mm.cancelShort=info.cancelShort||'';
       mm.cancelRequestedAt=info.cancelRequestedAt||'';
       mm.cancelClosedAt=info.cancelClosedAt||'';
       if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
@@ -2278,6 +2281,7 @@ async function loadBuyerDetail(buyer, idx){
       mm.orderIdForEvent=info.orderId||'';
       mm.cancelLabel=info.cancelLabel||'';
       mm.cancelKind=info.cancelKind||'';
+      mm.cancelShort=info.cancelShort||'';
       mm.cancelRequestedAt=info.cancelRequestedAt||'';
       mm.cancelClosedAt=info.cancelClosedAt||'';
       if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
@@ -2301,12 +2305,9 @@ async function loadBuyerDetail(buyer, idx){
     // 商品パネルの状況欄にキャンセル状態を表示
     var slot=document.getElementById('cancel-tag-slot');
     if(slot){
-      if(info.cancelLabel){
-        var cls=info.cancelKind==='open'?'cancel-tag open'
-              :(info.cancelLabel.indexOf('拒否')>=0?'cancel-tag keep':'cancel-tag done');
-        var short=info.cancelKind==='open'?'キャンセル依頼'
-              :(info.cancelLabel.indexOf('拒否')>=0?'取引継続':'取引終了');
-        slot.innerHTML='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+short+'</span>';
+      if(info.cancelShort){
+        var cls='cancel-tag '+(info.cancelKind||'open');
+        slot.innerHTML='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+esc(info.cancelShort)+'</span>';
       } else {
         slot.innerHTML='';
       }
