@@ -193,11 +193,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 
 /* チャット内のイベント表示（購入・キャンセル） */
-.chat-event{align-self:center;display:inline-flex;align-items:center;gap:7px;padding:6px 15px;border-radius:20px;font-size:12px;font-weight:600;margin:2px 0;}
-.chat-event.buy{background:#ecfdf5;border:1px solid #a7f3d0;color:#047857;}
-.chat-event.cancel{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;}
-.ce-icon{font-size:13px;}
-.ce-time{font-size:10.5px;opacity:0.7;font-family:var(--mono);font-weight:500;}
+.chat-event{align-self:center;display:inline-flex;align-items:center;gap:9px;padding:10px 20px;border-radius:24px;font-size:14px;font-weight:700;margin:6px 0;letter-spacing:0.01em;}
+/* 購入：お祝い感のあるゴールド */
+.chat-event.buy{background:linear-gradient(135deg,#fff8e1,#fef3c7);border:1.5px solid #f5c451;color:#8a5a12;box-shadow:0 2px 8px rgba(245,196,81,0.28);}
+/* キャンセル：警告の赤 */
+.chat-event.cancel{background:linear-gradient(135deg,#fff1f2,#fee2e2);border:1.5px solid #f87171;color:#b91c1c;box-shadow:0 2px 8px rgba(248,113,113,0.24);}
+.ce-icon{font-size:17px;line-height:1;}
+.ce-time{font-size:11px;opacity:0.72;font-family:var(--mono);font-weight:600;}
 
 /* キャンセル注意喚起 */
 .cancel-alert{display:flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fca5a5;border-left:3px solid #dc2626;color:#b91c1c;font-size:12px;font-weight:700;padding:7px 11px;border-radius:7px;margin-bottom:10px;}
@@ -723,7 +725,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkSetFlag(false)">☆外す</button>
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="clearAllChecks()">×解除</button>
       </div>
-      <button class="col-toggle-btn" onclick="syncFromEbay()" id="btn-ebay-sync" style="margin-left:8px;">&#8635; eBayから取得</button>
+      <button class="btn-sync" onclick="syncFromEbay()" id="btn-ebay-sync"><span class="sync-icon"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v5h-5"/><path d="M16.3 12a7 7 0 1 1-1.3-7.3L17 8"/></svg></span>eBayから取得</button>
       <div style="position:relative;margin-left:8px;">
         <button class="col-toggle-btn" onclick="toggleColDropdown(event)" id="col-toggle-btn">&#9776; 表示列</button>
         <div class="col-toggle-dropdown" id="col-toggle-dropdown">
@@ -804,6 +806,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="すべての吹き出しを日本語に翻訳">🇯🇵 全文を日本語に</button>
       <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグを付ける</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
+      <button class="btn-sync s2-sync" onclick="syncFromEbay()" id="btn-ebay-sync2"><span class="sync-icon"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v5h-5"/><path d="M16.3 12a7 7 0 1 1-1.3-7.3L17 8"/></svg></span>eBayから取得</button>
       <button class="s2-btn" onclick="resetLayout()" title="チャットと返信欄の高さを初期状態に戻す">&#8635; 表示リセット</button>
       <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()" style="display:none;"></button>
 
@@ -1827,11 +1830,17 @@ function renderChatBubbles(){
   var evts=[];
   if(m.orderDate){
     var ot=new Date(m.orderDate).getTime();
-    if(!isNaN(ot)) evts.push({type:'event',kind:'buy',text:'この商品を購入しました',ts:ot,ord:-1});
+    if(!isNaN(ot)) evts.push({type:'event',kind:'buy',text:'ご購入いただきました',ts:ot,ord:-1});
   }
-  if(m.cancelLabel && m.cancelRequestedAt){
-    var ct=new Date(m.cancelRequestedAt).getTime();
-    if(!isNaN(ct)) evts.push({type:'event',kind:'cancel',text:m.cancelLabel,ts:ct,ord:-1});
+  if(m.cancelLabel){
+    var ct=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
+    // 日時が取れない場合は最新メッセージの直後に置く
+    if(isNaN(ct)){
+      var lastTs=0;
+      allItems.forEach(function(x){ if(x.ts>lastTs) lastTs=x.ts; });
+      ct=lastTs+1000;
+    }
+    evts.push({type:'event',kind:'cancel',text:m.cancelLabel,ts:ct,ord:99});
   }
   if(evts.length){
     allItems=allItems.concat(evts);
@@ -1845,7 +1854,7 @@ function renderChatBubbles(){
   allItems.forEach(function(h,idx){
     if(h.type==='event'){
       html+='<div class="chat-event '+h.kind+'">'
-        +'<span class="ce-icon">'+(h.kind==='buy'?'&#128722;':'&#9888;')+'</span>'
+        +'<span class="ce-icon">'+(h.kind==='buy'?'&#127881;':'&#9888;&#65039;')+'</span>'
         +'<span class="ce-text">'+esc(h.text)+'</span>'
         +'<span class="ce-time">'+esc(fmtTime(new Date(h.ts).toISOString()))+'</span>'
       +'</div>';
@@ -2778,26 +2787,35 @@ function loadReplyFromHistory(){
 
 // ===== eBay API同期 =====
 async function syncFromEbay(){
-  var btn=document.getElementById('btn-ebay-sync');
-  var orig=btn.innerHTML;
-  btn.innerHTML='取得中...';
-  btn.disabled=true;
+  var btns=[document.getElementById('btn-ebay-sync'),document.getElementById('btn-ebay-sync2')].filter(Boolean);
+  var origs=btns.map(function(b){return b.innerHTML;});
+  btns.forEach(function(b){ b.classList.add('syncing'); b.disabled=true; });
+
+  function restore(){
+    btns.forEach(function(b,i){ b.classList.remove('syncing','done','fail'); b.innerHTML=origs[i]; b.disabled=false; });
+  }
+  function setAll(html, cls){
+    btns.forEach(function(b){ b.classList.remove('syncing'); if(cls) b.classList.add(cls); b.innerHTML=html; });
+  }
+
   try{
     var r=await fetch('/api/ebay/sync?days=7');
     var d=await r.json();
     if(d.ok){
-      btn.innerHTML='✓ '+d.added+'件追加';
-      if(d.added>0 && window.loadFromSheet) await window.loadFromSheet();
-      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+      var n=(d.added||0)+(d.updated||0);
+      setAll('&#10003; '+(n>0?n+'件更新':'最新です'), 'done');
+      if(n>0 && window.loadFromSheet) await window.loadFromSheet();
+      if(typeof renderMiniList==='function') renderMiniList();
+      setTimeout(restore, 2200);
     } else {
-      btn.innerHTML='✗ エラー';
+      setAll('&#10007; エラー', 'fail');
       alert('eBay取得エラー:\n'+(d.error||'不明'));
-      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+      setTimeout(restore, 2200);
     }
   }catch(e){
-    btn.innerHTML='✗ エラー';
+    setAll('&#10007; エラー', 'fail');
     alert('通信エラー: '+e.message);
-    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    setTimeout(restore, 2200);
   }
 }
 
