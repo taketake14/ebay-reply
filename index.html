@@ -523,6 +523,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-kv-row .kv-v{flex:1;min-width:0;word-break:break-all;font-size:12.5px;color:#1d2939;font-weight:500;}
 
 /* 注文情報ブロック（薄い背景で1グループに見せる） */
+.qty-badge{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:5px;}
+.qty-ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;}
+.qty-low{background:#fffaf0;color:#8a5a12;border:1px solid #f0d49a;}
+.qty-out{background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;}
+.qty-sold{font-size:10.5px;color:var(--text3);margin-left:6px;}
+
+.order-id-row{padding:6px 0 !important;}
+.order-id{font-size:14.5px !important;font-weight:700 !important;letter-spacing:0.01em;font-family:var(--mono);}
 .order-box{background:#f8fafc;border:1px solid #eef2f6;border-radius:8px;padding:9px 11px;margin-top:9px;}
 .order-box .prod-kv-row{padding:3px 0;}
 
@@ -702,6 +710,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ct-item.on{background:var(--accent-light);}
 .ct-item-label{font-size:13px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .ct-item.on .ct-item-label{color:var(--accent);font-weight:600;}
+.ct-used{font-size:10px;font-weight:700;color:#0f766e;background:#f0fdfa;border:1px solid #99f6e4;padding:1px 7px;border-radius:9px;flex-shrink:0;}
+.ct-d-used{font-size:10.5px;color:var(--text3);background:var(--bg3);padding:2px 9px;border-radius:11px;}
 .ct-item-arrow{font-size:9px;color:var(--text3);opacity:0;transition:opacity 0.12s;}
 .ct-item:hover .ct-item-arrow,.ct-item.on .ct-item-arrow{opacity:1;}
 .ct-empty{padding:24px 12px;text-align:center;font-size:12px;color:var(--text3);}
@@ -811,6 +821,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="side-filter" onclick="setFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="cnt-starred">0</span></button>
         <button class="side-filter" onclick="setFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="cnt-sold">0</span></button>
         <button class="side-filter" onclick="setFilter('cancel',this)"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="cnt-cancel">0</span></button>
+        <button class="side-filter" onclick="setFilter('memo',this)"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="cnt-memo">0</span></button>
         <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span></button>
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
@@ -886,6 +897,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="side-filter" onclick="setMiniFilter('starred',this)" title="フラグ"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span></button>
       <button class="side-filter" onclick="setMiniFilter('sold',this)" title="購入者"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span></button>
       <button class="side-filter" onclick="setMiniFilter('cancel',this)" title="キャンセル"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="mcnt-cancel">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('memo',this)" title="メモあり"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="mcnt-memo">0</span></button>
       <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span></button>
     </div>
 
@@ -1141,6 +1153,7 @@ function getFiltered(){
     if(currentFilter==='starred') return m.starred;
     if(currentFilter==='sold') return m.sold;
     if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
+    if(currentFilter==='memo') return !!(m.memo && m.memo.trim());
     if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
     if(currentFilter==='replied') return m.replied;
     return true;
@@ -1281,6 +1294,7 @@ function updateFilterCounts(){
   set('cnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('cnt-sold', messages.filter(function(m){return m.sold;}).length);
   set('cnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
+  set('cnt-memo', messages.filter(function(m){return m.memo&&m.memo.trim();}).length);
   set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 function onSearch(q){
@@ -1318,6 +1332,7 @@ function renderList(){
     if(currentFilter==='starred') return m.starred;
     if(currentFilter==='sold') return m.sold;
     if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
+    if(currentFilter==='memo') return !!(m.memo && m.memo.trim());
     if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
     if(currentFilter==='replied') return m.replied;
     return true;
@@ -1466,6 +1481,7 @@ function getMiniFiltered(){
     if(miniFilter==='starred') return m.starred;
     if(miniFilter==='sold') return m.sold;
     if(miniFilter==='cancel') return !!(m.cancel && m.cancel.short);
+    if(miniFilter==='memo') return !!(m.memo && m.memo.trim());
     if(miniFilter==='urgent') return getTags(m.msg||'').some(function(t){return t.key==='urgent';});
     if(miniFilter==='replied') return m.replied;
     return true;
@@ -1479,6 +1495,7 @@ function updateMiniCounts(){
   set('mcnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('mcnt-sold', messages.filter(function(m){return m.sold;}).length);
   set('mcnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
+  set('mcnt-memo', messages.filter(function(m){return m.memo&&m.memo.trim();}).length);
   set('mcnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 
@@ -1663,6 +1680,7 @@ function renderChatDetail(){
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" id="prod-sku">—</span>'
     +'<button class="cp-btn" id="cp-sku" title="SKUをコピー">'+COPY_ICON+'</button></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">出品価格</span><span class="kv-v" id="prod-price">—</span></div>';
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">在庫</span><span class="kv-v" id="prod-qty">—</span></div>';
 
   kvHtml+='<div id="order-inline"></div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
@@ -2257,6 +2275,18 @@ async function loadItemDetail(itemId, idx, hasBasics){
     var mI=messages[idx];
     if(mI && info.sku) mI.sku=info.sku;
     if(priceEl) priceEl.textContent=info.price||'—';
+    var qtyEl=document.getElementById('prod-qty');
+    if(qtyEl){
+      if(typeof info.quantity==='number'){
+        var cls=info.quantity<=0?'qty-out':(info.quantity<=2?'qty-low':'qty-ok');
+        var sold=(typeof info.soldQuantity==='number'&&info.soldQuantity>0)?' <span class="qty-sold">販売 '+info.soldQuantity+'</span>':'';
+        qtyEl.innerHTML='<span class="qty-badge '+cls+'">'+info.quantity+' 個</span>'+sold;
+      } else if(info.availabilityStatus==='OUT_OF_STOCK'){
+        qtyEl.innerHTML='<span class="qty-badge qty-out">在庫なし</span>';
+      } else {
+        qtyEl.textContent='—';
+      }
+    }
     if(imgEl && info.imageUrl){
       imgEl.innerHTML='<img src="'+esc(ebayImg(info.imageUrl,500))+'" style="width:100%;height:100%;object-fit:contain;">';
     }
@@ -2449,8 +2479,8 @@ async function loadBuyerDetail(buyer, idx){
     // --- 注文情報ブロック ---
     var ob='';
     if(info.orderId){
-      ob+='<div class="prod-kv-row"><span class="kv-k">Order ID</span>'
-        +'<a class="kv-v link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId)+'" target="_blank">'+esc(info.orderId)+'</a>'
+      ob+='<div class="prod-kv-row order-id-row"><span class="kv-k">Order ID</span>'
+        +'<a class="kv-v link order-id" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId)+'" target="_blank">'+esc(info.orderId)+'</a>'
         +cp(info.orderId)+'</div>';
     }
     if(info.salesRecordNo){
@@ -2632,14 +2662,17 @@ function renderCannedModal(){
 
   // 一覧（タイトルのみ）
   var items=CANNED.map(function(x,i){return {x:x,i:i};})
-                  .filter(function(o){return (o.x.cat||'その他')===cannedActiveCat;});
+                  .filter(function(o){return (o.x.cat||'その他')===cannedActiveCat;})
+                  .sort(function(a,b){return (b.x.used||0)-(a.x.used||0);});   // よく使う順
   var listEl=document.getElementById('canned-list');
   if(items.length===0){
     listEl.innerHTML='<div class="ct-empty">このカテゴリには定型文がありません</div>';
   } else {
     listEl.innerHTML=items.map(function(o){
+      var used=o.x.used||0;
       return '<div class="ct-item'+(o.i===cannedSelIdx?' on':'')+'" onclick="selectCanned('+o.i+')">'
         +'<span class="ct-item-label">'+esc(o.x.label)+'</span>'
+        +(used>0?'<span class="ct-used" title="使用回数">'+used+'</span>':'')
         +'<span class="ct-item-arrow">&#9656;</span>'
       +'</div>';
     }).join('');
@@ -2665,6 +2698,7 @@ function renderCannedDetail(){
      '<div class="ct-d-hdr">'
       +'<div class="ct-d-title">'+esc(x.label)+'</div>'
       +'<div class="ct-d-cat">'+esc(x.cat||'その他')+'</div>'
+      +(x.used?'<div class="ct-d-used">使用 '+x.used+'回</div>':'')
     +'</div>'
     +'<div class="ct-d-body">'
       +'<div class="ct-d-sec">'
@@ -2684,6 +2718,10 @@ function renderCannedDetail(){
 }
 
 function useCanned(i){
+  // 使用回数をカウント
+  CANNED[i].used=(CANNED[i].used||0)+1;
+  CANNED[i].lastUsed=new Date().toISOString();
+  saveCanned();
   var el=document.getElementById('d-reply');
   el.value=CANNED[i].text;
   var jaEl=document.getElementById('d-input-ja');
