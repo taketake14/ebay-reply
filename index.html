@@ -1949,7 +1949,7 @@ function renderChatBubbles(){
       // 完了日時が無い場合は依頼直後に置く（末尾に飛ばさない）
       var closedNoTime=false;
       if(isNaN(closedTs)){ closedTs=reqTs+1000; closedNoTime=true; }
-      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:closedTs,ord:1,noTime:closedNoTime});
+      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:closedTs,ord:1,noTime:closedNoTime,reason:m.cancelReasonLabel||''});
     }
   }
 
