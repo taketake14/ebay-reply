@@ -406,7 +406,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl.theirs{background:#ffffff;color:#1e2939;border-radius:16px 16px 16px 4px;border:1px solid #e3e8ef;box-shadow:0 1px 2px rgba(16,24,40,0.04);}
 
 /* 新着マークは廃止（既読でも常時表示されて意味を成さないため） */
-.bbl-meta{font-size:10.5px;color:#98a2b3;padding:0 2px;font-family:var(--mono);display:flex;align-items:center;gap:4px;}
+.bbl-meta{font-size:11.5px;color:#546878;font-weight:600;padding:2px;font-family:var(--mono);display:flex;align-items:center;gap:5px;}
 .bbl-wrap.mine .bbl-meta{flex-direction:row-reverse;}
 
 /* 吹き出しごとの翻訳ボタン */
@@ -670,6 +670,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .memo-textarea{flex-shrink:0;width:100%;background:#fffaf0;border:1px solid #f5dfae;border-radius:8px;padding:9px 10px;font-size:12px;color:var(--text);font-family:var(--sans);resize:vertical;min-height:80px;outline:none;line-height:1.6;}
 .memo-save-btn{font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid #f5dfae;background:#fdf3e0;color:#8a5a12;cursor:pointer;font-weight:600;align-self:flex-start;}
 .memo-save-btn:hover{background:#f5dfae;}
+.memo-btns{display:flex;gap:7px;align-self:flex-start;}
+.memo-del-btn{font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid var(--border2);background:#fff;color:var(--text3);cursor:pointer;font-weight:600;}
+.memo-del-btn:hover:not(:disabled){background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+.memo-del-btn:disabled{opacity:0.4;cursor:not-allowed;}
 
 /* マニュアル・Zapierタブ */
 .nav-tabs-wrap{display:flex;gap:2px;padding:8px 18px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
@@ -994,7 +998,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           </div>
           <div class="rp-section-body" id="rp-body-memo">
             <textarea class="memo-textarea" id="memo-input" placeholder="要確認、確認中など..."></textarea>
-            <button class="memo-save-btn" onclick="saveMemo()">保存</button>
+            <div class="memo-btns">
+              <button class="memo-save-btn" onclick="saveMemo()">保存</button>
+              <button class="memo-del-btn" onclick="deleteMemo()" id="btn-memo-del">削除</button>
+            </div>
           </div>
         </div>
 
@@ -1913,8 +1920,7 @@ function renderChatDetail(){
   // メモ
   document.getElementById('memo-input').value=m.memo||'';
   updateMemoBar(m.memo||'');
-  var memoBadge=document.getElementById('memo-badge');
-  if(memoBadge) memoBadge.style.display=m.memo?'inline':'none';
+  updateMemoUI();
   // メモあり時はセクションヘッダー背景を強調
   var memoHdr=document.querySelector('#rp-section-memo .rp-section-hdr');
   if(memoHdr) memoHdr.style.background=m.memo?'#fff8ed':'';
@@ -2294,6 +2300,32 @@ function markReplied(){
     else{btn.textContent='&#10003; 返信済みにする';btn.classList.remove('done');}
   }
 }
+function deleteMemo(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  if(!m.memo || !m.memo.trim()) return;
+  if(!confirm('このメモを削除しますか？')) return;
+  m.memo='';
+  var ta=document.getElementById('d-memo');
+  if(ta) ta.value='';
+  saveState(m);
+  updateMemoUI();
+  renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
+}
+
+// メモの有無に応じて表示を更新
+function updateMemoUI(){
+  var m=messages[currentIdx];
+  var has=!!(m && m.memo && m.memo.trim());
+  var del=document.getElementById('btn-memo-del');
+  if(del) del.disabled=!has;
+  var badge=document.getElementById('memo-badge');
+  if(badge) badge.style.display=has?'inline':'none';
+  var hdr=document.querySelector('#rp-section-memo .rp-section-hdr');
+  if(hdr) hdr.style.background=has?'#fffaf0':'';
+}
+
 function saveMemo(){
   if(currentIdx===null) return;
   messages[currentIdx].memo=document.getElementById('memo-input').value.trim();
