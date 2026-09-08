@@ -2314,17 +2314,10 @@ function deleteMemo(){
   if(ta) ta.value='';
   saveState(m);
   updateMemoUI();
-
-  // メモありフィルターで見ている場合、この会話は条件から外れる
-  var inMemoFilter=(currentFilter==='memo')||(miniFilter==='memo');
-  if(inMemoFilter){
-    clearChatSelection();   // 右側を空にして「もう対象外」と分かるようにする
-    showToast('メモを削除しました');
-  } else {
-    renderList();
-    if(typeof renderMiniList==='function') renderMiniList();
-    showToast('メモを削除しました');
-  }
+  updateMemoBar('');              // 上部のメモバーも「メモなし」に戻す
+  renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
+  showToast('メモを削除しました');
 }
 
 // 画面下に短く出る通知
@@ -2355,6 +2348,8 @@ function updateMemoUI(){
   if(badge) badge.style.display=has?'inline':'none';
   var hdr=document.querySelector('#rp-section-memo .rp-section-hdr');
   if(hdr) hdr.style.background=has?'#fffaf0':'';
+  // 保存済みメモに合わせて上部バーも同期
+  if(typeof updateMemoBar==='function') updateMemoBar(m?m.memo:'');
 }
 
 function saveMemo(){
