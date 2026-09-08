@@ -524,6 +524,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 注文情報ブロック（薄い背景で1グループに見せる） */
 /* 出品情報の編集 */
+/* 検索で見つかった注文（メッセージなし） */
+.order-result{margin:12px 18px;background:#fff;border:1.5px solid #5eead4;border-radius:11px;overflow:hidden;box-shadow:0 2px 10px rgba(13,148,136,0.1);}
+.or-head{background:#f0fdfa;padding:10px 15px;font-size:13px;font-weight:700;color:#0f766e;border-bottom:1px solid #ccfbf1;}
+.or-note{font-size:11px;font-weight:400;color:var(--text3);margin-left:8px;}
+.or-body{padding:12px 15px;}
+.or-row{display:flex;gap:10px;padding:4px 0;font-size:12.5px;align-items:flex-start;}
+.or-k{min-width:78px;flex-shrink:0;color:var(--text3);font-size:11px;font-weight:600;padding-top:1px;}
+.or-v{flex:1;min-width:0;color:var(--text);word-break:break-word;}
+.or-link{color:var(--teal);text-decoration:none;font-weight:600;}
+.or-link:hover{text-decoration:underline;}
+
 .buyer-link{color:var(--text);text-decoration:none;border-bottom:1px solid #5eead4;font-weight:600;}
 .buyer-link:hover{color:var(--teal);border-bottom-color:var(--teal);}
 .kv-muted{color:var(--text3);}
@@ -1309,13 +1320,68 @@ function updateFilterCounts(){
   set('cnt-memo', messages.filter(function(m){return m.memo&&m.memo.trim();}).length);
   set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
+var orderSearchTimer=null;
 function onSearch(q){
   searchQuery=(q||'').toLowerCase().trim();
   renderList();
   if(typeof renderMiniList==='function') renderMiniList();
-  // クリアボタンの表示切替
   var cb=document.getElementById('search-clear');
   if(cb) cb.style.display=searchQuery?'flex':'none';
+
+  // メッセージに該当がない場合、注文データからも探す
+  clearTimeout(orderSearchTimer);
+  hideOrderResult();
+  if(searchQuery.length>=6){
+    orderSearchTimer=setTimeout(function(){
+      var hit=getFiltered().length;
+      if(hit===0) lookupOrder(searchQuery);
+    }, 500);
+  }
+}
+
+function hideOrderResult(){
+  var el=document.getElementById('order-result');
+  if(el) el.remove();
+}
+
+async function lookupOrder(q){
+  var body=document.getElementById('msg-list');
+  if(!body) return;
+  try{
+    var r=await fetch('/api/ebay/order-search?q='+encodeURIComponent(q));
+    var d=await r.json();
+    if(!d.ok) return;
+    var o=d.order||{};
+    var it=d.item||{};
+
+    var rows='';
+    function row(k,v,link){
+      if(!v) return '';
+      var val=link?('<a href="'+link+'" target="_blank" class="or-link">'+esc(String(v))+'</a>'):esc(String(v));
+      return '<div class="or-row"><span class="or-k">'+k+'</span><span class="or-v">'+val+'</span></div>';
+    }
+    rows+=row('バイヤー', d.buyer, d.buyer?('https://www.ebay.com/usr/'+encodeURIComponent(d.buyer)):'');
+    rows+=row('Order ID', o.orderId, o.orderId?('https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(o.orderId)):'');
+    rows+=row('レコードNo', o.salesRecordNo);
+    rows+=row('商品', it.title);
+    rows+=row('Item ID', it.itemId, it.itemId?('https://www.ebay.com/itm/'+encodeURIComponent(it.itemId)):'');
+    rows+=row('SKU', it.sku);
+    rows+=row('注文日', o.orderDate?new Date(o.orderDate).toLocaleDateString('ja-JP'):'');
+    rows+=row('発送期限', o.shipByDate?new Date(o.shipByDate).toLocaleDateString('ja-JP'):'');
+    rows+=row('合計', o.total);
+    rows+=row('氏名', o.name);
+    var addr=[o.addressLine1,o.addressLine2,[o.city,o.stateOrProvince,o.postalCode].filter(Boolean).join(' '),o.countryEn||o.country].filter(Boolean).join('\n');
+    if(addr) rows+='<div class="or-row"><span class="or-k">配送先</span><span class="or-v" style="white-space:pre-line;">'+esc(addr)+'</span></div>';
+    rows+=row('電話', o.phone);
+    if(o.taxId&&o.taxId.id) rows+=row(o.taxId.label||'納税者番号', o.taxId.id);
+    if(o.cancelLabel) rows+=row('キャンセル', o.cancelLabel);
+
+    var html='<div class="order-result" id="order-result">'
+      +'<div class="or-head">&#128230; 注文が見つかりました<span class="or-note">（メッセージのやり取りはありません）</span></div>'
+      +'<div class="or-body">'+rows+'</div>'
+      +'</div>';
+    body.insertAdjacentHTML('afterbegin', html);
+  }catch(e){}
 }
 function clearSearch(){
   var el=document.getElementById('header-search');
