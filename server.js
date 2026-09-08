@@ -290,6 +290,7 @@ let buyerOrderSet = new Set();
 let buyerSetUpdatedAt = 0;
 let orderByBuyer = {};   // username(lower) -> 注文オブジェクト（最新）
 let cancelByBuyer = {};  // username(lower) -> キャンセル情報
+let buyerByOrderId = {}; // orderId -> username(lower)
 
 // Post-Order APIからキャンセル一覧を取得し、バイヤー単位のマップを作る
 async function refreshCancelMap() {
@@ -297,12 +298,22 @@ async function refreshCancelMap() {
     const cmap = await ebayApi.getCancellations(180);
     if (!cmap) return;
     const byBuyer = {};
-    Object.keys(orderByBuyer).forEach(lu => {
-      const o = orderByBuyer[lu];
-      const legacyId = o.legacyOrderId || o.orderId;
-      const hit = cmap[legacyId] || cmap[o.orderId];
-      if (hit) {
+    // キャンセル側から注文IDでバイヤーを引く（複数注文があっても取りこぼさない）
+    Object.keys(cmap).forEach(oid => {
+      const lu = buyerByOrderId[oid];
+      if (!lu) return;
+      const hit = cmap[oid];
+      {
         const ci = ebayApi.cancelInfo(hit.state);
+        // 未決着（対応が必要なもの）を優先して残す
+        const cur = byBuyer[lu];
+        if (cur && cur.kind !== 'open' && ci.kind === 'open') {
+          // openを優先
+        } else if (cur && cur.kind === 'open' && ci.kind !== 'open') {
+          return;
+        } else if (cur && new Date(cur.requestedAt || 0) > new Date(hit.requestedAt || 0)) {
+          return;
+        }
         byBuyer[lu] = {
           state: hit.state,
           label: ci.label,
@@ -343,11 +354,14 @@ async function refreshBuyerSet() {
         if (!u) return;
         const lu = u.toLowerCase();
         s.add(lu);
-        // 最新の注文だけ保持
+        // 最新の注文（表示用）
         const prev = orderByBuyer[lu];
         if (!prev || new Date(o.creationDate || 0) > new Date(prev.creationDate || 0)) {
           orderByBuyer[lu] = o;
         }
+        // 注文IDからバイヤーを引けるようにする（キャンセル紐付け用）
+        if (o.orderId) buyerByOrderId[o.orderId] = lu;
+        if (o.legacyOrderId) buyerByOrderId[o.legacyOrderId] = lu;
       });
       if (batch.length < 200) break;
       offset += 200;
@@ -478,6 +492,27 @@ app.get('/api/ebay/enrich', async (req, res) => {
       });
     }
     res.json({ ok: true, updated: updates.length, buyersFound: buyerSet.size });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===== キャンセル紐付けの診断 =====
+app.get('/api/ebay/cancel-map', async (req, res) => {
+  try {
+    if (req.query.refresh === '1') await refreshCancelMap();
+    const cmap = await ebayApi.getCancellations(180);
+    const cancelIds = cmap ? Object.keys(cmap) : [];
+    const matched = cancelIds.filter(id => buyerByOrderId[id]);
+    res.json({
+      ok: true,
+      cancellations: cancelIds.length,
+      ordersIndexed: Object.keys(buyerByOrderId).length,
+      matched: matched.length,
+      mappedBuyers: Object.keys(cancelByBuyer).length,
+      unmatchedSample: cancelIds.filter(id => !buyerByOrderId[id]).slice(0, 8),
+      matchedSample: matched.slice(0, 8).map(id => id + ' -> ' + buyerByOrderId[id]),
+    });
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
