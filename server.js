@@ -683,7 +683,8 @@ app.get('/api/ebay/sync', async (req, res) => {
         // 既にシートにある会話。新しいメッセージが来ていれば行を更新する
         if (force || newTs > savedTs) {
           try {
-            const r = await refreshRowInSheet(em);
+            const isNew = newTs > savedTs;
+            const r = await refreshRowInSheet(em, isNew);
             updated++;
             if (r === false) console.log('[sync] refreshRow no-op for', cid);
             // メモリ側も更新
@@ -694,7 +695,11 @@ app.get('/api/ebay/sync', async (req, res) => {
               mm.msgFrom = em.msgFrom || 'buyer';
               mm.history = em.history || mm.history;
               mm.timestamp = em.timestamp || mm.timestamp;
-              if (newTs > savedTs) { mm.read = false; mm.unreadCount = (mm.unreadCount||0)+1; }
+              if (newTs > savedTs) {
+                mm.read = false;
+                mm.unreadCount = (mm.unreadCount||0)+1;
+                if (stateStore[mm.id]) { stateStore[mm.id].read = false; stateStore[mm.id].readAt = null; }
+              }
             }
           } catch (e) { console.error('refreshRow error:', e.message); syncErrors.push(e.message); }
         }
@@ -827,7 +832,7 @@ async function getSheetConversationIds() {
 }
 
 // ===== シートの既存行を最新のeBayデータで更新 =====
-async function refreshRowInSheet(em) {
+async function refreshRowInSheet(em, forceUnread) {
   const sheetId = process.env.SHEET_ID;
   if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) return;
   const token = await getGoogleAccessToken();
@@ -862,7 +867,7 @@ async function refreshRowInSheet(em) {
     get('item'),
     get('orderId'),
     em.itemId || get('itemId'),
-    get('read') || 'false',
+    forceUnread ? 'false' : (get('read') || 'false'),   // 新着があれば未読に戻す
     get('starred') || 'false',
     get('replied') || 'false',
     get('memo'),
@@ -1428,7 +1433,7 @@ async function autoSyncFromEbay() {
         // 既存会話に新着があれば更新して未読に
         if (newTs > savedTs) {
           try {
-            await refreshRowInSheet(em);
+            await refreshRowInSheet(em, true);
             refreshed++;
             const mm = messages.find(m => m.conversationId === cid);
             if (mm) {
@@ -1439,6 +1444,7 @@ async function autoSyncFromEbay() {
               mm.timestamp = em.timestamp || mm.timestamp;
               mm.read = false;
               mm.unreadCount = (mm.unreadCount || 0) + 1;
+              if (stateStore[mm.id]) { stateStore[mm.id].read = false; stateStore[mm.id].readAt = null; }
             }
           } catch (e) { console.error('[autoSync] refresh:', e.message); }
         }
