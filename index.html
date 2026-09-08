@@ -47,7 +47,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .app-header{height:46px;background:var(--teal-deep);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:100;}
 .app-logo{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.01em;white-space:nowrap;}
 .app-logo em{color:var(--teal-mid);font-style:normal;}
-.header-search{flex:1;max-width:320px;background:var(--navy2);border:1px solid var(--navy3);border-radius:7px;padding:6px 12px;font-size:12px;color:#94a3b8;outline:none;}
+.search-wrap{position:relative;flex:1;max-width:420px;display:flex;align-items:center;}
+.search-icon{position:absolute;left:11px;color:#8fb3ae;display:flex;align-items:center;pointer-events:none;}
+.header-search{width:100%;background:rgba(255,255,255,0.95);border:1px solid rgba(255,255,255,0.35);border-radius:8px;padding:7px 32px 7px 34px;font-size:12.5px;color:#0f2e2b;outline:none;font-family:var(--sans);transition:all 0.13s;}
+.header-search::placeholder{color:#94a3b8;}
+.header-search:focus{background:#fff;border-color:#5eead4;box-shadow:0 0 0 3px rgba(94,234,212,0.28);}
+.search-clear{position:absolute;right:8px;background:transparent;border:none;color:#94a3b8;cursor:pointer;font-size:12px;padding:3px 5px;border-radius:4px;line-height:1;display:flex;align-items:center;}
+.search-clear:hover{background:#f1f5f9;color:#334155;}
 .header-search:focus{border-color:var(--orange);}
 .header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
 .h-badge-wrap{display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;}
@@ -735,7 +741,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 <!-- グローバルヘッダー -->
 <div class="app-header">
   <span class="app-logo">Repl<em>AI</em></span>
-  <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / 注文番号で検索..." oninput="onSearch(this.value)">
+  <div class="search-wrap">
+    <span class="search-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.5 12.5L17 17"/></svg></span>
+    <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / Item ID / SKU / 注文番号..." oninput="onSearch(this.value)">
+    <button class="search-clear" id="search-clear" onclick="clearSearch()" title="検索をクリア" style="display:none;">&#10005;</button>
+  </div>
   <div class="header-right">
     <div class="h-badge-wrap">未読 <span class="h-badge h-badge-orange" id="h-unread-count">0</span></div>
     <div class="h-badge-wrap">要対応 <span class="h-badge h-badge-red" id="h-urgent-count">0</span></div>
@@ -1100,8 +1110,20 @@ function bulkSetFlag(flagVal){
   clearAllChecks();
   renderList();
 }
+// 検索対象：バイヤー名・商品名・ItemID・SKU・注文番号・レコードNo・本文・メモ
+function matchesSearch(m, q){
+  if(!q) return true;
+  var hay=[
+    m.buyer, m.item, m.itemId, m.orderId, m.orderIdForEvent,
+    m.sku, m.salesRecordNo, m.msg, m.memo, m.conversationId
+  ].filter(Boolean).join(' ').toLowerCase();
+  // 空白区切りのAND検索
+  return q.split(/\s+/).filter(Boolean).every(function(w){ return hay.indexOf(w)>=0; });
+}
+
 function getFiltered(){
   var filtered=messages.filter(function(m){
+    if(!matchesSearch(m, searchQuery)) return false;
     if(currentFilter==='unread') return !m.read;
     if(currentFilter==='starred') return m.starred;
     if(currentFilter==='sold') return m.sold;
@@ -1247,8 +1269,18 @@ function updateFilterCounts(){
   set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 function onSearch(q){
-  searchQuery=q.toLowerCase();
+  searchQuery=(q||'').toLowerCase().trim();
   renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
+  // クリアボタンの表示切替
+  var cb=document.getElementById('search-clear');
+  if(cb) cb.style.display=searchQuery?'flex':'none';
+}
+function clearSearch(){
+  var el=document.getElementById('header-search');
+  if(el) el.value='';
+  onSearch('');
+  if(el) el.focus();
 }
 
 // ===== 一覧レンダリング =====
@@ -1405,6 +1437,7 @@ function setMiniFilter(f,btn){
 }
 function getMiniFiltered(){
   return messages.filter(function(m){
+    if(!matchesSearch(m, searchQuery)) return false;
     if(miniFilter==='unread') return !m.read;
     if(miniFilter==='starred') return m.starred;
     if(miniFilter==='sold') return m.sold;
@@ -1860,13 +1893,14 @@ function renderChatBubbles(){
 
   // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
   var lastTs=0;
-  allItems.forEach(function(x){
+  allItems.forEach(function(x,i){
     if(x.ts>0) lastTs=x.ts;
     else x.ts=lastTs;
+    if(x.ord===undefined) x.ord=i;
   });
   allItems.sort(function(a,b){
     if(a.ts!==b.ts) return a.ts-b.ts;
-    return a.ord-b.ord;
+    return (a.ord||0)-(b.ord||0);
   });
   // 購入・キャンセルのイベントを時系列に差し込む
   var evts=[];
@@ -2166,6 +2200,8 @@ async function loadItemDetail(itemId, idx, hasBasics){
     if(!info) return;
     if(nameEl && info.title) nameEl.textContent=info.title;
     if(skuEl) skuEl.textContent=info.sku||'—';
+    var mI=messages[idx];
+    if(mI && info.sku) mI.sku=info.sku;
     if(priceEl) priceEl.textContent=info.price||'—';
     if(imgEl && info.imageUrl){
       imgEl.innerHTML='<img src="'+esc(ebayImg(info.imageUrl,500))+'" style="width:100%;height:100%;object-fit:contain;">';
@@ -2215,18 +2251,6 @@ async function loadBuyerDetail(buyer, idx){
       }
     }
 
-    // チャットに表示するイベント情報を保持
-    var mm=messages[idx];
-    if(mm){
-      mm.orderDate=info.orderDate||'';
-      mm.orderIdForEvent=info.orderId||'';
-      mm.cancelLabel=info.cancelLabel||'';
-      mm.cancelKind=info.cancelKind||'';
-      mm.cancelShort=info.cancelShort||'';
-      mm.cancelRequestedAt=info.cancelRequestedAt||'';
-      mm.cancelClosedAt=info.cancelClosedAt||'';
-      if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
-    }
 
     // アイコン画像
     if(info.photoUrl){
@@ -2284,6 +2308,8 @@ async function loadBuyerDetail(buyer, idx){
       mm.cancelShort=info.cancelShort||'';
       mm.cancelRequestedAt=info.cancelRequestedAt||'';
       mm.cancelClosedAt=info.cancelClosedAt||'';
+      if(info.salesRecordNo) mm.salesRecordNo=info.salesRecordNo;
+      if(info.orderId) mm.orderId=info.orderId;
       if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
     }
 
