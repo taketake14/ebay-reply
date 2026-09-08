@@ -640,6 +640,16 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
   }
 });
 
+// ===== Trading APIからの補完データを確認 =====
+app.get('/api/ebay/order-extras/:orderId', async (req, res) => {
+  try {
+    const ex = await ebayApi.getOrderExtras(req.params.orderId);
+    res.json({ ok: true, extras: ex });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 注文の生データ（納税者番号の調査用） =====
 app.get('/api/ebay/order-full/:orderId', async (req, res) => {
   try {
@@ -717,9 +727,23 @@ app.get('/api/ebay/order-search', async (req, res) => {
     if (!order) return res.json({ ok: false, error: '該当する注文が見つかりません' });
 
     const formatted = ebayApi.formatOrder(order);
-    if (formatted && !formatted.taxId) {
-      const tid = await ebayApi.getBuyerTaxId(order.legacyOrderId || order.orderId).catch(() => null);
-      if (tid) formatted.taxId = tid;
+    if (formatted && (!formatted.taxId || !formatted.addressLine1 || !formatted.name)) {
+      const ex = await ebayApi.getOrderExtras(order.legacyOrderId || order.orderId).catch(() => null);
+      if (ex) {
+        if (!formatted.taxId && ex.taxId) formatted.taxId = ex.taxId;
+        const a = ex.address;
+        if (a) {
+          if (!formatted.name && a.name) formatted.name = a.name;
+          if (!formatted.addressLine1 && a.street1) formatted.addressLine1 = a.street1;
+          if (!formatted.addressLine2 && a.street2) formatted.addressLine2 = a.street2;
+          if (!formatted.city && a.city) formatted.city = a.city;
+          if (!formatted.stateOrProvince && a.state) formatted.stateOrProvince = a.state;
+          if (!formatted.postalCode && a.postalCode) formatted.postalCode = a.postalCode;
+          if (!formatted.phone && a.phone) formatted.phone = a.phone;
+          if (!formatted.countryEn && a.countryName) formatted.countryEn = a.countryName;
+        }
+        if (!formatted.email && ex.email) formatted.email = ex.email;
+      }
     }
     const buyerName = (order.buyer && order.buyer.username) || '';
     const li = (order.lineItems && order.lineItems[0]) || {};
@@ -872,12 +896,26 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
       }
       order = ebayApi.formatOrder(full);
 
-      // 納税者番号（CPF/RFC等）はTrading APIからしか取れない
-      if (order && !order.taxId && (full.legacyOrderId || full.orderId)) {
+      // 納税者番号・古い注文の配送先はTrading APIからしか取れない
+      if (order && (!order.taxId || !order.addressLine1 || !order.name)) {
         try {
-          const tid = await ebayApi.getBuyerTaxId(full.legacyOrderId || full.orderId);
-          if (tid) order.taxId = tid;
-        } catch (e) { console.error('[buyer] taxId:', e.message); }
+          const ex = await ebayApi.getOrderExtras(full.legacyOrderId || full.orderId);
+          if (ex) {
+            if (!order.taxId && ex.taxId) order.taxId = ex.taxId;
+            const a = ex.address;
+            if (a) {
+              if (!order.name && a.name) order.name = a.name;
+              if (!order.addressLine1 && a.street1) order.addressLine1 = a.street1;
+              if (!order.addressLine2 && a.street2) order.addressLine2 = a.street2;
+              if (!order.city && a.city) order.city = a.city;
+              if (!order.stateOrProvince && a.state) order.stateOrProvince = a.state;
+              if (!order.postalCode && a.postalCode) order.postalCode = a.postalCode;
+              if (!order.phone && a.phone) order.phone = a.phone;
+              if (!order.countryEn && a.countryName) order.countryEn = a.countryName;
+            }
+            if (!order.email && ex.email) order.email = ex.email;
+          }
+        } catch (e) { console.error('[buyer] extras:', e.message); }
       }
 
       // Fulfillment APIで日時が取れない場合はPost-Order APIから補完
