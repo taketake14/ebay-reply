@@ -666,25 +666,35 @@ async function getCancellations(daysBack) {
     const days = daysBack || 90;
     const from = new Date(now - days * 86400000).toISOString().split('.')[0] + '.000Z';
     const to = new Date(now).toISOString().split('.')[0] + '.000Z';
-    const url = 'https://api.ebay.com/post-order/v2/cancellation/search'
-      + '?creation_date_range_from=' + encodeURIComponent(from)
-      + '&creation_date_range_to=' + encodeURIComponent(to)
-      + '&role=SELLER&limit=200';
-    const res = await fetch(url, {
-      headers: {
-        'Authorization': 'TOKEN ' + token,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
-      },
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      console.error('getCancellations ' + res.status + ':', t.substring(0, 300));
-      return null;
+    // ページングで全件取得（1回200件・最大3000件）
+    const list = [];
+    let offset = 0;
+    for (let p = 0; p < 15; p++) {
+      const url = 'https://api.ebay.com/post-order/v2/cancellation/search'
+        + '?creation_date_range_from=' + encodeURIComponent(from)
+        + '&creation_date_range_to=' + encodeURIComponent(to)
+        + '&role=SELLER&limit=200&offset=' + offset;
+      const res = await fetch(url, {
+        headers: {
+          'Authorization': 'TOKEN ' + token,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+        },
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        console.error('getCancellations ' + res.status + ':', t.substring(0, 300));
+        if (list.length === 0) return null;
+        break;
+      }
+      const d = await res.json();
+      const batch = d.cancellations || [];
+      list.push(...batch);
+      if (batch.length < 200) break;
+      offset += 200;
     }
-    const d = await res.json();
-    const list = d.cancellations || [];
+    console.log('[cancellations] ' + list.length + '件取得');
     // legacyOrderId をキーにしたマップにする
     const map = {};
     list.forEach(cn => {
