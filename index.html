@@ -205,6 +205,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 
 /* チャット内のイベント表示（購入・キャンセル） */
+.chat-empty{align-self:center;margin:auto;color:var(--text3);font-size:12.5px;}
 .chat-event{align-self:center;display:inline-flex;align-items:center;gap:9px;padding:10px 20px;border-radius:24px;font-size:14px;font-weight:700;margin:6px 0;letter-spacing:0.01em;}
 /* 購入：お祝い感のあるゴールド */
 .chat-event.buy{background:linear-gradient(135deg,#fff8e1,#fef3c7);border:1.5px solid #f5c451;color:#8a5a12;box-shadow:0 2px 8px rgba(245,196,81,0.28);}
@@ -524,17 +525,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 注文情報ブロック（薄い背景で1グループに見せる） */
 /* 出品情報の編集 */
-/* 検索で見つかった注文（メッセージなし） */
-.order-result{margin:12px 18px;background:#fff;border:1.5px solid #5eead4;border-radius:11px;overflow:hidden;box-shadow:0 2px 10px rgba(13,148,136,0.1);}
-.or-head{background:#f0fdfa;padding:10px 15px;font-size:13px;font-weight:700;color:#0f766e;border-bottom:1px solid #ccfbf1;}
-.or-note{font-size:11px;font-weight:400;color:var(--text3);margin-left:8px;}
-.or-body{padding:12px 15px;}
-.or-row{display:flex;gap:10px;padding:4px 0;font-size:12.5px;align-items:flex-start;}
-.or-k{min-width:78px;flex-shrink:0;color:var(--text3);font-size:11px;font-weight:600;padding-top:1px;}
-.or-v{flex:1;min-width:0;color:var(--text);word-break:break-word;}
-.or-link{color:var(--teal);text-decoration:none;font-weight:600;}
-.or-link:hover{text-decoration:underline;}
-
 .buyer-link{color:var(--text);text-decoration:none;border-bottom:1px solid #5eead4;font-weight:600;}
 .buyer-link:hover{color:var(--teal);border-bottom-color:var(--teal);}
 .kv-muted{color:var(--text3);}
@@ -1339,48 +1329,63 @@ function onSearch(q){
   }
 }
 
+// 検索を消したら、注文検索で追加した仮エントリを取り除く
 function hideOrderResult(){
-  var el=document.getElementById('order-result');
-  if(el) el.remove();
+  var before=messages.length;
+  messages=messages.filter(function(m){return !m.orderOnly;});
+  if(messages.length!==before){
+    renderList();
+    if(typeof renderMiniList==='function') renderMiniList();
+  }
 }
 
 async function lookupOrder(q){
-  var body=document.getElementById('msg-list');
-  if(!body) return;
   try{
     var r=await fetch('/api/ebay/order-search?q='+encodeURIComponent(q));
     var d=await r.json();
-    if(!d.ok) return;
+    if(!d.ok || !d.buyer) return;
     var o=d.order||{};
     var it=d.item||{};
 
-    var rows='';
-    function row(k,v,link){
-      if(!v) return '';
-      var val=link?('<a href="'+link+'" target="_blank" class="or-link">'+esc(String(v))+'</a>'):esc(String(v));
-      return '<div class="or-row"><span class="or-k">'+k+'</span><span class="or-v">'+val+'</span></div>';
-    }
-    rows+=row('バイヤー', d.buyer, d.buyer?('https://www.ebay.com/usr/'+encodeURIComponent(d.buyer)):'');
-    rows+=row('Order ID', o.orderId, o.orderId?('https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(o.orderId)):'');
-    rows+=row('レコードNo', o.salesRecordNo);
-    rows+=row('商品', it.title);
-    rows+=row('Item ID', it.itemId, it.itemId?('https://www.ebay.com/itm/'+encodeURIComponent(it.itemId)):'');
-    rows+=row('SKU', it.sku);
-    rows+=row('注文日', o.orderDate?new Date(o.orderDate).toLocaleDateString('ja-JP'):'');
-    rows+=row('発送期限', o.shipByDate?new Date(o.shipByDate).toLocaleDateString('ja-JP'):'');
-    rows+=row('合計', o.total);
-    rows+=row('氏名', o.name);
-    var addr=[o.addressLine1,o.addressLine2,[o.city,o.stateOrProvince,o.postalCode].filter(Boolean).join(' '),o.countryEn||o.country].filter(Boolean).join('\n');
-    if(addr) rows+='<div class="or-row"><span class="or-k">配送先</span><span class="or-v" style="white-space:pre-line;">'+esc(addr)+'</span></div>';
-    rows+=row('電話', o.phone);
-    if(o.taxId&&o.taxId.id) rows+=row(o.taxId.label||'納税者番号', o.taxId.id);
-    if(o.cancelLabel) rows+=row('キャンセル', o.cancelLabel);
+    // すでに同じバイヤーが一覧にいれば何もしない
+    if(messages.some(function(x){return x.buyer===d.buyer;})) return;
 
-    var html='<div class="order-result" id="order-result">'
-      +'<div class="or-head">&#128230; 注文が見つかりました<span class="or-note">（メッセージのやり取りはありません）</span></div>'
-      +'<div class="or-body">'+rows+'</div>'
-      +'</div>';
-    body.insertAdjacentHTML('afterbegin', html);
+    // 通常のメッセージと同じ形式の仮エントリを作る
+    var jst=toJST(o.orderDate||new Date().toISOString());
+    var entry={
+      id:'order-'+(o.orderId||q),
+      conversationId:'',
+      buyer:d.buyer,
+      orderId:o.orderId||'',
+      salesRecordNo:o.salesRecordNo||'',
+      itemId:it.itemId||'',
+      item:it.title||'',
+      sku:it.sku||'',
+      imgUrl:'',
+      sold:true,
+      cancel:null,
+      read:true,
+      unreadCount:0,
+      starred:false,
+      replied:false,
+      memo:'',
+      msg:'（メッセージのやり取りはありません）',
+      msgFrom:'buyer',
+      timestamp:o.orderDate||'',
+      history:[],
+      replyHistory:[],
+      reply:'',
+      status:'pending',
+      date:jst.date,
+      time:jst.time,
+      orderOnly:true,
+      // イベント表示用
+      orderDate:o.orderDate||'',
+      orderIdForEvent:o.orderId||''
+    };
+    messages.unshift(entry);
+    renderList();
+    if(typeof renderMiniList==='function') renderMiniList();
   }catch(e){}
 }
 function clearSearch(){
@@ -2031,7 +2036,10 @@ function renderChatBubbles(){
   // 最新メッセージ（バイヤーからの新着）
   var nt=new Date(m.timestamp||0).getTime();
   var newTs=isNaN(nt)?0:nt;
-  allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), isNew:true, ts:newTs, ord:allItems.length});
+  // 注文検索で追加した仮エントリはメッセージ本文を吹き出しにしない
+  if(!m.orderOnly){
+    allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), isNew:true, ts:newTs, ord:allItems.length});
+  }
 
   // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
   var lastTs=0;
@@ -2153,6 +2161,7 @@ function renderChatBubbles(){
       +'</div>'
       +'</div>';
   });
+  if(!html) html='<div class="chat-empty">メッセージのやり取りはありません</div>';
   el.innerHTML=html;
   el.scrollTop=el.scrollHeight;
   setTimeout(updateScrollBtn,60);
