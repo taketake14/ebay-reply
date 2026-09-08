@@ -978,10 +978,20 @@ function cancelLabel(state) {
 // ===== 注文オブジェクトを表示用に整形 =====
 function formatOrder(o) {
   if (!o) return null;
-  const ship = (o.fulfillmentStartInstructions && o.fulfillmentStartInstructions[0]
+  let ship = (o.fulfillmentStartInstructions && o.fulfillmentStartInstructions[0]
     && o.fulfillmentStartInstructions[0].shippingStep
     && o.fulfillmentStartInstructions[0].shippingStep.shipTo) || {};
-  const addr = ship.contactAddress || {};
+  let addr = ship.contactAddress || {};
+
+  // 配送先が空なら購入者の登録住所で補完（未発送の注文などでeBayが伏せる場合）
+  const reg = (o.buyer && o.buyer.buyerRegistrationAddress) || null;
+  if (!addr.addressLine1 && reg) {
+    const ra = reg.contactAddress || {};
+    addr = Object.assign({}, ra, addr);
+    if (!ship.fullName && reg.fullName) ship = Object.assign({}, ship, { fullName: reg.fullName });
+    if (!ship.email && reg.email) ship = Object.assign({}, ship, { email: reg.email });
+    if (!ship.primaryPhone && reg.primaryPhone) ship = Object.assign({}, ship, { primaryPhone: reg.primaryPhone });
+  }
   const li = (o.lineItems && o.lineItems[0]) || {};
   return {
     orderId: o.orderId || '',
@@ -1000,6 +1010,7 @@ function formatOrder(o) {
     country: addr.countryCode || '',
     countryLabel: countryName(addr.countryCode || ''),
     countryEn: countryNameEn(addr.countryCode || ''),
+    addressIncomplete: !addr.addressLine1,
     shipByDate: (li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate) || '',
     orderCount: 1,
     salesRecordNo: o.salesRecordReference || '',
