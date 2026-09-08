@@ -124,6 +124,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* SOLD列 */
 .s1-sold-cell{display:flex;align-items:center;justify-content:center;}
+/* 受信トレイ：キャンセル状態のラベル */
+.list-cancel{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;letter-spacing:0.02em;padding:2.5px 9px;border-radius:5px;line-height:1.4;white-space:nowrap;}
+.list-cancel.open{background:#dc2626;color:#fff;}
+.list-cancel.closed{background:#fff;color:#64748b;border:1.5px solid #cbd5e1;}
+.list-cancel.keep{background:#fff;color:#047857;border:1.5px solid #6ee7b7;}
+
 .sold-mark{display:inline-flex;align-items:center;gap:3px;background:#fff;color:#dc2626;border:1.5px solid #dc2626;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:2.5px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
 
 
@@ -324,6 +330,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-item.read .mini-buyer{font-weight:400;color:#0f172a;}
 .mini-thumb-col{display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;}
 .mini-thumb{width:56px;height:56px;border-radius:6px;border:1px solid var(--border);background:#fff;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.mini-cancel-tag{display:block;width:56px;text-align:center;font-size:8px;font-weight:800;letter-spacing:0.04em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
+.mini-cancel-tag.open{background:#dc2626;color:#fff;}
+.mini-cancel-tag.closed{background:#fff;color:#64748b;border:1.2px solid #cbd5e1;}
+.mini-cancel-tag.keep{background:#fff;color:#047857;border:1.2px solid #6ee7b7;}
 .mini-sold-tag{display:block;width:56px;text-align:center;background:#fff;color:#dc2626;border:1.2px solid #dc2626;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
 
 .mini-thumb img{width:100%;height:100%;object-fit:contain;}
@@ -800,6 +810,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
         <button class="side-filter" onclick="setFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="cnt-urgent">0</span></button>
         <button class="side-filter" onclick="setFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="cnt-starred">0</span></button>
         <button class="side-filter" onclick="setFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="cnt-sold">0</span></button>
+        <button class="side-filter" onclick="setFilter('cancel',this)"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="cnt-cancel">0</span></button>
         <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span></button>
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
@@ -874,6 +885,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <button class="side-filter" onclick="setMiniFilter('urgent',this)" title="要対応"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="mcnt-urgent">0</span></button>
       <button class="side-filter" onclick="setMiniFilter('starred',this)" title="フラグ"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span></button>
       <button class="side-filter" onclick="setMiniFilter('sold',this)" title="購入者"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span></button>
+      <button class="side-filter" onclick="setMiniFilter('cancel',this)" title="キャンセル"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="mcnt-cancel">0</span></button>
       <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span></button>
     </div>
 
@@ -1128,6 +1140,7 @@ function getFiltered(){
     if(currentFilter==='unread') return !m.read;
     if(currentFilter==='starred') return m.starred;
     if(currentFilter==='sold') return m.sold;
+    if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
     if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
     if(currentFilter==='replied') return m.replied;
     return true;
@@ -1267,6 +1280,7 @@ function updateFilterCounts(){
   set('cnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
   set('cnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('cnt-sold', messages.filter(function(m){return m.sold;}).length);
+  set('cnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
   set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 function onSearch(q){
@@ -1303,6 +1317,7 @@ function renderList(){
     if(currentFilter==='unread') return !m.read;
     if(currentFilter==='starred') return m.starred;
     if(currentFilter==='sold') return m.sold;
+    if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
     if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(m.msg);}
     if(currentFilter==='replied') return m.replied;
     return true;
@@ -1356,9 +1371,18 @@ function renderList(){
         +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'')
         +'</div>',
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
-      sold: '<div class="s1-sold-cell s1-col-sold">'
-        +(m.sold?'<span class="sold-mark">&#10003; SOLD</span>':'')
-        +'</div>',
+      sold: (function(){
+        var cn=m.cancel;
+        var inner='';
+        if(cn && cn.short){
+          var cls='list-cancel '+(cn.kind||'open');
+          var tip=(cn.label||'')+(cn.reasonLabel?'（理由: '+cn.reasonLabel+'）':'');
+          inner='<span class="'+cls+'" title="'+esc(tip)+'">'+esc(cn.short)+'</span>';
+        } else if(m.sold){
+          inner='<span class="sold-mark">&#10003; SOLD</span>';
+        }
+        return '<div class="s1-sold-cell s1-col-sold">'+inner+'</div>';
+      })(),
       item: '<div class="s1-item-cell s1-col-item">'
         +'<div class="s1-item-name">'+esc(m.item||'（商品名なし）')+'</div>'
         +(tagsHtml?'<div class="s1-inline-tags">'+tagsHtml+'</div>':'')
@@ -1442,6 +1466,7 @@ function getMiniFiltered(){
     if(miniFilter==='unread') return !m.read;
     if(miniFilter==='starred') return m.starred;
     if(miniFilter==='sold') return m.sold;
+    if(miniFilter==='cancel') return !!(m.cancel && m.cancel.short);
     if(miniFilter==='urgent') return getTags(m.msg||'').some(function(t){return t.key==='urgent';});
     if(miniFilter==='replied') return m.replied;
     return true;
@@ -1454,6 +1479,7 @@ function updateMiniCounts(){
   set('mcnt-urgent', messages.filter(function(m){return getTags(m.msg||'').some(function(t){return t.key==='urgent';});}).length);
   set('mcnt-starred', messages.filter(function(m){return m.starred;}).length);
   set('mcnt-sold', messages.filter(function(m){return m.sold;}).length);
+  set('mcnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
   set('mcnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 
@@ -1473,7 +1499,11 @@ function renderMiniList(){
       : '&#128230;';
     var thumb='<div class="mini-thumb-col">'
       +'<div class="mini-thumb">'+thumbInner+'</div>'
-      +(m.sold?'<span class="mini-sold-tag">SOLD</span>':'')
+      +(function(){
+        var cn=m.cancel;
+        if(cn && cn.short) return '<span class="mini-cancel-tag '+(cn.kind||'open')+'" title="'+esc(cn.label||'')+'">'+esc(cn.short.replace('キャンセル',''))+'</span>';
+        return m.sold?'<span class="mini-sold-tag">SOLD</span>':'';
+      })()
       +'</div>';
     // 日付を M/D 形式に
     var dstr='';
@@ -3336,7 +3366,7 @@ window.addEventListener('load',function(){
       if(d.messages&&d.messages.length>0){
         messages=d.messages.map(function(m){
           var jst=toJST(m.timestamp);
-          return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+          return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
         });
         renderList();
       }
@@ -3373,7 +3403,7 @@ window.addEventListener('load',function(){
       // 新着あり → データを差し替えて再描画
       messages=list.map(function(m){
         var jst=toJST(m.timestamp);
-        return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+        return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
       });
       renderList();
     }catch(e){}
