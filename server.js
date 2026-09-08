@@ -289,6 +289,40 @@ app.get('/api/sheet/dedupe', async (req, res) => {
 let buyerOrderSet = new Set();
 let buyerSetUpdatedAt = 0;
 let orderByBuyer = {};   // username(lower) -> 注文オブジェクト（最新）
+let cancelByBuyer = {};  // username(lower) -> キャンセル情報
+
+// Post-Order APIからキャンセル一覧を取得し、バイヤー単位のマップを作る
+async function refreshCancelMap() {
+  try {
+    const cmap = await ebayApi.getCancellations(180);
+    if (!cmap) return;
+    const byBuyer = {};
+    Object.keys(orderByBuyer).forEach(lu => {
+      const o = orderByBuyer[lu];
+      const legacyId = o.legacyOrderId || o.orderId;
+      const hit = cmap[legacyId] || cmap[o.orderId];
+      if (hit) {
+        const ci = ebayApi.cancelInfo(hit.state);
+        byBuyer[lu] = {
+          state: hit.state,
+          label: ci.label,
+          short: ci.short,
+          kind: ci.kind,
+          requestedAt: hit.requestedAt,
+          closedAt: hit.closedAt,
+          reason: hit.reason,
+          reasonLabel: ebayApi.cancelReasonLabel(hit.reason),
+          initiator: hit.initiator,
+          cancelId: hit.cancelId,
+        };
+      }
+    });
+    cancelByBuyer = byBuyer;
+    console.log('[cancelMap] ' + Object.keys(byBuyer).length + '件のキャンセルを紐付け');
+  } catch (e) {
+    console.error('refreshCancelMap error:', e.message);
+  }
+}
 async function refreshBuyerSet() {
   if (Date.now() - buyerSetUpdatedAt < 10 * 60 * 1000) return buyerOrderSet;
   try {
@@ -322,6 +356,8 @@ async function refreshBuyerSet() {
       buyerOrderSet = s;
       buyerSetUpdatedAt = Date.now();
       console.log('[buyerSet] ' + s.size + '人の購入者を取得');
+      // 注文が揃った後にキャンセル情報を紐付ける
+      refreshCancelMap().catch(() => {});
     }
   } catch (e) { console.error('[buyerSet]', e.message); }
   return buyerOrderSet;
@@ -1388,6 +1424,7 @@ app.get('/api/messages', async (req, res) => {
           return thread.imgUrl || latest.imgUrl;
         })(),
         sold: thread.sold || latest.sold || buyerOrderSet.has(String(thread.buyer||'').toLowerCase()),
+        cancel: cancelByBuyer[String(thread.buyer||'').toLowerCase()] || null,
         timestamp: latest.timestamp,
         read: thread.read,
         starred: thread.starred,
