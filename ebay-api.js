@@ -520,7 +520,7 @@ function escXml(s) {
 // ===== Trading API GetOrders で納税者番号を取得 =====
 // Fulfillment API では buyer.taxIdentifier が返らないため
 const taxIdCache = {};
-async function getBuyerTaxId(orderId) {
+async function getOrderExtras(orderId) {
   if (!orderId) return null;
   const key = String(orderId);
   if (taxIdCache[key] !== undefined) return taxIdCache[key];
@@ -545,12 +545,33 @@ async function getBuyerTaxId(orderId) {
     });
     const t = await res.text();
     // <BuyerTaxIdentifier><Type>CPF</Type><ID>xxx</ID></BuyerTaxIdentifier>
+    const pick = (re) => (t.match(re) || [])[1] || '';
+
+    // 納税者番号
+    let taxId = null;
     const block = (t.match(/<BuyerTaxIdentifier>([\s\S]*?)<\/BuyerTaxIdentifier>/) || [])[1];
-    if (!block) { taxIdCache[key] = null; return null; }
-    const type = (block.match(/<Type>([^<]+)<\/Type>/) || [])[1] || '';
-    const id = (block.match(/<ID>([^<]+)<\/ID>/) || [])[1] || '';
-    if (!id) { taxIdCache[key] = null; return null; }
-    const r = { id, type, label: taxIdLabel(type), country: '', kind: 'buyer' };
+    if (block) {
+      const type = (block.match(/<Type>([^<]+)<\/Type>/) || [])[1] || '';
+      const id = (block.match(/<ID>([^<]+)<\/ID>/) || [])[1] || '';
+      if (id) taxId = { id, type, label: taxIdLabel(type), country: '', kind: 'buyer' };
+    }
+
+    // 配送先（Fulfillment APIで伏せられる古い注文でも取れることがある）
+    const shipBlock = (t.match(/<ShippingAddress>([\s\S]*?)<\/ShippingAddress>/) || [])[1] || '';
+    const g = (re) => (shipBlock.match(re) || [])[1] || '';
+    const address = shipBlock ? {
+      name: g(/<Name>([^<]*)<\/Name>/),
+      street1: g(/<Street1>([^<]*)<\/Street1>/),
+      street2: g(/<Street2>([^<]*)<\/Street2>/),
+      city: g(/<CityName>([^<]*)<\/CityName>/),
+      state: g(/<StateOrProvince>([^<]*)<\/StateOrProvince>/),
+      postalCode: g(/<PostalCode>([^<]*)<\/PostalCode>/),
+      country: g(/<Country>([^<]*)<\/Country>/),
+      countryName: g(/<CountryName>([^<]*)<\/CountryName>/),
+      phone: g(/<Phone>([^<]*)<\/Phone>/),
+    } : null;
+
+    const r = { taxId, address, email: pick(/<BuyerEmail>([^<]*)<\/BuyerEmail>/) };
     taxIdCache[key] = r;
     return r;
   } catch (e) {
@@ -1352,7 +1373,7 @@ module.exports = {
   getCancellations: getCancellations,
   cancelReasonLabel: cancelReasonLabel,
   extractTaxId: extractTaxId,
-  getBuyerTaxId: getBuyerTaxId,
+  getOrderExtras: getOrderExtras,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   marketplaceName: marketplaceName,
