@@ -653,20 +653,33 @@ function taxLabel(type) {
 // キャンセル状態のラベル
 // キャンセル状態の定義
 // label: 表示名 / kind: 'open'=対応待ち, 'closed'=決着済み / event: チャットに出すか
+// label=詳細表示 / short=状況欄の短いラベル / kind: open=対応待ち, closed=決着済み
 const CANCEL_STATES = {
-  NONE_REQUESTED:               { label: '',                     kind: '',       event: false },
-  CANCEL_REQUESTED:             { label: 'キャンセル依頼が届いています', kind: 'open',   event: true },
-  IN_PROGRESS:                  { label: 'キャンセル依頼が届いています', kind: 'open',   event: true },
-  CANCEL_PENDING:               { label: 'キャンセル依頼が届いています', kind: 'open',   event: true },
-  CANCEL_CLOSED_WITH_REFUND:    { label: '返金してキャンセル成立（取引終了）', kind: 'closed', event: true },
-  CANCEL_CLOSED_NO_REFUND:      { label: 'キャンセル成立（返金なし・取引終了）', kind: 'closed', event: true },
-  CANCEL_CLOSED_UNKNOWN_REFUND: { label: 'キャンセル成立（取引終了）', kind: 'closed', event: true },
-  CANCEL_CLOSED_FOR_COMMITMENT: { label: 'キャンセルを拒否（取引継続）', kind: 'closed', event: true },
-  CANCEL_REJECTED:              { label: 'キャンセルを拒否（取引継続）', kind: 'closed', event: true },
+  NONE_REQUESTED:               { label: '',                                   short: '',                 kind: ''       },
+  CANCEL_REQUESTED:             { label: 'キャンセルリクエストが届いています',   short: 'キャンセルリクエスト中', kind: 'open'   },
+  IN_PROGRESS:                  { label: 'キャンセルリクエストが届いています',   short: 'キャンセルリクエスト中', kind: 'open'   },
+  CANCEL_PENDING:               { label: 'キャンセルリクエストが届いています',   short: 'キャンセルリクエスト中', kind: 'open'   },
+  CANCELED:                     { label: 'キャンセルが成立しました（取引終了）', short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_CLOSED_WITH_REFUND:    { label: '返金してキャンセル成立（取引終了）',   short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_CLOSED_NO_REFUND:      { label: 'キャンセル成立（返金なし・取引終了）', short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_CLOSED_UNKNOWN_REFUND: { label: 'キャンセルが成立しました（取引終了）', short: 'キャンセル済み',     kind: 'closed' },
+  CANCEL_CLOSED_FOR_COMMITMENT: { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続',           kind: 'keep'   },
+  CANCEL_REJECTED:              { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続',           kind: 'keep'   },
+  DECLINED:                     { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続',           kind: 'keep'   },
 };
 function cancelInfo(state) {
-  if (!state) return { label: '', kind: '', event: false };
-  return CANCEL_STATES[state] || { label: state, kind: 'open', event: true };
+  if (!state) return { label: '', short: '', kind: '' };
+  const s = CANCEL_STATES[state];
+  if (s) return s;
+  // 未知の状態は文字列から推測する
+  const up = String(state).toUpperCase();
+  if (up.indexOf('DECLIN') >= 0 || up.indexOf('REJECT') >= 0 || up.indexOf('COMMITMENT') >= 0) {
+    return { label: 'キャンセルを拒否しました（取引継続）', short: '取引継続', kind: 'keep' };
+  }
+  if (up.indexOf('CANCEL') >= 0 && (up.indexOf('CLOSED') >= 0 || up === 'CANCELED' || up === 'CANCELLED')) {
+    return { label: 'キャンセルが成立しました（取引終了）', short: 'キャンセル済み', kind: 'closed' };
+  }
+  return { label: 'キャンセルリクエストが届いています', short: 'キャンセルリクエスト中', kind: 'open' };
 }
 function cancelLabel(state) {
   return cancelInfo(state).label;
@@ -703,6 +716,7 @@ function formatOrder(o) {
     cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
     cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
     cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
+    cancelShort: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').short,
     cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
     cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
@@ -938,6 +952,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
     cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
     cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
     cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
+    cancelShort: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').short,
     cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
     cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
