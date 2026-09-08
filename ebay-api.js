@@ -719,7 +719,16 @@ function formatOrder(o) {
     cancelShort: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').short,
     cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
     cancelRequestedBy: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelInitiator) || '',
-    cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
+    cancelClosedAt: (function(){
+      const cs = o.cancelStatus || {};
+      const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
+      return r0.cancelCompletedDate || cs.cancelledDate || cs.cancelCompletedDate || '';
+    })(),
+    cancelReason: (function(){
+      const cs = o.cancelStatus || {};
+      const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
+      return r0.cancelReason || '';
+    })(),
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
     itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
       ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
@@ -956,7 +965,16 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
     cancelShort: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').short,
     cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
     cancelRequestedBy: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelInitiator) || '',
-    cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
+    cancelClosedAt: (function(){
+      const cs = o.cancelStatus || {};
+      const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
+      return r0.cancelCompletedDate || cs.cancelledDate || cs.cancelCompletedDate || '';
+    })(),
+    cancelReason: (function(){
+      const cs = o.cancelStatus || {};
+      const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
+      return r0.cancelReason || '';
+    })(),
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
       name: ship.fullName || '',
       email: ship.email || '',
