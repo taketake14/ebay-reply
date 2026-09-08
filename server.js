@@ -643,9 +643,9 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
 // ===== 出品情報を更新（数量・価格） =====
 app.post('/api/ebay/update-listing', async (req, res) => {
   try {
-    const { itemId, quantity, price } = req.body;
+    const { itemId, quantity, price, title, sku } = req.body;
     if (!itemId) return res.json({ ok: false, error: 'itemIdが必要です' });
-    const r = await ebayApi.reviseItem(itemId, { quantity, price });
+    const r = await ebayApi.reviseItem(itemId, { quantity, price, title, sku });
     if (r && r.ok) {
       ebayApi.clearItemCache(itemId);
       return res.json({ ok: true });
