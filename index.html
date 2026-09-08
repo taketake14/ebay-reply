@@ -2880,11 +2880,16 @@ function openAiHint(){
   if(currentIdx===null){ alert('メッセージを選択してください'); return; }
   chipEditMode=false;
   renderChips();
+  // 前回の入力が残らないよう毎回クリアする
+  var ta=document.getElementById('ai-hint-text');
+  if(ta) ta.value='';
   document.getElementById('ai-hint-modal').classList.add('open');
-  setTimeout(function(){document.getElementById('ai-hint-text').focus();},60);
+  setTimeout(function(){ if(ta) ta.focus(); },60);
 }
 function closeAiHint(){
   document.getElementById('ai-hint-modal').classList.remove('open');
+  var ta=document.getElementById('ai-hint-text');
+  if(ta) ta.value='';
 }
 function addAiHint(txt){
   var el=document.getElementById('ai-hint-text');
@@ -2907,7 +2912,10 @@ async function generateReply(i, hint){
   var rEl=document.getElementById('d-reply');
   var jaEl=document.getElementById('d-reply-ja');
   sEl.className='reply-status status-generating';sEl.textContent='生成中...';
+  // 生成前に両方の入力欄をクリアする（前回の内容が残らないように）
   rEl.value='返信案を生成中です...';
+  var jaInput=document.getElementById('d-input-ja');
+  if(jaInput) jaInput.value='';
   var aiBtn=document.getElementById('btn-ai-reply');
   var aiOrig=aiBtn?aiBtn.innerHTML:'';
   if(aiBtn){aiBtn.innerHTML='&#9203; 生成中...';aiBtn.disabled=true;}
