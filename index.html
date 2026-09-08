@@ -533,6 +533,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .le-row label{font-size:11px;color:var(--text3);font-weight:600;min-width:62px;flex-shrink:0;}
 .le-row input{flex:1;min-width:0;border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:var(--sans);outline:none;}
 .le-row input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(13,148,136,0.12);}
+.le-title-row{flex-direction:column;align-items:stretch;gap:4px;}
+.le-title-row label{min-width:0;}
+.le-title-row textarea{width:100%;border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-size:12px;font-family:var(--sans);line-height:1.5;outline:none;resize:vertical;}
+.le-title-row textarea:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(13,148,136,0.12);}
+.le-count{font-size:10px;font-weight:400;margin-left:5px;font-family:var(--mono);}
 .le-btns{display:flex;gap:6px;margin-top:9px;}
 .le-note{font-size:10px;color:#b45309;background:#fffaf0;border:1px solid #f0d49a;border-radius:5px;padding:4px 8px;margin-top:8px;}
 
@@ -1698,6 +1703,9 @@ function renderChatDetail(){
   kvHtml+='<div class="listing-edit" id="listing-edit">'
     +'<div class="le-row"><label>数量</label><input type="number" id="le-qty" min="0" placeholder="変更しない"></div>'
     +'<div class="le-row"><label>価格 (USD)</label><input type="number" id="le-price" step="0.01" min="0" placeholder="変更しない"></div>'
+    +'<div class="le-row"><label>SKU</label><input type="text" id="le-sku" placeholder="変更しない"></div>'
+    +'<div class="le-row le-title-row"><label>タイトル<span class="le-count" id="le-title-count"></span></label>'
+      +'<textarea id="le-title" rows="2" maxlength="80" placeholder="変更しない（80文字以内）" oninput="updateTitleCount()"></textarea></div>'
     +'<div class="le-btns">'
       +'<button class="btn btn-primary" onclick="saveListingEdit()" id="btn-le-save">更新</button>'
       +'<button class="btn btn-ghost" onclick="toggleListingEdit()">閉じる</button>'
@@ -1716,11 +1724,7 @@ function renderChatDetail(){
   if(m.itemId) loadItemDetail(m.itemId, currentIdx, !!(m.item && m.imgUrl));
 
   // バイヤーパネル
-  var initials=m.buyer.charAt(0).toUpperCase();
-  var avatarStyle=getAvatarStyle(m.buyer);
-  var avatarEl=document.getElementById('buyer-avatar');
-  avatarEl.style.cssText=avatarStyle+'width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;';
-  avatarEl.textContent=initials;
+  // アバターは廃止（要素が存在しない場合に備えて何もしない）
 
   // バイヤー名＋SOLDバッジ
   var soldBadge='';  // SOLDは注文ブロックに表示するため、ここでは出さない
@@ -2295,8 +2299,23 @@ function toggleListingEdit(){
     var pi=document.getElementById('le-price');
     if(qi){ qi.value=''; var qt=(q&&q.textContent||'').match(/\d+/); qi.placeholder=qt?('現在 '+qt[0]+' 個'):'変更しない'; }
     if(pi){ pi.value=''; var pt=(p&&p.textContent||'').match(/[\d.]+/); pi.placeholder=pt?('現在 '+pt[0]):'変更しない'; }
+    var si=document.getElementById('le-sku');
+    var sk=document.getElementById('prod-sku');
+    if(si){ si.value=''; var sv=(sk&&sk.textContent||'').trim(); si.placeholder=(sv&&sv!=='—')?('現在 '+sv):'変更しない'; }
+    var ti=document.getElementById('le-title');
+    if(ti){ ti.value=''; var mm=messages[currentIdx]; ti.placeholder=(mm&&mm.item)?('現在 '+mm.item.substring(0,40)+'...'):'変更しない（80文字以内）'; }
+    updateTitleCount();
     if(qi) qi.focus();
   }
+}
+
+function updateTitleCount(){
+  var ti=document.getElementById('le-title');
+  var el=document.getElementById('le-title-count');
+  if(!ti||!el) return;
+  var n=ti.value.length;
+  el.textContent=n>0?(' '+n+'/80'):'';
+  el.style.color=n>75?'#dc2626':'var(--text3)';
 }
 
 async function saveListingEdit(){
@@ -2305,11 +2324,15 @@ async function saveListingEdit(){
   if(!m||!m.itemId){ alert('Item IDがありません'); return; }
   var qty=document.getElementById('le-qty').value.trim();
   var price=document.getElementById('le-price').value.trim();
-  if(!qty && !price){ alert('数量か価格のどちらかを入力してください'); return; }
+  var sku=document.getElementById('le-sku').value.trim();
+  var title=document.getElementById('le-title').value.trim();
+  if(!qty && !price && !sku && !title){ alert('変更する項目を入力してください'); return; }
 
   var msg='eBayの出品情報を変更します。\n\n商品: '+(m.item||m.itemId);
   if(qty) msg+='\n数量 → '+qty+' 個';
   if(price) msg+='\n価格 → $'+price;
+  if(sku) msg+='\nSKU → '+sku;
+  if(title) msg+='\nタイトル → '+title;
   msg+='\n\nよろしいですか？';
   if(!confirm(msg)) return;
 
@@ -2318,7 +2341,7 @@ async function saveListingEdit(){
   btn.innerHTML='更新中...'; btn.disabled=true;
   try{
     var r=await fetch('/api/ebay/update-listing',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({itemId:m.itemId, quantity:qty||null, price:price||null})});
+      body:JSON.stringify({itemId:m.itemId, quantity:qty||null, price:price||null, sku:sku||null, title:title||null})});
     var d=await r.json();
     if(d.ok){
       btn.innerHTML='&#10003; 更新しました';
