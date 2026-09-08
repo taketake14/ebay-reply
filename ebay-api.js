@@ -475,6 +475,15 @@ async function getItemInfo(legacyItemId) {
       return null;
     }
     const d = await res.json();
+    // 在庫数（複数の場所に入る可能性があるので順に探す）
+    let qty = null;
+    const ea = (d.estimatedAvailabilities && d.estimatedAvailabilities[0]) || null;
+    if (ea) {
+      if (typeof ea.estimatedAvailableQuantity === 'number') qty = ea.estimatedAvailableQuantity;
+      else if (typeof ea.availabilityThreshold === 'number') qty = ea.availabilityThreshold;
+    }
+    if (qty === null && typeof d.quantityAvailable === 'number') qty = d.quantityAvailable;
+
     const info = {
       title: d.title || '',
       imageUrl: (d.image && d.image.imageUrl) || '',
@@ -482,6 +491,10 @@ async function getItemInfo(legacyItemId) {
       sku: d.sku || '',
       condition: d.condition || '',
       itemWebUrl: d.itemWebUrl || '',
+      quantity: qty,
+      availabilityStatus: ea ? (ea.estimatedAvailabilityStatus || '') : '',
+      soldQuantity: (typeof d.estimatedSoldQuantity === 'number') ? d.estimatedSoldQuantity
+        : (ea && typeof ea.estimatedSoldQuantity === 'number' ? ea.estimatedSoldQuantity : null),
     };
     // Browse APIはSKUを返さないので、セラー向けAPIから補完
     if (!info.sku) {
