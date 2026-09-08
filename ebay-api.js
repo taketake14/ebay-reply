@@ -717,17 +717,47 @@ function taxIdLabel(t) {
   return TAX_ID_LABELS[t] || t;
 }
 
-// 注文からバイヤーの納税者番号を取り出す
+// 注文からバイヤーの納税者番号／eBay参照番号を取り出す
+// メキシコ・ブラジル: buyer.taxIdentifier（CPF/RFC等）
+// その他の国: ebayCollectAndRemitTax の ebayReference（IOSS/VAT番号など）
 function extractTaxId(o) {
   if (!o) return null;
   const b = o.buyer || {};
-  const ti = b.taxIdentifier || (Array.isArray(b.taxIdentifiers) ? b.taxIdentifiers[0] : null);
+
+  // 1) バイヤーの納税者番号
+  let ti = b.taxIdentifier || null;
+  if (!ti && Array.isArray(b.taxIdentifiers) && b.taxIdentifiers.length) ti = b.taxIdentifiers[0];
   if (ti && ti.taxpayerId) {
     return {
       id: ti.taxpayerId,
       type: ti.taxIdentifierType || '',
       label: taxIdLabel(ti.taxIdentifierType),
       country: ti.issuingCountry || '',
+      kind: 'buyer',
+    };
+  }
+
+  // 2) eBayの参照番号（IOSS / VAT など）を探す
+  const refs = [];
+  function collect(arr) {
+    if (!Array.isArray(arr)) return;
+    arr.forEach(t => {
+      const er = t && t.ebayReference;
+      if (er && er.value) refs.push({ name: er.name || 'eBay Reference', value: er.value });
+    });
+  }
+  collect(o.ebayCollectAndRemitTax);
+  (o.lineItems || []).forEach(li => {
+    collect(li.ebayCollectAndRemitTaxes);
+    collect(li.taxes);
+  });
+  if (refs.length) {
+    return {
+      id: refs[0].value,
+      type: refs[0].name,
+      label: refs[0].name,
+      country: '',
+      kind: 'ebay',
     };
   }
   return null;
