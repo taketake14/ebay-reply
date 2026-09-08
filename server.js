@@ -447,6 +447,22 @@ app.get('/api/ebay/enrich', async (req, res) => {
   }
 });
 
+// ===== 単一注文の詳細を確認（デバッグ用） =====
+app.get('/api/ebay/order-detail/:orderId', async (req, res) => {
+  try {
+    const d = await ebayApi.getOrderDetail(req.params.orderId);
+    if (!d) return res.json({ ok: false, error: '取得できません（レスポンスなし）' });
+    res.json({
+      ok: true,
+      orderId: d.orderId,
+      cancelStatus: d.cancelStatus || null,
+      hasCancelRequests: !!(d.cancelStatus && d.cancelStatus.cancelRequests && d.cancelStatus.cancelRequests.length),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 同期履歴（取りこぼし監査用） =====
 app.get('/api/ebay/synclog', (req, res) => {
   res.json({
@@ -620,10 +636,21 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
     if (cachedOrder) {
       // 一覧取得ではキャンセル詳細が空なので、個別取得で補完する
       let full = cachedOrder;
-      if (cachedOrder.cancelStatus && cachedOrder.cancelStatus.cancelState
-          && cachedOrder.cancelStatus.cancelState !== 'NONE_REQUESTED') {
-        const detail = await ebayApi.getOrderDetail(cachedOrder.orderId).catch(() => null);
-        if (detail) full = detail;
+      const cs = cachedOrder.cancelStatus || {};
+      const needDetail = cs.cancelState && cs.cancelState !== 'NONE_REQUESTED'
+        && !(cs.cancelRequests && cs.cancelRequests.length);
+      if (needDetail) {
+        const detail = await ebayApi.getOrderDetail(cachedOrder.orderId).catch(e => {
+          console.error('[buyer] getOrderDetail failed:', e && e.message);
+          return null;
+        });
+        if (detail) {
+          full = detail;
+          console.log('[buyer] detail fetched for', cachedOrder.orderId,
+            'requests=', (detail.cancelStatus && detail.cancelStatus.cancelRequests || []).length);
+        } else {
+          console.log('[buyer] detail NOT fetched for', cachedOrder.orderId);
+        }
       }
       order = ebayApi.formatOrder(full);
     } else if (debug) {
