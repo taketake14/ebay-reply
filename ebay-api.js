@@ -718,6 +718,7 @@ function formatOrder(o) {
     cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
     cancelShort: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').short,
     cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
+    cancelRequestedBy: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelInitiator) || '',
     cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
     itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
@@ -954,6 +955,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
     cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
     cancelShort: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').short,
     cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
+    cancelRequestedBy: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelInitiator) || '',
     cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
       name: ship.fullName || '',
