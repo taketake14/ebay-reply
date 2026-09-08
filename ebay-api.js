@@ -517,6 +517,49 @@ function escXml(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
+// ===== Trading API GetOrders で納税者番号を取得 =====
+// Fulfillment API では buyer.taxIdentifier が返らないため
+const taxIdCache = {};
+async function getBuyerTaxId(orderId) {
+  if (!orderId) return null;
+  const key = String(orderId);
+  if (taxIdCache[key] !== undefined) return taxIdCache[key];
+  try {
+    const token = await getAccessToken();
+    const xml = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+      + '<OrderIDArray><OrderID>' + escXml(key) + '</OrderID></OrderIDArray>'
+      + '<DetailLevel>ReturnAll</DetailLevel>'
+      + '<OrderRole>Seller</OrderRole>'
+      + '</GetOrdersRequest>';
+    const res = await fetch('https://api.ebay.com/ws/api.dll', {
+      method: 'POST',
+      headers: {
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+        'X-EBAY-API-CALL-NAME': 'GetOrders',
+        'X-EBAY-API-IAF-TOKEN': token,
+        'Content-Type': 'text/xml',
+      },
+      body: xml,
+    });
+    const t = await res.text();
+    // <BuyerTaxIdentifier><Type>CPF</Type><ID>xxx</ID></BuyerTaxIdentifier>
+    const block = (t.match(/<BuyerTaxIdentifier>([\s\S]*?)<\/BuyerTaxIdentifier>/) || [])[1];
+    if (!block) { taxIdCache[key] = null; return null; }
+    const type = (block.match(/<Type>([^<]+)<\/Type>/) || [])[1] || '';
+    const id = (block.match(/<ID>([^<]+)<\/ID>/) || [])[1] || '';
+    if (!id) { taxIdCache[key] = null; return null; }
+    const r = { id, type, label: taxIdLabel(type), country: '', kind: 'buyer' };
+    taxIdCache[key] = r;
+    return r;
+  } catch (e) {
+    console.error('getBuyerTaxId error:', e.message);
+    taxIdCache[key] = null;
+    return null;
+  }
+}
+
 // ===== Trading API ReviseItem で出品情報を更新 =====
 async function reviseItem(itemId, changes) {
   if (!itemId) return { ok: false, error: 'itemIdが必要です' };
@@ -1298,6 +1341,7 @@ module.exports = {
   getCancellations: getCancellations,
   cancelReasonLabel: cancelReasonLabel,
   extractTaxId: extractTaxId,
+  getBuyerTaxId: getBuyerTaxId,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   marketplaceName: marketplaceName,
