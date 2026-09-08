@@ -201,13 +201,41 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ce-icon{font-size:17px;line-height:1;}
 .ce-time{font-size:11px;opacity:0.72;font-family:var(--mono);font-weight:600;}
 
+/* 購入イベントカード */
+.chat-event-card{align-self:center;width:min(420px,80%);background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #f5c451;border-radius:14px;padding:12px 15px;margin:8px 0;box-shadow:0 2px 10px rgba(245,196,81,0.26);}
+.ce-head{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+.ce-title{font-size:14px;font-weight:800;color:#8a5a12;flex:1;}
+.ce-body{display:flex;gap:11px;align-items:flex-start;}
+.ce-thumb{width:52px;height:52px;object-fit:contain;background:#fff;border:1px solid #f0d49a;border-radius:7px;flex-shrink:0;}
+.ce-info{flex:1;min-width:0;}
+.ce-item{font-size:12px;color:#78632e;line-height:1.5;margin-bottom:5px;word-break:break-word;}
+.ce-links{display:flex;flex-wrap:wrap;gap:6px;}
+.ce-link{font-size:10.5px;color:#8a5a12;background:#fff;border:1px solid #f0d49a;padding:2px 8px;border-radius:10px;text-decoration:none;font-family:var(--mono);}
+.ce-link:hover{background:#fef3c7;border-color:#e8a838;}
+
+/* キャンセルイベントの色分け */
+.chat-event.cancel-open{background:linear-gradient(135deg,#fff1f2,#fee2e2);border:1.5px solid #f87171;color:#b91c1c;box-shadow:0 2px 8px rgba(248,113,113,0.24);}
+.chat-event.cancel-done{background:linear-gradient(135deg,#f8fafc,#f1f5f9);border:1.5px solid #94a3b8;color:#475569;}
+.chat-event.cancel-keep{background:linear-gradient(135deg,#ecfdf5,#d1fae5);border:1.5px solid #6ee7b7;color:#047857;}
+
+/* 状況欄のキャンセルタグ */
+.status-tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.cancel-tag{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:5px;white-space:nowrap;}
+.cancel-tag.open{background:#dc2626;color:#fff;}
+.cancel-tag.done{background:#e8ecf0;color:#475569;border:1px solid #cbd5e1;}
+.cancel-tag.keep{background:#d1fae5;color:#047857;border:1px solid #6ee7b7;}
+
+/* ミニリストの返信済み */
+.mini-replied{display:inline-flex;align-items:center;color:#0f766e;margin-left:auto;flex-shrink:0;}
+.mini-replied + .mini-star{margin-left:5px;}
+
 /* キャンセル注意喚起 */
 .cancel-alert{display:flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fca5a5;border-left:3px solid #dc2626;color:#b91c1c;font-size:12px;font-weight:700;padding:7px 11px;border-radius:7px;margin-bottom:10px;}
 
 /* 返信済み列 */
 .s1-replied-cell{display:flex;align-items:center;justify-content:center;}
 /* 返信済みマーク：塗りつぶしの丸で目立たせる */
-.reply-mark{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;box-shadow:0 1px 4px rgba(13,148,136,0.32);}
+.reply-mark{display:inline-flex;align-items:center;justify-content:center;color:#0f766e;}
 
 /* eBayから取得ボタン */
 .btn-sync{display:inline-flex;align-items:center;gap:7px;background:var(--teal);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.13s;box-shadow:0 1px 4px rgba(13,148,136,0.25);}
@@ -1314,7 +1342,7 @@ function renderList(){
       flag: '<div class="s1-col-flag"><button class="s1-star-btn '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')">'+(m.starred?'&#9733;':'&#9734;')+'</button></div>',
       replied: '<div class="s1-replied-cell s1-col-replied">'
         +(m.replied
-          ? '<span class="reply-mark" title="返信済み"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 4.5L3.5 9l5 4.5"/><path d="M3.5 9h7.5a4.5 4.5 0 0 1 4.5 4.5v1.5"/></svg></span>'
+          ? '<span class="reply-mark" title="返信済み"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M10 8.5V5.2c0-.9-1-1.3-1.7-.8L2.5 9.2c-.5.4-.5 1.2 0 1.6l5.8 4.8c.7.5 1.7.1 1.7-.8v-3.2c4 0 7 1.2 9 4-.8-4.4-3.5-8.8-9-9.1z"/></svg></span>'
           : '')
         +'</div>',
       unread: '<div class="s1-col-unread">'
@@ -1435,6 +1463,7 @@ function renderMiniList(){
               +'</button>')
         +'</div>'
         +'<div class="mini-date">'+esc(dstr)+' <span class="mini-hm">'+(m.time||'')+'</span>'
+          +(m.replied?'<span class="mini-replied" title="返信済み"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M10 8.5V5.2c0-.9-1-1.3-1.7-.8L2.5 9.2c-.5.4-.5 1.2 0 1.6l5.8 4.8c.7.5 1.7.1 1.7-.8v-3.2c4 0 7 1.2 9 4-.8-4.4-3.5-8.8-9-9.1z"/></svg></span>':'')
           +'<button class="mini-star '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')" title="'+(m.starred?'フラグを外す':'フラグを付ける')+'">'+(m.starred?'&#9733;':'&#9734;')+'</button>'
         +'</div>'
         +(mtagHtml?'<div class="mini-tags">'+mtagHtml+'</div>':'')
@@ -1560,10 +1589,10 @@ function renderChatDetail(){
 
   // 販売状況を最初に（一番知りたい情報）
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">状況</span>'
-    +(m.sold
-      ? '<span class="kv-v"><span class="sold-tag">&#10003; SOLD</span></span>'
-      : '<span class="kv-v"><span class="unsold-tag">未購入</span></span>'
-    )+'</div>';
+    +'<span class="kv-v status-tags">'
+      +(m.sold?'<span class="sold-tag">&#10003; SOLD</span>':'<span class="unsold-tag">未購入</span>')
+      +'<span id="cancel-tag-slot"></span>'
+    +'</span></div>';
 
   // 識別子
   if(m.itemId) kvHtml+=kvRow('Item ID', m.itemId, {link:'https://www.ebay.com/itm/'+esc(m.itemId)});
@@ -1841,22 +1870,39 @@ function renderChatBubbles(){
   });
   // 購入・キャンセルのイベントを時系列に差し込む
   var evts=[];
+  function lastTsOf(){ var t=0; allItems.forEach(function(x){ if(x.ts>t) t=x.ts; }); return t; }
+
+  // 購入イベント
   if(m.orderDate){
     var ot=new Date(m.orderDate).getTime();
-    if(!isNaN(ot)) evts.push({type:'event',kind:'buy',text:'ご購入いただきました',ts:ot,ord:-1});
-  }
-  if(m.cancelLabel){
-    var ct=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
-    // 日時が取れない場合は最新メッセージの直後に置く
-    var noTime=false;
-    if(isNaN(ct)){
-      var lastTs=0;
-      allItems.forEach(function(x){ if(x.ts>lastTs) lastTs=x.ts; });
-      ct=lastTs+1000;
-      noTime=true;   // 実際の日時が不明なので時刻は出さない
+    if(!isNaN(ot)){
+      evts.push({
+        type:'event', kind:'buy', text:'ご購入いただきました', ts:ot, ord:-1,
+        item:m.item||'', img:m.imgUrl||'', itemId:m.itemId||'', orderId:m.orderIdForEvent||''
+      });
     }
-    evts.push({type:'event',kind:'cancel',text:m.cancelLabel,ts:ct,ord:99,noTime:noTime});
   }
+
+  // キャンセルイベント
+  if(m.cancelLabel){
+    if(m.cancelKind==='open'){
+      var ct=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
+      var noTime=false;
+      if(isNaN(ct)){ ct=lastTsOf()+1000; noTime=true; }
+      evts.push({type:'event',kind:'cancel-open',text:m.cancelLabel,ts:ct,ord:98,noTime:noTime});
+    } else if(m.cancelKind==='closed'){
+      var rt=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
+      if(!isNaN(rt)){
+        evts.push({type:'event',kind:'cancel-open',text:'キャンセル依頼が届きました',ts:rt,ord:98});
+      }
+      var xt=m.cancelClosedAt ? new Date(m.cancelClosedAt).getTime() : NaN;
+      var noTime2=false;
+      if(isNaN(xt)){ xt=lastTsOf()+2000; noTime2=true; }
+      var closedKind=(m.cancelLabel.indexOf('拒否')>=0)?'cancel-keep':'cancel-done';
+      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:xt,ord:99,noTime:noTime2});
+    }
+  }
+
   if(evts.length){
     allItems=allItems.concat(evts);
     allItems.sort(function(a,b){
@@ -1868,11 +1914,31 @@ function renderChatBubbles(){
   var lastIdx=allItems.length-1;
   allItems.forEach(function(h,idx){
     if(h.type==='event'){
-      html+='<div class="chat-event '+h.kind+'">'
-        +'<span class="ce-icon">'+(h.kind==='buy'?'&#127881;':'&#9888;&#65039;')+'</span>'
-        +'<span class="ce-text">'+esc(h.text)+'</span>'
-        +(h.noTime?'':'<span class="ce-time">'+esc(fmtTime(new Date(h.ts).toISOString()))+'</span>')
-      +'</div>';
+      var ICONS={buy:'&#127881;','cancel-open':'&#9888;&#65039;','cancel-done':'&#128683;','cancel-keep':'&#128274;'};
+      var timeHtml=h.noTime?'':'<span class="ce-time">'+esc(fmtTime(new Date(h.ts).toISOString()))+'</span>';
+
+      if(h.kind==='buy'){
+        // 購入は商品情報付きのカードで表示
+        var thumb=h.img?'<img class="ce-thumb" src="'+esc(ebayImg(h.img,140))+'" onerror="this.remove()">':'';
+        var links='';
+        if(h.orderId) links+='<a class="ce-link" href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(h.orderId)+'" target="_blank" onclick="event.stopPropagation()">注文 '+esc(h.orderId)+'</a>';
+        if(h.itemId) links+='<a class="ce-link" href="https://www.ebay.com/itm/'+esc(h.itemId)+'" target="_blank" onclick="event.stopPropagation()">商品 '+esc(h.itemId)+'</a>';
+        html+='<div class="chat-event-card buy">'
+          +'<div class="ce-head"><span class="ce-icon">&#127881;</span><span class="ce-title">ご購入いただきました</span>'+timeHtml+'</div>'
+          +'<div class="ce-body">'+thumb
+            +'<div class="ce-info">'
+              +(h.item?'<div class="ce-item">'+esc(h.item)+'</div>':'')
+              +(links?'<div class="ce-links">'+links+'</div>':'')
+            +'</div>'
+          +'</div>'
+        +'</div>';
+      } else {
+        html+='<div class="chat-event '+h.kind+'">'
+          +'<span class="ce-icon">'+(ICONS[h.kind]||'&#9888;&#65039;')+'</span>'
+          +'<span class="ce-text">'+esc(h.text)+'</span>'
+          +timeHtml
+        +'</div>';
+      }
       return;
     }
     var side=h.from==='me'?'mine':'theirs';
@@ -2151,8 +2217,11 @@ async function loadBuyerDetail(buyer, idx){
     var mm=messages[idx];
     if(mm){
       mm.orderDate=info.orderDate||'';
+      mm.orderIdForEvent=info.orderId||'';
       mm.cancelLabel=info.cancelLabel||'';
-      mm.cancelRequestedAt=(info.cancelRequests&&info.cancelRequests[0]&&info.cancelRequests[0].cancelRequestedDate)||'';
+      mm.cancelKind=info.cancelKind||'';
+      mm.cancelRequestedAt=info.cancelRequestedAt||'';
+      mm.cancelClosedAt=info.cancelClosedAt||'';
       if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
     }
 
@@ -2206,8 +2275,11 @@ async function loadBuyerDetail(buyer, idx){
     var mm=messages[idx];
     if(mm){
       mm.orderDate=info.orderDate||'';
+      mm.orderIdForEvent=info.orderId||'';
       mm.cancelLabel=info.cancelLabel||'';
-      mm.cancelRequestedAt=(info.cancelRequests&&info.cancelRequests[0]&&info.cancelRequests[0].cancelRequestedDate)||'';
+      mm.cancelKind=info.cancelKind||'';
+      mm.cancelRequestedAt=info.cancelRequestedAt||'';
+      mm.cancelClosedAt=info.cancelClosedAt||'';
       if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
     }
 
@@ -2226,8 +2298,22 @@ async function loadBuyerDetail(buyer, idx){
       return;
     }
 
-    // キャンセル依頼などの注意喚起
-    if(info.cancelLabel){
+    // 商品パネルの状況欄にキャンセル状態を表示
+    var slot=document.getElementById('cancel-tag-slot');
+    if(slot){
+      if(info.cancelLabel){
+        var cls=info.cancelKind==='open'?'cancel-tag open'
+              :(info.cancelLabel.indexOf('拒否')>=0?'cancel-tag keep':'cancel-tag done');
+        var short=info.cancelKind==='open'?'キャンセル依頼'
+              :(info.cancelLabel.indexOf('拒否')>=0?'取引継続':'取引終了');
+        slot.innerHTML='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+short+'</span>';
+      } else {
+        slot.innerHTML='';
+      }
+    }
+
+    // 対応が必要な場合のみ警告バーを出す
+    if(info.cancelLabel && info.cancelKind==='open'){
       html+='<div class="cancel-alert">&#9888; '+esc(info.cancelLabel)+'</div>';
     }
 
