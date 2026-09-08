@@ -524,6 +524,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 注文情報ブロック（薄い背景で1グループに見せる） */
 /* 出品情報の編集 */
+.buyer-link{color:var(--text);text-decoration:none;border-bottom:1px solid #5eead4;font-weight:600;}
+.buyer-link:hover{color:var(--teal);border-bottom-color:var(--teal);}
+.kv-muted{color:var(--text3);}
+
 .prod-edit-bar{padding:8px 0 2px;}
 .prod-edit-btn{width:100%;background:#fff;border:1px dashed var(--border2);border-radius:7px;padding:7px;font-size:11.5px;color:var(--text2);cursor:pointer;font-family:var(--sans);transition:all 0.12s;}
 .prod-edit-btn:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;border-style:solid;}
@@ -955,16 +959,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           </div>
         </div>
 
-        <!-- バイヤー基本情報（常時表示・折りたたみ不可） -->
-        <div class="buyer-fixed">
-          <div class="buyer-panel-row">
-            <div style="flex:1;min-width:0;">
-              <div class="buyer-panel-name" id="buyer-panel-name">—</div>
-              <div class="buyer-panel-sub" id="buyer-panel-sub"></div>
-            </div>
-            <button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー"></button>
-          </div>
-        </div>
 
         <!-- メモセクション -->
         <!-- 配送先セクション -->
@@ -1698,6 +1692,11 @@ function renderChatDetail(){
     +'<button class="cp-btn" id="cp-sku" title="SKUをコピー">'+COPY_ICON+'</button></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">出品価格</span><span class="kv-v" id="prod-price">—</span></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">在庫</span><span class="kv-v" id="prod-qty">—</span></div>';
+  // バイヤー情報（状況の下に配置）
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">バイヤー</span>'
+    +'<span class="kv-v" id="prod-buyer">—</span>'
+    +'<button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー">'+COPY_ICON+'</button></div>';
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">配送先</span><span class="kv-v" id="prod-buyer-country">—</span></div>';
 
   kvHtml+='<div class="prod-edit-bar"><button class="prod-edit-btn" onclick="toggleListingEdit()" id="btn-listing-edit">&#9998; 数量・価格を編集</button></div>';
   kvHtml+='<div class="listing-edit" id="listing-edit">'
@@ -1727,17 +1726,17 @@ function renderChatDetail(){
   // アバターは廃止（要素が存在しない場合に備えて何もしない）
 
   // バイヤー名＋SOLDバッジ
-  var soldBadge='';  // SOLDは注文ブロックに表示するため、ここでは出さない
-  var buyerLink='<a href="https://www.ebay.com/usr/'+encodeURIComponent(m.buyer)+'" target="_blank" style="color:inherit;text-decoration:none;border-bottom:1px solid #5eead4;">'+esc(m.buyer)+'</a>';
-  var nEl=document.getElementById('buyer-panel-name');
-  nEl.setAttribute('data-base', buyerLink+soldBadge);
-  nEl.innerHTML=buyerLink+soldBadge;
+  // 商品パネル内のバイヤー行を埋める
+  var buyerLink='<a href="https://www.ebay.com/usr/'+encodeURIComponent(m.buyer)+'" target="_blank" class="buyer-link">'+esc(m.buyer)+'</a>';
+  var pbEl=document.getElementById('prod-buyer');
+  if(pbEl){ pbEl.setAttribute('data-base', buyerLink); pbEl.innerHTML=buyerLink; }
   var cpBuyer=document.getElementById('cp-buyer-name');
   if(cpBuyer){
     cpBuyer.innerHTML=COPY_ICON;
     cpBuyer.onclick=function(){copyValue(m.buyer,this);};
   }
-  document.getElementById('buyer-panel-sub').innerHTML='';
+  var pcEl=document.getElementById('prod-buyer-country');
+  if(pcEl) pcEl.textContent='—';
 
   // バイヤーリンク（商品パネルに注文番号があるので削除）
   var linksHtml='';
@@ -2460,9 +2459,9 @@ async function loadBuyerDetail(buyer, idx){
       return '<div class="bd-block">'+t+rows+'</div>';
     }
 
-    // --- バイヤーID行に評価情報を追記 ---
-    var nameEl=document.getElementById('buyer-panel-name');
-    if(nameEl){
+    // --- バイヤー行に評価・リピーター情報を追記 ---
+    var pbEl2=document.getElementById('prod-buyer');
+    if(pbEl2){
       var fbTxt='';
       if(info.feedbackScore!==null&&info.feedbackScore!==undefined&&info.feedbackScore!==''){
         fbTxt=' <span class="id-fb">'+esc(String(info.feedbackScore));
@@ -2471,17 +2470,19 @@ async function loadBuyerDetail(buyer, idx){
       }
       var repeat=(info.orderCount&&info.orderCount>1)
         ? ' <span class="repeat-tag">リピーター '+info.orderCount+'回</span>' : '';
-      nameEl.innerHTML=nameEl.getAttribute('data-base')+fbTxt+repeat;
+      pbEl2.innerHTML=(pbEl2.getAttribute('data-base')||'')+fbTxt+repeat;
     }
 
-    // --- サブ行：登録日 ＋ 配送先の国 ---
-    var subEl=document.getElementById('buyer-panel-sub');
-    if(subEl){
-      var bits=[];
+    // --- 配送先の国 ---
+    var pcEl2=document.getElementById('prod-buyer-country');
+    if(pcEl2){
       if(info.purchased && (info.countryLabel||info.country)){
-        bits.push('<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>');
+        pcEl2.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>';
+      } else if(!info.purchased){
+        pcEl2.innerHTML='<span class="kv-muted">未購入</span>';
+      } else {
+        pcEl2.textContent='—';
       }
-      subEl.innerHTML=bits.join('');
     }
 
     // チャットに表示するイベント情報を保持
