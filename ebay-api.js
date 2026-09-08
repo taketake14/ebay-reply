@@ -512,6 +512,53 @@ async function getItemInfo(legacyItemId) {
   }
 }
 
+// ===== Trading API ReviseItem で数量・価格を更新 =====
+async function reviseItem(itemId, changes) {
+  if (!itemId) return { ok: false, error: 'itemIdが必要です' };
+  const q = (changes && changes.quantity !== undefined && changes.quantity !== null && changes.quantity !== '')
+    ? parseInt(changes.quantity, 10) : null;
+  const p = (changes && changes.price !== undefined && changes.price !== null && changes.price !== '')
+    ? parseFloat(changes.price) : null;
+  if (q === null && p === null) return { ok: false, error: '変更内容がありません' };
+  if (q !== null && (isNaN(q) || q < 0)) return { ok: false, error: '数量が不正です' };
+  if (p !== null && (isNaN(p) || p <= 0)) return { ok: false, error: '価格が不正です' };
+
+  try {
+    const token = await getAccessToken();
+    let body = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<ReviseItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+      + '<Item><ItemID>' + itemId + '</ItemID>';
+    if (q !== null) body += '<Quantity>' + q + '</Quantity>';
+    if (p !== null) body += '<StartPrice currencyID="USD">' + p.toFixed(2) + '</StartPrice>';
+    body += '</Item></ReviseItemRequest>';
+
+    const res = await fetch('https://api.ebay.com/ws/api.dll', {
+      method: 'POST',
+      headers: {
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+        'X-EBAY-API-CALL-NAME': 'ReviseItem',
+        'X-EBAY-API-IAF-TOKEN': token,
+        'Content-Type': 'text/xml',
+      },
+      body,
+    });
+    const t = await res.text();
+    const ack = (t.match(/<Ack>([^<]+)<\/Ack>/) || [])[1] || '';
+    if (ack === 'Success' || ack === 'Warning') return { ok: true, ack };
+    const msg = (t.match(/<LongMessage>([^<]+)<\/LongMessage>/) || [])[1]
+      || (t.match(/<ShortMessage>([^<]+)<\/ShortMessage>/) || [])[1]
+      || 'eBayが更新を拒否しました';
+    return { ok: false, error: msg };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+function clearItemCache(itemId) {
+  if (itemId) delete itemCache[String(itemId)];
+}
+
 // ===== Trading API GetItem でセラー自身のSKUを取得 =====
 const skuCache = {};
 async function getSellerSku(itemId) {
@@ -1171,6 +1218,8 @@ module.exports = {
   getItemInfo: getItemInfo,
   getCachedItem: getCachedItem,
   getSellerSku: getSellerSku,
+  reviseItem: reviseItem,
+  clearItemCache: clearItemCache,
   getBuyerOrderInfo: getBuyerOrderInfo,
   formatOrder: formatOrder,
   getOrderDetail: getOrderDetail,
