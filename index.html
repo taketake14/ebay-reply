@@ -1686,17 +1686,18 @@ function renderChatDetail(){
       +'<span id="cancel-tag-slot"></span>'
     +'</span></div>';
 
+  // バイヤー情報（状況のすぐ下）
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">バイヤー</span>'
+    +'<span class="kv-v" id="prod-buyer">—</span>'
+    +'<button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー">'+COPY_ICON+'</button></div>';
+  kvHtml+='<div class="prod-kv-row"><span class="kv-k">配送先</span><span class="kv-v" id="prod-buyer-country">—</span></div>';
+
   // 識別子
   if(m.itemId) kvHtml+=kvRow('Item ID', m.itemId, {link:'https://www.ebay.com/itm/'+esc(m.itemId)});
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">SKU</span><span class="kv-v" id="prod-sku">—</span>'
     +'<button class="cp-btn" id="cp-sku" title="SKUをコピー">'+COPY_ICON+'</button></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">出品価格</span><span class="kv-v" id="prod-price">—</span></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">在庫</span><span class="kv-v" id="prod-qty">—</span></div>';
-  // バイヤー情報（状況の下に配置）
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">バイヤー</span>'
-    +'<span class="kv-v" id="prod-buyer">—</span>'
-    +'<button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー">'+COPY_ICON+'</button></div>';
-  kvHtml+='<div class="prod-kv-row"><span class="kv-k">配送先</span><span class="kv-v" id="prod-buyer-country">—</span></div>';
 
   kvHtml+='<div class="prod-edit-bar"><button class="prod-edit-btn" onclick="toggleListingEdit()" id="btn-listing-edit">&#9998; 数量・価格を編集</button></div>';
   kvHtml+='<div class="listing-edit" id="listing-edit">'
