@@ -1898,13 +1898,9 @@ function renderChatBubbles(){
     else x.ts=lastTs;
     if(x.ord===undefined) x.ord=i;
   });
-  allItems.sort(function(a,b){
-    if(a.ts!==b.ts) return a.ts-b.ts;
-    return (a.ord||0)-(b.ord||0);
-  });
-  // 購入・キャンセルのイベントを時系列に差し込む
+  // 購入・キャンセルのイベントを時系列に差し込む（ソートは最後に1回だけ行う）
   var evts=[];
-  function lastTsOf(){ var t=0; allItems.forEach(function(x){ if(x.ts>t) t=x.ts; }); return t; }
+  function lastTsOf(){ var t=0; allItems.forEach(function(x){ if(!x.type && x.ts>t) t=x.ts; }); return t; }
 
   // 購入イベント
   if(m.orderDate){
@@ -1921,15 +1917,19 @@ function renderChatBubbles(){
   if(m.cancelLabel){
     var reqTs=m.cancelRequestedAt ? new Date(m.cancelRequestedAt).getTime() : NaN;
 
+    // 依頼者を判定（SELLER = 自分から出したキャンセル）
+    var bySeller=String(m.cancelRequestedBy||'').toUpperCase().indexOf('SELLER')>=0;
+    var reqText = bySeller ? 'キャンセルを申請しました（自分から）' : 'キャンセルリクエストが届きました';
+
     if(m.cancelKind==='open'){
-      // リクエストが届いた時点に配置（日時が取れていれば必ずその位置へ）
       var noTime=false;
       if(isNaN(reqTs)){ reqTs=lastTsOf()+1000; noTime=true; }
-      evts.push({type:'event',kind:'cancel-open',text:m.cancelLabel,ts:reqTs,ord:0,noTime:noTime});
+      var openText = bySeller ? 'キャンセルを申請しました（自分から・処理待ち）' : m.cancelLabel;
+      evts.push({type:'event',kind:'cancel-open',text:openText,ts:reqTs,ord:0,noTime:noTime});
     } else {
       // 決着済み：依頼と結果の2つを時系列に置く
       if(!isNaN(reqTs)){
-        evts.push({type:'event',kind:'cancel-open',text:'キャンセルリクエストが届きました',ts:reqTs,ord:0});
+        evts.push({type:'event',kind:'cancel-open',text:reqText,ts:reqTs,ord:0});
       }
       var xt=m.cancelClosedAt ? new Date(m.cancelClosedAt).getTime() : NaN;
       var noTime2=false;
@@ -1939,13 +1939,17 @@ function renderChatBubbles(){
     }
   }
 
-  if(evts.length){
-    allItems=allItems.concat(evts);
-    allItems.sort(function(a,b){
-      if(a.ts!==b.ts) return a.ts-b.ts;
-      return (a.ord||0)-(b.ord||0);
-    });
-  }
+  if(evts.length) allItems=allItems.concat(evts);
+
+  // 時刻順に並べる。同時刻はイベントを後ろに置く
+  allItems.forEach(function(x,i){ if(x._i===undefined) x._i=i; });
+  allItems.sort(function(a,b){
+    if(a.ts!==b.ts) return a.ts-b.ts;
+    var ea=a.type==='event'?1:0, eb=b.type==='event'?1:0;
+    if(ea!==eb) return ea-eb;
+    if(ea===1) return (a.ord||0)-(b.ord||0);
+    return a._i-b._i;
+  });
 
   var lastIdx=allItems.length-1;
   allItems.forEach(function(h,idx){
@@ -2307,6 +2311,7 @@ async function loadBuyerDetail(buyer, idx){
       mm.cancelKind=info.cancelKind||'';
       mm.cancelShort=info.cancelShort||'';
       mm.cancelRequestedAt=info.cancelRequestedAt||'';
+      mm.cancelRequestedBy=info.cancelRequestedBy||'';
       mm.cancelClosedAt=info.cancelClosedAt||'';
       if(info.salesRecordNo) mm.salesRecordNo=info.salesRecordNo;
       if(info.orderId) mm.orderId=info.orderId;
@@ -2339,8 +2344,9 @@ async function loadBuyerDetail(buyer, idx){
       }
     }
 
-    // 対応が必要な場合のみ警告バーを出す
-    if(info.cancelLabel && info.cancelKind==='open'){
+    // バイヤーからのリクエストで未対応の場合のみ警告を出す
+    var bySeller2=String(info.cancelRequestedBy||'').toUpperCase().indexOf('SELLER')>=0;
+    if(info.cancelLabel && info.cancelKind==='open' && !bySeller2){
       html+='<div class="cancel-alert">&#9888; '+esc(info.cancelLabel)+'</div>';
     }
 
