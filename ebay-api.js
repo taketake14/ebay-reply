@@ -520,6 +520,7 @@ function escXml(s) {
 // ===== Trading API GetOrders で納税者番号を取得 =====
 // Fulfillment API では buyer.taxIdentifier が返らないため
 const taxIdCache = {};
+let lastTradingRaw = '';
 async function getOrderExtras(orderId) {
   if (!orderId) return null;
   const key = String(orderId);
@@ -544,7 +545,7 @@ async function getOrderExtras(orderId) {
       body: xml,
     });
     const t = await res.text();
-    // <BuyerTaxIdentifier><Type>CPF</Type><ID>xxx</ID></BuyerTaxIdentifier>
+    lastTradingRaw = t.substring(0, 4000);
     const pick = (re) => (t.match(re) || [])[1] || '';
 
     // 納税者番号
@@ -572,7 +573,7 @@ async function getOrderExtras(orderId) {
     } : null;
 
     const r = { taxId, address, email: pick(/<BuyerEmail>([^<]*)<\/BuyerEmail>/) };
-    taxIdCache[key] = r;
+    if (taxId || address) taxIdCache[key] = r;   // 取得できた場合のみキャッシュ
     return r;
   } catch (e) {
     console.error('getBuyerTaxId error:', e.message);
@@ -1374,6 +1375,8 @@ module.exports = {
   cancelReasonLabel: cancelReasonLabel,
   extractTaxId: extractTaxId,
   getOrderExtras: getOrderExtras,
+  getLastTradingRaw: function(){ return lastTradingRaw; },
+  getLastTradingRaw: () => lastTradingRaw,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   marketplaceName: marketplaceName,
