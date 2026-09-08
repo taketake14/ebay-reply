@@ -997,10 +997,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
             <span class="rp-toggle-icon" id="rp-icon-memo">&#9660;</span>
           </div>
           <div class="rp-section-body" id="rp-body-memo">
-            <textarea class="memo-textarea" id="memo-input" placeholder="要確認、確認中など..."></textarea>
+            <textarea class="memo-textarea" id="memo-input" placeholder="要確認、確認中など..." oninput="updateMemoUI()"></textarea>
             <div class="memo-btns">
               <button class="memo-save-btn" onclick="saveMemo()">保存</button>
-              <button class="memo-del-btn" onclick="deleteMemo()" id="btn-memo-del">削除</button>
+              <button class="memo-del-btn" onclick="deleteMemo()" id="btn-memo-del" disabled>削除</button>
             </div>
           </div>
         </div>
@@ -2303,10 +2303,12 @@ function markReplied(){
 function deleteMemo(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
-  if(!m.memo || !m.memo.trim()) return;
+  var ta0=document.getElementById('memo-input');
+  var hasAny=(m.memo&&m.memo.trim())||(ta0&&ta0.value.trim());
+  if(!hasAny) return;
   if(!confirm('このメモを削除しますか？')) return;
   m.memo='';
-  var ta=document.getElementById('d-memo');
+  var ta=document.getElementById('memo-input');
   if(ta) ta.value='';
   saveState(m);
   updateMemoUI();
@@ -2317,7 +2319,9 @@ function deleteMemo(){
 // メモの有無に応じて表示を更新
 function updateMemoUI(){
   var m=messages[currentIdx];
-  var has=!!(m && m.memo && m.memo.trim());
+  var ta=document.getElementById('memo-input');
+  // 保存済みメモ、または入力中の内容があれば削除可能にする
+  var has=!!((m && m.memo && m.memo.trim()) || (ta && ta.value.trim()));
   var del=document.getElementById('btn-memo-del');
   if(del) del.disabled=!has;
   var badge=document.getElementById('memo-badge');
