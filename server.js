@@ -640,6 +640,57 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
   }
 });
 
+// ===== 注文番号・バイヤー名で注文を検索（メッセージがなくても引ける） =====
+app.get('/api/ebay/order-search', async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.json({ ok: false, error: '検索語が必要です' });
+    const lq = q.toLowerCase();
+
+    // 1) 注文番号として直接引く
+    let order = null;
+    if (buyerByOrderId[q]) {
+      const lu = buyerByOrderId[q];
+      order = orderByBuyer[lu] || null;
+      // 個別取得で詳細を得る（納税者番号・キャンセル情報のため）
+      const detail = await ebayApi.getOrderDetail(q).catch(() => null);
+      if (detail) order = detail;
+    }
+
+    // 2) バイヤー名として引く
+    if (!order && orderByBuyer[lq]) {
+      const o = orderByBuyer[lq];
+      const detail = await ebayApi.getOrderDetail(o.orderId).catch(() => null);
+      order = detail || o;
+    }
+
+    // 3) 直接 getOrder を試す（キャッシュにない注文番号）
+    if (!order && /^[0-9-]{8,}$/.test(q)) {
+      order = await ebayApi.getOrderDetail(q).catch(() => null);
+    }
+
+    if (!order) return res.json({ ok: false, error: '該当する注文が見つかりません' });
+
+    const formatted = ebayApi.formatOrder(order);
+    const buyerName = (order.buyer && order.buyer.username) || '';
+    const li = (order.lineItems && order.lineItems[0]) || {};
+
+    res.json({
+      ok: true,
+      buyer: buyerName,
+      order: formatted,
+      item: {
+        itemId: li.legacyItemId || '',
+        title: li.title || '',
+        sku: li.sku || '',
+        quantity: li.quantity || 1,
+      },
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 出品情報を更新（数量・価格） =====
 app.post('/api/ebay/update-listing', async (req, res) => {
   try {
