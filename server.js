@@ -447,6 +447,18 @@ app.get('/api/ebay/enrich', async (req, res) => {
   }
 });
 
+// ===== Post-Order キャンセル検索の確認（デバッグ用） =====
+app.get('/api/ebay/cancellations', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 120;
+    const map = await ebayApi.getCancellations(days);
+    if (!map) return res.json({ ok: false, error: 'Post-Order APIから取得できません（スコープ不足の可能性）' });
+    res.json({ ok: true, count: Object.keys(map).length, cancellations: map });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 単一注文の詳細を確認（デバッグ用） =====
 app.get('/api/ebay/order-detail/:orderId', async (req, res) => {
   try {
@@ -653,6 +665,22 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
         }
       }
       order = ebayApi.formatOrder(full);
+
+      // Fulfillment APIで日時が取れない場合はPost-Order APIから補完
+      if (order && order.cancelState && order.cancelState !== 'NONE_REQUESTED' && !order.cancelRequestedAt) {
+        try {
+          const cmap = await ebayApi.getCancellations(120);
+          const legacyId = cachedOrder.legacyOrderId || cachedOrder.orderId;
+          const hit = cmap && (cmap[legacyId] || cmap[cachedOrder.orderId]);
+          if (hit) {
+            order.cancelRequestedAt = hit.requestedAt || order.cancelRequestedAt;
+            order.cancelClosedAt = hit.closedAt || order.cancelClosedAt;
+            order.cancelReason = hit.reason || order.cancelReason;
+            order.cancelRequestedBy = hit.initiator || order.cancelRequestedBy;
+            order.cancelId = hit.cancelId || '';
+          }
+        } catch (e) { console.error('[buyer] cancellation search:', e.message); }
+      }
     } else if (debug) {
       order = await ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null);
     }
