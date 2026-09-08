@@ -60,6 +60,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* チャット未選択時の案内 */
 .panel-idle .rp-section,.panel-idle .buyer-fixed{visibility:hidden;}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(10px);background:#0f2e2b;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:22px;box-shadow:0 4px 18px rgba(15,46,43,0.3);opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s;z-index:2000;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 .chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:#b6c2cc;}
 .cp-text{font-size:13px;color:var(--text3);}
 
@@ -2312,8 +2314,33 @@ function deleteMemo(){
   if(ta) ta.value='';
   saveState(m);
   updateMemoUI();
-  renderList();
-  if(typeof renderMiniList==='function') renderMiniList();
+
+  // メモありフィルターで見ている場合、この会話は条件から外れる
+  var inMemoFilter=(currentFilter==='memo')||(miniFilter==='memo');
+  if(inMemoFilter){
+    clearChatSelection();   // 右側を空にして「もう対象外」と分かるようにする
+    showToast('メモを削除しました');
+  } else {
+    renderList();
+    if(typeof renderMiniList==='function') renderMiniList();
+    showToast('メモを削除しました');
+  }
+}
+
+// 画面下に短く出る通知
+var toastTimer=null;
+function showToast(msg){
+  var el=document.getElementById('toast');
+  if(!el){
+    el=document.createElement('div');
+    el.id='toast';
+    el.className='toast';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ el.classList.remove('show'); }, 2000);
 }
 
 // メモの有無に応じて表示を更新
