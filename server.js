@@ -342,7 +342,7 @@ async function refreshBuyerSet() {
     const f = encodeURIComponent('creationdate:[' + from + '..]');
     const s = new Set();
     let offset = 0;
-    for (let p = 0; p < 10; p++) {
+    for (let p = 0; p < 30; p++) {
       const or = await fetch('https://api.ebay.com/sell/fulfillment/v1/order?filter=' + f
         + '&limit=200&offset=' + offset,
         { headers: { 'Authorization': 'Bearer ' + at, 'Accept': 'application/json' } });
