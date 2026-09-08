@@ -538,10 +538,18 @@ async function getOrderExtras(orderId, opts) {
         + '<OrderRole>Seller</OrderRole>'
         + '</GetOrdersRequest>';
     } else {
-      // 注文日の前後1日で検索して、該当する注文を絞り込む
+      // 注文日の前後で検索。Trading APIは90日より古い注文を返さないため範囲を丸める
       const base = (opts && opts.orderDate) ? new Date(opts.orderDate) : new Date();
-      const from = new Date(base.getTime() - 36 * 3600 * 1000).toISOString();
-      const to = new Date(base.getTime() + 36 * 3600 * 1000).toISOString();
+      const limit = Date.now() - 89 * 86400000;   // 90日制限の内側
+      let fromMs = base.getTime() - 36 * 3600 * 1000;
+      let toMs = base.getTime() + 36 * 3600 * 1000;
+      if (fromMs < limit) {
+        // 90日より古い注文はTrading APIでは取得できない
+        taxIdCache[key] = { taxId: null, address: null, email: '', tooOld: true };
+        return taxIdCache[key];
+      }
+      const from = new Date(fromMs).toISOString();
+      const to = new Date(toMs).toISOString();
       xml = '<?xml version="1.0" encoding="utf-8"?>'
         + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
         + '<CreateTimeFrom>' + from + '</CreateTimeFrom>'
