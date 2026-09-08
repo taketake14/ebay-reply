@@ -650,6 +650,23 @@ function taxLabel(type) {
   return TAX_LABELS[type] || type;
 }
 
+// キャンセル状態のラベル
+const CANCEL_LABELS = {
+  NONE_REQUESTED: '',
+  CANCEL_REQUESTED: 'キャンセル依頼あり',
+  CANCEL_PENDING: 'キャンセル処理中',
+  CANCEL_CLOSED_UNKNOWN_REFUND: 'キャンセル完了',
+  CANCEL_CLOSED_WITH_REFUND: 'キャンセル完了（返金済み）',
+  CANCEL_CLOSED_NO_REFUND: 'キャンセル終了（返金なし）',
+  CANCEL_CLOSED_FOR_COMMITMENT: 'キャンセル不成立（取引継続）',
+  CANCEL_REJECTED: 'キャンセル拒否',
+  IN_PROGRESS: 'キャンセル処理中',
+};
+function cancelLabel(state) {
+  if (!state) return '';
+  return CANCEL_LABELS[state] !== undefined ? CANCEL_LABELS[state] : state;
+}
+
 // ===== 注文オブジェクトを表示用に整形 =====
 function formatOrder(o) {
   if (!o) return null;
@@ -678,6 +695,9 @@ function formatOrder(o) {
     shipByDate: (li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate) || '',
     orderCount: 1,
     salesRecordNo: o.salesRecordReference || '',
+    cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
+    cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
+    cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
     itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
       ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
     shippingCost: (o.pricingSummary && o.pricingSummary.deliveryCost)
@@ -907,6 +927,9 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       marketplaceRaw: pickMarketplaceId(o),
       listingSite: marketplaceName(pickListingMarketplaceId(o)),
       salesRecordNo: o.salesRecordReference || '',
+    cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
+    cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
+    cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
       name: ship.fullName || '',
       email: ship.email || '',
       phone: ship.primaryPhone && ship.primaryPhone.phoneNumber || '',
@@ -971,6 +994,7 @@ module.exports = {
   debugBuyerLocation: debugBuyerLocation,
   countryName: countryName,
   countryNameEn: countryNameEn,
+  cancelLabel: cancelLabel,
   getLastOrderDebug: getLastOrderDebug,
   getAuthUrl: getAuthUrl,
   exchangeCodeForTokens: exchangeCodeForTokens,
