@@ -562,6 +562,7 @@ app.get('/api/ebay/order-raw/:username', async (req, res) => {
       ok: true,
       topLevelKeys: Object.keys(o),
       lineItemKeys: Object.keys(li),
+      cancelStatus: o.cancelStatus || null,
       pricingSummary: o.pricingSummary || null,
       lineItemTaxes: (o.lineItems||[]).map(function(li){return {taxes: li.taxes, ecart: li.ebayCollectAndRemitTaxes};}),
       orderEcart: o.ebayCollectAndRemitTax,
