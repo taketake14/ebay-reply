@@ -651,20 +651,25 @@ function taxLabel(type) {
 }
 
 // キャンセル状態のラベル
-const CANCEL_LABELS = {
-  NONE_REQUESTED: '',
-  CANCEL_REQUESTED: 'キャンセル依頼あり',
-  CANCEL_PENDING: 'キャンセル処理中',
-  CANCEL_CLOSED_UNKNOWN_REFUND: 'キャンセル完了',
-  CANCEL_CLOSED_WITH_REFUND: 'キャンセル完了（返金済み）',
-  CANCEL_CLOSED_NO_REFUND: 'キャンセル終了（返金なし）',
-  CANCEL_CLOSED_FOR_COMMITMENT: 'キャンセル不成立（取引継続）',
-  CANCEL_REJECTED: 'キャンセル拒否',
-  IN_PROGRESS: 'キャンセル処理中',
+// キャンセル状態の定義
+// label: 表示名 / kind: 'open'=対応待ち, 'closed'=決着済み / event: チャットに出すか
+const CANCEL_STATES = {
+  NONE_REQUESTED:               { label: '',                     kind: '',       event: false },
+  CANCEL_REQUESTED:             { label: 'キャンセル依頼が届いています', kind: 'open',   event: true },
+  IN_PROGRESS:                  { label: 'キャンセル依頼が届いています', kind: 'open',   event: true },
+  CANCEL_PENDING:               { label: 'キャンセル依頼が届いています', kind: 'open',   event: true },
+  CANCEL_CLOSED_WITH_REFUND:    { label: '返金してキャンセル成立（取引終了）', kind: 'closed', event: true },
+  CANCEL_CLOSED_NO_REFUND:      { label: 'キャンセル成立（返金なし・取引終了）', kind: 'closed', event: true },
+  CANCEL_CLOSED_UNKNOWN_REFUND: { label: 'キャンセル成立（取引終了）', kind: 'closed', event: true },
+  CANCEL_CLOSED_FOR_COMMITMENT: { label: 'キャンセルを拒否（取引継続）', kind: 'closed', event: true },
+  CANCEL_REJECTED:              { label: 'キャンセルを拒否（取引継続）', kind: 'closed', event: true },
 };
+function cancelInfo(state) {
+  if (!state) return { label: '', kind: '', event: false };
+  return CANCEL_STATES[state] || { label: state, kind: 'open', event: true };
+}
 function cancelLabel(state) {
-  if (!state) return '';
-  return CANCEL_LABELS[state] !== undefined ? CANCEL_LABELS[state] : state;
+  return cancelInfo(state).label;
 }
 
 // ===== 注文オブジェクトを表示用に整形 =====
@@ -697,6 +702,9 @@ function formatOrder(o) {
     salesRecordNo: o.salesRecordReference || '',
     cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
     cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
+    cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
+    cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
+    cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
     itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
       ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
@@ -929,6 +937,9 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       salesRecordNo: o.salesRecordReference || '',
     cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
     cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
+    cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
+    cancelRequestedAt: (o.cancelStatus && o.cancelStatus.cancelRequests && o.cancelStatus.cancelRequests[0] && o.cancelStatus.cancelRequests[0].cancelRequestedDate) || '',
+    cancelClosedAt: (o.cancelStatus && o.cancelStatus.cancelCompletedDate) || '',
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
       name: ship.fullName || '',
       email: ship.email || '',
@@ -995,6 +1006,7 @@ module.exports = {
   countryName: countryName,
   countryNameEn: countryNameEn,
   cancelLabel: cancelLabel,
+  cancelInfo: cancelInfo,
   getLastOrderDebug: getLastOrderDebug,
   getAuthUrl: getAuthUrl,
   exchangeCodeForTokens: exchangeCodeForTokens,
