@@ -1321,11 +1321,11 @@ function onSearch(q){
   // メッセージに該当がない場合、注文データからも探す
   clearTimeout(orderSearchTimer);
   hideOrderResult();
-  if(searchQuery.length>=6){
+  if(searchQuery.length>=5){
     orderSearchTimer=setTimeout(function(){
       var hit=getFiltered().length;
       if(hit===0) lookupOrder(searchQuery);
-    }, 500);
+    }, 400);
   }
 }
 
@@ -1347,8 +1347,21 @@ async function lookupOrder(q){
     var o=d.order||{};
     var it=d.item||{};
 
-    // すでに同じバイヤーが一覧にいれば何もしない
-    if(messages.some(function(x){return x.buyer===d.buyer;})) return;
+    // すでに同じバイヤーが一覧にいる場合は、そのバイヤーを検索対象にする
+    var exist=messages.find(function(x){return x.buyer===d.buyer;});
+    if(exist){
+      // 注文情報を補完してから検索語をバイヤー名に切り替える
+      if(o.orderId) exist.orderId=o.orderId;
+      if(o.salesRecordNo) exist.salesRecordNo=o.salesRecordNo;
+      if(it.itemId) exist.itemId=exist.itemId||it.itemId;
+      if(it.sku) exist.sku=exist.sku||it.sku;
+      searchQuery=String(d.buyer).toLowerCase();
+      var se=document.getElementById('header-search');
+      if(se) se.value=d.buyer;
+      renderList();
+      if(typeof renderMiniList==='function') renderMiniList();
+      return;
+    }
 
     // 通常のメッセージと同じ形式の仮エントリを作る
     var jst=toJST(o.orderDate||new Date().toISOString());
