@@ -605,6 +605,34 @@ function pickListingMarketplaceId(o) {
 }
 
 // ===== 注文の税金を集計（VAT / GST / 州税など全種） =====
+// ===== 単一注文の詳細を取得 =====
+// eBay仕様：getOrders では cancelRequests が常に空。個別のgetOrderが必要
+const singleOrderCache = {};
+async function getOrderDetail(orderId) {
+  if (!orderId) return null;
+  const key = String(orderId);
+  if (singleOrderCache[key] !== undefined) return singleOrderCache[key];
+  try {
+    const token = await getAccessToken();
+    const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order/' + encodeURIComponent(key), {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('getOrderDetail ' + res.status + ':', t.substring(0, 200));
+      singleOrderCache[key] = null;
+      return null;
+    }
+    const d = await res.json();
+    singleOrderCache[key] = d;
+    return d;
+  } catch (e) {
+    console.error('getOrderDetail error:', e.message);
+    singleOrderCache[key] = null;
+    return null;
+  }
+}
+
 function sumOrderTaxes(o) {
   const out = { total: 0, currency: '', items: [] };
   if (!o) return out;
@@ -1033,6 +1061,8 @@ module.exports = {
   getSellerSku: getSellerSku,
   getBuyerOrderInfo: getBuyerOrderInfo,
   formatOrder: formatOrder,
+  getOrderDetail: getOrderDetail,
+  getOrderDetail: getOrderDetail,
   marketplaceName: marketplaceName,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
