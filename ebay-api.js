@@ -512,16 +512,25 @@ async function getItemInfo(legacyItemId) {
   }
 }
 
-// ===== Trading API ReviseItem で数量・価格を更新 =====
+function escXml(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+// ===== Trading API ReviseItem で出品情報を更新 =====
 async function reviseItem(itemId, changes) {
   if (!itemId) return { ok: false, error: 'itemIdが必要です' };
   const q = (changes && changes.quantity !== undefined && changes.quantity !== null && changes.quantity !== '')
     ? parseInt(changes.quantity, 10) : null;
   const p = (changes && changes.price !== undefined && changes.price !== null && changes.price !== '')
     ? parseFloat(changes.price) : null;
-  if (q === null && p === null) return { ok: false, error: '変更内容がありません' };
+  const title = (changes && changes.title) ? String(changes.title).trim() : '';
+  const sku = (changes && changes.sku !== undefined && changes.sku !== null) ? String(changes.sku).trim() : null;
+
+  if (q === null && p === null && !title && sku === null) return { ok: false, error: '変更内容がありません' };
   if (q !== null && (isNaN(q) || q < 0)) return { ok: false, error: '数量が不正です' };
   if (p !== null && (isNaN(p) || p <= 0)) return { ok: false, error: '価格が不正です' };
+  if (title && title.length > 80) return { ok: false, error: 'タイトルは80文字以内にしてください（現在 ' + title.length + '文字）' };
 
   try {
     const token = await getAccessToken();
@@ -530,6 +539,8 @@ async function reviseItem(itemId, changes) {
       + '<Item><ItemID>' + itemId + '</ItemID>';
     if (q !== null) body += '<Quantity>' + q + '</Quantity>';
     if (p !== null) body += '<StartPrice currencyID="USD">' + p.toFixed(2) + '</StartPrice>';
+    if (title) body += '<Title>' + escXml(title) + '</Title>';
+    if (sku !== null) body += '<SKU>' + escXml(sku) + '</SKU>';
     body += '</Item></ReviseItemRequest>';
 
     const res = await fetch('https://api.ebay.com/ws/api.dll', {
