@@ -652,6 +652,7 @@ app.get('/api/ebay/order-full/:orderId', async (req, res) => {
       buyerKeys: d.buyer ? Object.keys(d.buyer) : [],
       buyer: d.buyer || null,
       lineItemKeys: Object.keys(li),
+      fulfillmentStartInstructions: d.fulfillmentStartInstructions || null,
       ebayCollectAndRemitTax: d.ebayCollectAndRemitTax || null,
       lineItemTaxes: li.ebayCollectAndRemitTaxes || li.taxes || null,
       topKeys: Object.keys(d),
@@ -669,20 +670,43 @@ app.get('/api/ebay/order-search', async (req, res) => {
     const lq = q.toLowerCase();
 
     // 1) 注文番号として直接引く
+    // 一覧側と個別取得をマージするヘルパー
+    function mergeOrder(base, detail) {
+      if (!detail) return base;
+      if (!base) return detail;
+      const merged = Object.assign({}, base);
+      Object.keys(detail).forEach(k => {
+        const v = detail[k];
+        if (v === null || v === undefined) return;
+        if (Array.isArray(v) && v.length === 0) return;
+        merged[k] = v;
+      });
+      const dShip = (detail.fulfillmentStartInstructions || [])[0];
+      const bShip = (base.fulfillmentStartInstructions || [])[0];
+      const dAddr = dShip && dShip.shippingStep && dShip.shippingStep.shipTo
+        && dShip.shippingStep.shipTo.contactAddress;
+      const bAddr = bShip && bShip.shippingStep && bShip.shippingStep.shipTo
+        && bShip.shippingStep.shipTo.contactAddress;
+      if ((!dAddr || !dAddr.addressLine1) && bAddr && bAddr.addressLine1) {
+        merged.fulfillmentStartInstructions = base.fulfillmentStartInstructions;
+      }
+      if (detail.buyer && base.buyer) merged.buyer = Object.assign({}, base.buyer, detail.buyer);
+      return merged;
+    }
+
     let order = null;
     if (buyerByOrderId[q]) {
       const lu = buyerByOrderId[q];
-      order = orderByBuyer[lu] || null;
-      // 個別取得で詳細を得る（納税者番号・キャンセル情報のため）
+      const base = orderByBuyer[lu] || null;
       const detail = await ebayApi.getOrderDetail(q).catch(() => null);
-      if (detail) order = detail;
+      order = mergeOrder(base, detail);
     }
 
     // 2) バイヤー名として引く
     if (!order && orderByBuyer[lq]) {
       const o = orderByBuyer[lq];
       const detail = await ebayApi.getOrderDetail(o.orderId).catch(() => null);
-      order = detail || o;
+      order = mergeOrder(o, detail);
     }
 
     // 3) 直接 getOrder を試す（キャッシュにない注文番号）
@@ -822,11 +846,28 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
           return null;
         });
         if (detail) {
-          full = detail;
-          console.log('[buyer] detail fetched for', cachedOrder.orderId,
-            'requests=', (detail.cancelStatus && detail.cancelStatus.cancelRequests || []).length);
-        } else {
-          console.log('[buyer] detail NOT fetched for', cachedOrder.orderId);
+          // 丸ごと置き換えると配送先などが失われるので、不足分だけを補う
+          full = Object.assign({}, cachedOrder);
+          Object.keys(detail).forEach(k => {
+            const v = detail[k];
+            if (v === null || v === undefined) return;
+            if (Array.isArray(v) && v.length === 0) return;
+            full[k] = v;
+          });
+          // 配送先は一覧取得の方が充実していることがあるので、空なら元に戻す
+          const dShip = (detail.fulfillmentStartInstructions || [])[0];
+          const cShip = (cachedOrder.fulfillmentStartInstructions || [])[0];
+          const dAddr = dShip && dShip.shippingStep && dShip.shippingStep.shipTo
+            && dShip.shippingStep.shipTo.contactAddress;
+          const cAddr = cShip && cShip.shippingStep && cShip.shippingStep.shipTo
+            && cShip.shippingStep.shipTo.contactAddress;
+          if ((!dAddr || !dAddr.addressLine1) && cAddr && cAddr.addressLine1) {
+            full.fulfillmentStartInstructions = cachedOrder.fulfillmentStartInstructions;
+          }
+          // buyer も一覧側の方が情報が多い場合は維持する
+          if (detail.buyer && cachedOrder.buyer) {
+            full.buyer = Object.assign({}, cachedOrder.buyer, detail.buyer);
+          }
         }
       }
       order = ebayApi.formatOrder(full);
