@@ -1151,6 +1151,9 @@ function bulkSetFlag(flagVal){
 // 検索対象：バイヤー名・商品名・ItemID・SKU・注文番号・レコードNo・本文・メモ
 function matchesSearch(m, q){
   if(!q) return true;
+  // 注文番号で引いた結果、対応するバイヤーが分かっている場合はそれで判定
+  var alias=orderSearchAlias[q];
+  if(alias && String(m.buyer||'').toLowerCase()===alias) return true;
   var hay=[
     m.buyer, m.item, m.itemId, m.orderId, m.orderIdForEvent,
     m.sku, m.salesRecordNo, m.msg, m.memo, m.conversationId
@@ -1311,6 +1314,8 @@ function updateFilterCounts(){
   set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
 }
 var orderSearchTimer=null;
+// 注文番号 → バイヤー名 の対応（検索欄の文字は変えずに絞り込むため）
+var orderSearchAlias={};
 function onSearch(q){
   searchQuery=(q||'').toLowerCase().trim();
   renderList();
@@ -1355,9 +1360,8 @@ async function lookupOrder(q){
       if(o.salesRecordNo) exist.salesRecordNo=o.salesRecordNo;
       if(it.itemId) exist.itemId=exist.itemId||it.itemId;
       if(it.sku) exist.sku=exist.sku||it.sku;
-      searchQuery=String(d.buyer).toLowerCase();
-      var se=document.getElementById('header-search');
-      if(se) se.value=d.buyer;
+      // 検索欄の文字はそのまま。内部でこの注文番号→バイヤーの対応を覚えて絞り込む
+      orderSearchAlias[searchQuery]=String(d.buyer).toLowerCase();
       renderList();
       if(typeof renderMiniList==='function') renderMiniList();
       return;
