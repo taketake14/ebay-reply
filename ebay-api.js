@@ -836,6 +836,11 @@ function formatOrder(o) {
       const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
       return r0.cancelReason || '';
     })(),
+    cancelReasonLabel: (function(){
+      const cs = o.cancelStatus || {};
+      const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
+      return cancelReasonLabel(r0.cancelReason || '');
+    })(),
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
     itemSubtotal: (o.pricingSummary && o.pricingSummary.priceSubtotal)
       ? (o.pricingSummary.priceSubtotal.value + ' ' + o.pricingSummary.priceSubtotal.currency) : '',
@@ -1082,6 +1087,11 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
       return r0.cancelReason || '';
     })(),
+    cancelReasonLabel: (function(){
+      const cs = o.cancelStatus || {};
+      const r0 = (cs.cancelRequests && cs.cancelRequests[0]) || {};
+      return cancelReasonLabel(r0.cancelReason || '');
+    })(),
     cancelRequests: (o.cancelStatus && o.cancelStatus.cancelRequests) || [],
       name: ship.fullName || '',
       email: ship.email || '',
@@ -1145,7 +1155,6 @@ module.exports = {
   cancelReasonLabel: cancelReasonLabel,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
-  cancelReasonLabel: cancelReasonLabel,
   marketplaceName: marketplaceName,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
