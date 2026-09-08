@@ -123,7 +123,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-th .col-resizer{left:auto;}
 
 /* SOLD列 */
-.s1-sold-cell{display:flex;align-items:center;justify-content:center;}
+.s1-sold-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;}
 /* 受信トレイ：キャンセル状態のラベル */
 .list-cancel{display:inline-flex;align-items:center;font-size:10.5px;font-weight:800;letter-spacing:0.02em;padding:2.5px 9px;border-radius:5px;line-height:1.4;white-space:nowrap;}
 .list-cancel.open{background:#dc2626;color:#fff;}
@@ -1374,12 +1374,11 @@ function renderList(){
       sold: (function(){
         var cn=m.cancel;
         var inner='';
+        if(m.sold) inner+='<span class="sold-mark">&#10003; SOLD</span>';
         if(cn && cn.short){
           var cls='list-cancel '+(cn.kind||'open');
           var tip=(cn.label||'')+(cn.reasonLabel?'（理由: '+cn.reasonLabel+'）':'');
-          inner='<span class="'+cls+'" title="'+esc(tip)+'">'+esc(cn.short)+'</span>';
-        } else if(m.sold){
-          inner='<span class="sold-mark">&#10003; SOLD</span>';
+          inner+='<span class="'+cls+'" title="'+esc(tip)+'">'+esc(cn.short)+'</span>';
         }
         return '<div class="s1-sold-cell s1-col-sold">'+inner+'</div>';
       })(),
@@ -1499,10 +1498,11 @@ function renderMiniList(){
       : '&#128230;';
     var thumb='<div class="mini-thumb-col">'
       +'<div class="mini-thumb">'+thumbInner+'</div>'
+      +(m.sold?'<span class="mini-sold-tag">SOLD</span>':'')
       +(function(){
         var cn=m.cancel;
         if(cn && cn.short) return '<span class="mini-cancel-tag '+(cn.kind||'open')+'" title="'+esc(cn.label||'')+'">'+esc(cn.short.replace('キャンセル',''))+'</span>';
-        return m.sold?'<span class="mini-sold-tag">SOLD</span>':'';
+        return '';
       })()
       +'</div>';
     // 日付を M/D 形式に
