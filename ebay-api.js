@@ -633,6 +633,62 @@ async function getOrderDetail(orderId) {
   }
 }
 
+// ===== Post-Order API: キャンセル情報を取得 =====
+// Fulfillment API では cancelRequests が空のため、こちらから取得する
+const cancelSearchCache = { data: null, at: 0 };
+async function getCancellations(daysBack) {
+  const now = Date.now();
+  // 5分キャッシュ
+  if (cancelSearchCache.data && (now - cancelSearchCache.at) < 5 * 60 * 1000) {
+    return cancelSearchCache.data;
+  }
+  try {
+    const token = await getAccessToken();
+    const days = daysBack || 90;
+    const from = new Date(now - days * 86400000).toISOString().split('.')[0] + '.000Z';
+    const to = new Date(now).toISOString().split('.')[0] + '.000Z';
+    const url = 'https://api.ebay.com/post-order/v2/cancellation/search'
+      + '?creation_date_range_from=' + encodeURIComponent(from)
+      + '&creation_date_range_to=' + encodeURIComponent(to)
+      + '&role=SELLER&limit=200';
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': 'TOKEN ' + token,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+      },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('getCancellations ' + res.status + ':', t.substring(0, 300));
+      return null;
+    }
+    const d = await res.json();
+    const list = d.cancellations || [];
+    // legacyOrderId をキーにしたマップにする
+    const map = {};
+    list.forEach(cn => {
+      const oid = (cn.legacyOrderId || cn.orderId || '').toString();
+      if (!oid) return;
+      map[oid] = {
+        cancelId: cn.cancelId || '',
+        state: cn.cancelStatus || cn.cancelState || '',
+        requestedAt: cn.cancelRequestDate && cn.cancelRequestDate.value || cn.creationDate && cn.creationDate.value || '',
+        closedAt: cn.cancelCloseDate && cn.cancelCloseDate.value || '',
+        reason: cn.cancelReason || '',
+        initiator: cn.requestorType || cn.cancelInitiator || '',
+      };
+    });
+    cancelSearchCache.data = map;
+    cancelSearchCache.at = now;
+    return map;
+  } catch (e) {
+    console.error('getCancellations error:', e.message);
+    return null;
+  }
+}
+
 function sumOrderTaxes(o) {
   const out = { total: 0, currency: '', items: [] };
   if (!o) return out;
@@ -1062,7 +1118,9 @@ module.exports = {
   getBuyerOrderInfo: getBuyerOrderInfo,
   formatOrder: formatOrder,
   getOrderDetail: getOrderDetail,
+  getCancellations: getCancellations,
   getOrderDetail: getOrderDetail,
+  getCancellations: getCancellations,
   marketplaceName: marketplaceName,
   getBuyerPublicInfo: getBuyerPublicInfo,
   getUserInfo: getUserInfo,
