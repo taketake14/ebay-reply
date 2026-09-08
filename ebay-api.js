@@ -704,6 +704,35 @@ async function getOrderDetail(orderId) {
   }
 }
 
+// 納税者番号の種類ラベル
+const TAX_ID_LABELS = {
+  CPF: 'CPF', CPFTaxID: 'CPF', CNPJ: 'CNPJ',
+  RFC: 'RFC', CURP: 'CURP',
+  CEDULA: 'Cédula', DNI: 'DNI', NIE: 'NIE', NIT: 'NIT',
+  RUT: 'RUT', VATIN: 'VAT', CodiceFiscale: 'Codice Fiscale',
+  TRN: 'TRN',
+};
+function taxIdLabel(t) {
+  if (!t) return '納税者番号';
+  return TAX_ID_LABELS[t] || t;
+}
+
+// 注文からバイヤーの納税者番号を取り出す
+function extractTaxId(o) {
+  if (!o) return null;
+  const b = o.buyer || {};
+  const ti = b.taxIdentifier || (Array.isArray(b.taxIdentifiers) ? b.taxIdentifiers[0] : null);
+  if (ti && ti.taxpayerId) {
+    return {
+      id: ti.taxpayerId,
+      type: ti.taxIdentifierType || '',
+      label: taxIdLabel(ti.taxIdentifierType),
+      country: ti.issuingCountry || '',
+    };
+  }
+  return null;
+}
+
 // キャンセル理由の日本語ラベル
 const CANCEL_REASONS = {
   WONT_ARRIVE_IN_TIME: '到着が間に合わない',
@@ -901,6 +930,7 @@ function formatOrder(o) {
     shipByDate: (li.lineItemFulfillmentInstructions && li.lineItemFulfillmentInstructions.shipByDate) || '',
     orderCount: 1,
     salesRecordNo: o.salesRecordReference || '',
+    taxId: extractTaxId(o),
     cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
     cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
     cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
@@ -1152,6 +1182,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
       marketplaceRaw: pickMarketplaceId(o),
       listingSite: marketplaceName(pickListingMarketplaceId(o)),
       salesRecordNo: o.salesRecordReference || '',
+    taxId: extractTaxId(o),
     cancelState: (o.cancelStatus && o.cancelStatus.cancelState) || '',
     cancelLabel: cancelLabel((o.cancelStatus && o.cancelStatus.cancelState) || ''),
     cancelKind: cancelInfo((o.cancelStatus && o.cancelStatus.cancelState) || '').kind,
@@ -1236,6 +1267,7 @@ module.exports = {
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   cancelReasonLabel: cancelReasonLabel,
+  extractTaxId: extractTaxId,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   marketplaceName: marketplaceName,
