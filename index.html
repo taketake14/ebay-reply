@@ -1212,7 +1212,15 @@ function cannedCategories(){
 // 優先度の高い順に定義（左から表示されるので重要なものを先に）
 var TAG_DEFS = [
   {key:'urgent', label:'要対応', cls:'tag-urgent', test:function(m){return /refund|waiting.*respond|open.*case|ebay.*case|not.*received|haven.*received|still.*waiting|dispute|return.*money/i.test(m);}},
-  {key:'complaint', label:'クレーム', cls:'tag-complaint', test:function(m){return /broken|damage|defect|not working|wrong item|not as described|missing|perished|sticky|roller/i.test(m);}},
+  {key:'complaint', label:'クレーム', cls:'tag-complaint', test:function(m){
+    // 購入前の状態確認（「傷はないか」「不良品ではないか」）はクレームではないので除外
+    var pre=/(no|not|any|free from|without|isn'?t|aren'?t)\s+(a\s+)?(known\s+)?(crush\w*|scratch\w*|damage\w*|defect\w*|issue\w*|problem\w*)/i;
+    var beforeBuy=/before (purchas|buy)|interested in|considering|planning to (buy|purchase)|thinking of buying/i;
+    if(pre.test(m) && !/arrived|received|delivered|opened the (box|package)|when i got/i.test(m)) return false;
+    if(beforeBuy.test(m) && !/arrived|received|delivered|refund|return/i.test(m)) return false;
+    // 実際に届いた商品の問題を示す表現
+    return /(arrived|received|delivered).{0,60}(broken|damaged|defect|wrong|missing)|item (is|was|arrived) (broken|damaged|defective)|not as described|doesn'?t work|not working|stopped working|wrong item (was )?(sent|received|shipped)|missing (part|item|piece|accessor)|perished|sticky/i.test(m);
+  }},
   {key:'cancel', label:'キャンセル', cls:'tag-cancel', test:function(m){return /cancel|annul|annullare|sbagliato|wrong.*order/i.test(m);}},
   {key:'ship', label:'配送', cls:'tag-ship', test:function(m){return /ship|deliver|entrega|tracking|dispatch|arrival/i.test(m);}},
   {key:'stock', label:'在庫確認', cls:'tag-stock', test:function(m){return /stock|available|disponible|still have/i.test(m);}},
