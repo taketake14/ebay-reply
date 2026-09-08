@@ -52,6 +52,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .header-search{width:100%;background:rgba(255,255,255,0.95);border:1px solid rgba(255,255,255,0.35);border-radius:8px;padding:7px 32px 7px 34px;font-size:12.5px;color:#0f2e2b;outline:none;font-family:var(--sans);transition:all 0.13s;}
 .header-search::placeholder{color:#94a3b8;}
 .header-search:focus{background:#fff;border-color:#5eead4;box-shadow:0 0 0 3px rgba(94,234,212,0.28);}
+/* 検索中インジケーター */
+.search-wrap.searching .search-icon{opacity:0;}
+.search-wrap.searching::before{content:'';position:absolute;left:11px;top:50%;margin-top:-7px;width:14px;height:14px;border:2px solid #cbd5e1;border-top-color:var(--teal);border-radius:50%;animation:searchSpin 0.7s linear infinite;z-index:2;}
+@keyframes searchSpin{to{transform:rotate(360deg);}}
+.search-wrap.searching .header-search{background:#fff;border-color:#5eead4;box-shadow:0 0 0 3px rgba(94,234,212,0.22);}
+
+/* チャット未選択時の案内 */
+.chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:#b6c2cc;}
+.cp-text{font-size:13px;color:var(--text3);}
+
 .search-clear{position:absolute;right:8px;background:transparent;border:none;color:#94a3b8;cursor:pointer;font-size:12px;padding:3px 5px;border-radius:4px;line-height:1;display:flex;align-items:center;}
 .search-clear:hover{background:#f1f5f9;color:#334155;}
 .header-search:focus{border-color:var(--orange);}
@@ -1348,12 +1358,53 @@ function onSearch(q){
   // メッセージに該当がない場合、注文データからも探す
   clearTimeout(orderSearchTimer);
   hideOrderResult();
+
+  // 検索を開始したら右側（チャット・情報パネル）を空にする
+  if(searchQuery) clearChatSelection();
+
   if(searchQuery.length>=5){
+    setSearching(true);
     orderSearchTimer=setTimeout(function(){
       var hit=getFiltered().length;
-      if(hit===0) lookupOrder(searchQuery);
+      if(hit===0){
+        lookupOrder(searchQuery).then(function(){ setSearching(false); });
+      } else {
+        setSearching(false);
+      }
     }, 400);
+  } else {
+    setSearching(false);
   }
+}
+
+// 検索中インジケーター
+function setSearching(on){
+  var w=document.querySelector('.search-wrap');
+  if(w) w.classList.toggle('searching', !!on);
+  var cb=document.getElementById('search-clear');
+  if(cb) cb.style.display=(on||searchQuery)?'flex':'none';
+}
+
+// チャット・情報パネルの選択を解除する
+function clearChatSelection(){
+  if(currentIdx===null) return;
+  currentIdx=null;
+  var ca=document.getElementById('chat-area');
+  if(ca) ca.innerHTML='<div class="chat-placeholder">'
+    +'<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 8.5 8.5 0 0 1-3.8-.9L3 21l1.9-5.1A8.4 8.4 0 0 1 4 11.5a8.5 8.5 0 0 1 8.5-8.5 8.4 8.4 0 0 1 8.5 8.5z"/></svg>'
+    +'<div class="cp-text">左のリストからメッセージを選んでください</div>'
+    +'</div>';
+  // 情報パネルを初期状態に
+  ['rp-body-product','rp-body-ship','rp-body-memo'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el) el.innerHTML='';
+  });
+  var nm=document.getElementById('d-name');
+  if(nm) nm.textContent='—';
+  var sub=document.getElementById('d-sub');
+  if(sub) sub.textContent='';
+  renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
 }
 
 // 検索を消したら、注文検索で追加した仮エントリを取り除く
