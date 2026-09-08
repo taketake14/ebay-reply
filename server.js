@@ -1706,12 +1706,10 @@ app.get('/api/messages', async (req, res) => {
     });
 
     threads.sort((a, b) => {
-      // バイヤーからの受信がない会話は下にまとめる
-      if (a.hasBuyerMsg !== b.hasBuyerMsg) return a.hasBuyerMsg ? -1 : 1;
-      if (a.hasBuyerMsg) return b.lastBuyerAt - a.lastBuyerAt;
-      // 受信なし同士は自分の送信日時で
-      const ta = new Date(a.timestamp || 0).getTime() || 0;
-      const tb = new Date(b.timestamp || 0).getTime() || 0;
+      // 並び順は「最後にやり取りがあった日時」の新しい順で統一する
+      // （バイヤー受信がある場合はその日時、無ければ自分の送信日時）
+      const ta = a.lastBuyerAt || new Date(a.timestamp || 0).getTime() || 0;
+      const tb = b.lastBuyerAt || new Date(b.timestamp || 0).getTime() || 0;
       return tb - ta;
     });
 
