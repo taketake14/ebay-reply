@@ -2663,6 +2663,12 @@ async function loadBuyerDetail(buyer, idx){
       [info.city, info.stateOrProvince, info.postalCode].filter(Boolean).join(' '),
       info.countryEn||info.country
     ].filter(Boolean);
+    if(info.addressTooOld){
+      b4+='<div class="bd-row"><span class="bd-k"></span><span class="bd-v addr-note">'
+        +'&#9432; 90日以上前の注文のため、eBay APIから氏名・番地・電話番号を取得できません。'
+        +(info.orderId?'<br><a href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(info.orderId)+'" target="_blank" style="color:#8a5a12;font-weight:700;">eBayの注文ページで確認 &rarr;</a>':'')
+        +'</span></div>';
+    }
     if(addrLines.length){
       var full=addrLines.join('\n');
       var fullCopy=copyLines.join('\n');
