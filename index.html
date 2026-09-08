@@ -1924,11 +1924,13 @@ function renderChatBubbles(){
     var closedTs=m.cancelClosedAt ? new Date(m.cancelClosedAt).getTime() : NaN;
 
     if(m.cancelKind==='open'){
-      // 未決着。日時が取れる場合のみチャットに挿入する
-      // （日時不明のものを末尾に置くと時系列を誤解させるため、状況欄のタグのみで示す）
+      var openText = bySeller ? 'キャンセルを申請しました（自分から）' : m.cancelLabel;
       if(!isNaN(reqTs)){
-        var openText = bySeller ? 'キャンセルを申請しました（自分から）' : m.cancelLabel;
         evts.push({type:'event',kind:'cancel-open',text:openText,ts:reqTs,ord:0});
+      } else {
+        // 日時がAPIから取得できない場合は先頭に固定表示する
+        // （末尾に置くと「最後に起きた」と誤解されるため）
+        evts.push({type:'event',kind:'cancel-open',text:openText,ts:0,ord:-99,pinned:true});
       }
     } else {
       // 決着済み
@@ -1955,6 +1957,8 @@ function renderChatBubbles(){
   // 時刻順に並べる。同時刻はイベントを後ろに置く
   allItems.forEach(function(x,i){ if(x._i===undefined) x._i=i; });
   allItems.sort(function(a,b){
+    // 日時不明の固定イベントは常に先頭
+    if(a.pinned!==b.pinned) return a.pinned?-1:1;
     if(a.ts!==b.ts) return a.ts-b.ts;
     var ea=a.type==='event'?1:0, eb=b.type==='event'?1:0;
     if(ea!==eb) return ea-eb;
@@ -1966,7 +1970,9 @@ function renderChatBubbles(){
   allItems.forEach(function(h,idx){
     if(h.type==='event'){
       var ICONS={buy:'&#127881;','cancel-open':'&#9888;&#65039;','cancel-done':'&#128683;','cancel-keep':'&#128274;'};
-      var timeHtml=h.noTime?'':'<span class="ce-time">'+esc(fmtTime(new Date(h.ts).toISOString()))+'</span>';
+      var timeHtml = h.pinned
+        ? '<span class="ce-time">日時不明</span>'
+        : (h.noTime?'':'<span class="ce-time">'+esc(fmtTime(new Date(h.ts).toISOString()))+'</span>');
 
       if(h.kind==='buy'){
         // 購入は商品情報付きのカードで表示
