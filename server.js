@@ -618,7 +618,14 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
     let order = null;
     const cachedOrder = orderByBuyer[lu];
     if (cachedOrder) {
-      order = ebayApi.formatOrder(cachedOrder);
+      // 一覧取得ではキャンセル詳細が空なので、個別取得で補完する
+      let full = cachedOrder;
+      if (cachedOrder.cancelStatus && cachedOrder.cancelStatus.cancelState
+          && cachedOrder.cancelStatus.cancelState !== 'NONE_REQUESTED') {
+        const detail = await ebayApi.getOrderDetail(cachedOrder.orderId).catch(() => null);
+        if (detail) full = detail;
+      }
+      order = ebayApi.formatOrder(full);
     } else if (debug) {
       order = await ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null);
     }
