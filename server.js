@@ -736,8 +736,10 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
       // 一覧取得ではキャンセル詳細が空なので、個別取得で補完する
       let full = cachedOrder;
       const cs = cachedOrder.cancelStatus || {};
-      const needDetail = cs.cancelState && cs.cancelState !== 'NONE_REQUESTED'
+      const hasCancel = cs.cancelState && cs.cancelState !== 'NONE_REQUESTED'
         && !(cs.cancelRequests && cs.cancelRequests.length);
+      // 納税者番号（CPF/RFC等）も getOrder でしか返らないので常に個別取得する
+      const needDetail = hasCancel || !cachedOrder.buyer || !cachedOrder.buyer.taxIdentifier;
       if (needDetail) {
         const detail = await ebayApi.getOrderDetail(cachedOrder.orderId).catch(e => {
           console.error('[buyer] getOrderDetail failed:', e && e.message);
