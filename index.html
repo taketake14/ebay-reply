@@ -1921,21 +1921,32 @@ function renderChatBubbles(){
     var bySeller=String(m.cancelRequestedBy||'').toUpperCase().indexOf('SELLER')>=0;
     var reqText = bySeller ? 'キャンセルを申請しました（自分から）' : 'キャンセルリクエストが届きました';
 
+    var closedTs=m.cancelClosedAt ? new Date(m.cancelClosedAt).getTime() : NaN;
+
     if(m.cancelKind==='open'){
-      var noTime=false;
-      if(isNaN(reqTs)){ reqTs=lastTsOf()+1000; noTime=true; }
-      var openText = bySeller ? 'キャンセルを申請しました（自分から・処理待ち）' : m.cancelLabel;
-      evts.push({type:'event',kind:'cancel-open',text:openText,ts:reqTs,ord:0,noTime:noTime});
-    } else {
-      // 決着済み：依頼と結果の2つを時系列に置く
+      // 未決着。日時が取れる場合のみチャットに挿入する
+      // （日時不明のものを末尾に置くと時系列を誤解させるため、状況欄のタグのみで示す）
       if(!isNaN(reqTs)){
-        evts.push({type:'event',kind:'cancel-open',text:reqText,ts:reqTs,ord:0});
+        var openText = bySeller ? 'キャンセルを申請しました（自分から）' : m.cancelLabel;
+        evts.push({type:'event',kind:'cancel-open',text:openText,ts:reqTs,ord:0});
       }
-      var xt=m.cancelClosedAt ? new Date(m.cancelClosedAt).getTime() : NaN;
-      var noTime2=false;
-      if(isNaN(xt)){ xt=lastTsOf()+2000; noTime2=true; }
+    } else {
+      // 決着済み
       var closedKind=(m.cancelKind==='keep')?'cancel-keep':'cancel-done';
-      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:xt,ord:1,noTime:noTime2});
+
+      // 依頼日時が無い場合は完了日時から逆算して直前に置く
+      var reqNoTime=false;
+      if(isNaN(reqTs)){
+        if(!isNaN(closedTs)){ reqTs=closedTs-1000; }
+        else { reqTs=lastTsOf()+1000; }
+        reqNoTime=true;
+      }
+      evts.push({type:'event',kind:'cancel-open',text:reqText,ts:reqTs,ord:0,noTime:reqNoTime});
+
+      // 完了日時が無い場合は依頼直後に置く（末尾に飛ばさない）
+      var closedNoTime=false;
+      if(isNaN(closedTs)){ closedTs=reqTs+1000; closedNoTime=true; }
+      evts.push({type:'event',kind:closedKind,text:m.cancelLabel,ts:closedTs,ord:1,noTime:closedNoTime});
     }
   }
 
