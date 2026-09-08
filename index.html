@@ -130,7 +130,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .list-cancel.closed{background:#fff;color:#64748b;border:1.5px solid #cbd5e1;}
 .list-cancel.keep{background:#fff;color:#047857;border:1.5px solid #6ee7b7;}
 
-.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#fff;color:#dc2626;border:1.5px solid #dc2626;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:2.5px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
+.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#fff;color:#0f766e;border:1.5px solid #5eead4;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:2.5px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
 
 
 .s1-row{position:relative;display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
@@ -334,7 +334,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-cancel-tag.open{background:#dc2626;color:#fff;}
 .mini-cancel-tag.closed{background:#fff;color:#64748b;border:1.2px solid #cbd5e1;}
 .mini-cancel-tag.keep{background:#fff;color:#047857;border:1.2px solid #6ee7b7;}
-.mini-sold-tag{display:block;width:56px;text-align:center;background:#fff;color:#dc2626;border:1.2px solid #dc2626;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
+.mini-sold-tag{display:block;width:56px;text-align:center;background:#fff;color:#0f766e;border:1.2px solid #5eead4;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
 
 .mini-thumb img{width:100%;height:100%;object-fit:contain;}
 .mini-info{flex:1;min-width:0;}
@@ -523,11 +523,24 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-kv-row .kv-v{flex:1;min-width:0;word-break:break-all;font-size:12.5px;color:#1d2939;font-weight:500;}
 
 /* 注文情報ブロック（薄い背景で1グループに見せる） */
+/* 出品情報の編集 */
+.prod-edit-bar{padding:8px 0 2px;}
+.prod-edit-btn{width:100%;background:#fff;border:1px dashed var(--border2);border-radius:7px;padding:7px;font-size:11.5px;color:var(--text2);cursor:pointer;font-family:var(--sans);transition:all 0.12s;}
+.prod-edit-btn:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;border-style:solid;}
+.listing-edit{display:none;background:#f8fafc;border:1px solid #e3e8ef;border-radius:9px;padding:11px;margin-top:7px;}
+.listing-edit.open{display:block;}
+.le-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.le-row label{font-size:11px;color:var(--text3);font-weight:600;min-width:62px;flex-shrink:0;}
+.le-row input{flex:1;min-width:0;border:1px solid var(--border2);border-radius:6px;padding:6px 9px;font-size:12.5px;font-family:var(--sans);outline:none;}
+.le-row input:focus{border-color:var(--teal);box-shadow:0 0 0 2px rgba(13,148,136,0.12);}
+.le-btns{display:flex;gap:6px;margin-top:9px;}
+.le-note{font-size:10px;color:#b45309;background:#fffaf0;border:1px solid #f0d49a;border-radius:5px;padding:4px 8px;margin-top:8px;}
+
 .qty-badge{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:5px;}
 .qty-ok{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;}
 .qty-low{background:#fffaf0;color:#8a5a12;border:1px solid #f0d49a;}
 .qty-out{background:#fef2f2;color:#b91c1c;border:1px solid #fca5a5;}
-.qty-sold{font-size:10.5px;color:var(--text3);margin-left:6px;}
+.qty-sold{font-size:11.5px;color:var(--text2);font-weight:600;margin-left:7px;}
 
 .order-id-row{padding:6px 0 !important;}
 .order-id{font-size:14.5px !important;font-weight:700 !important;letter-spacing:0.01em;font-family:var(--mono);}
@@ -545,7 +558,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-total .kv-k{font-weight:700;color:var(--text);}
 .prod-total .kv-v{font-weight:700;color:#dc2626;font-size:13px;}
 .unsold-tag{background:#f2f4f7;color:#667085;border:1px solid #e3e8ef;font-size:11px;font-weight:600;padding:2px 9px;border-radius:5px;letter-spacing:0.03em;}
-.sold-tag{background:#fff;color:#dc2626;border:1.5px solid #dc2626;font-size:11px;font-weight:800;padding:1.5px 9px;border-radius:5px;letter-spacing:0.04em;}
+.sold-tag{background:#fff;color:#0f766e;border:1.5px solid #5eead4;font-size:11px;font-weight:800;padding:1.5px 9px;border-radius:5px;letter-spacing:0.04em;}
 
 /* ===== バイヤー詳細：グループ表示 ===== */
 .bd-block{margin-bottom:10px;}
@@ -761,7 +774,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 <!-- グローバルヘッダー -->
 <div class="app-header">
-  <span class="app-logo">Repl<em>AI</em></span>
+  <span class="app-logo" onclick="backToList()" title="受信トレイに戻る" style="cursor:pointer;">Repl<em>AI</em></span>
   <div class="search-wrap">
     <span class="search-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.5 12.5L17 17"/></svg></span>
     <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / Item ID / SKU / 注文番号..." oninput="onSearch(this.value)">
@@ -922,19 +935,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
       <div class="panel-body" style="gap:0;padding:0;overflow-y:auto;">
 
         <!-- 商品セクション -->
-        <!-- バイヤー基本情報（常時表示・折りたたみ不可） -->
-        <div class="buyer-fixed">
-          <div class="buyer-panel-row">
-            <div class="buyer-panel-avatar" id="buyer-avatar"></div>
-            <div style="flex:1;min-width:0;">
-              <div class="buyer-panel-name" id="buyer-panel-name">—</div>
-              <div class="buyer-panel-sub" id="buyer-panel-sub"></div>
-            </div>
-            <button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー"></button>
-          </div>
-        </div>
-
-        <!-- メモセクション -->
         <div class="rp-section" id="rp-section-product">
           <div class="rp-section-hdr" onclick="toggleRpSection('product')">
             <span class="rp-section-title">&#128230; 商品</span>
@@ -950,6 +950,18 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           </div>
         </div>
 
+        <!-- バイヤー基本情報（常時表示・折りたたみ不可） -->
+        <div class="buyer-fixed">
+          <div class="buyer-panel-row">
+            <div style="flex:1;min-width:0;">
+              <div class="buyer-panel-name" id="buyer-panel-name">—</div>
+              <div class="buyer-panel-sub" id="buyer-panel-sub"></div>
+            </div>
+            <button class="cp-btn" id="cp-buyer-name" title="バイヤー名をコピー"></button>
+          </div>
+        </div>
+
+        <!-- メモセクション -->
         <!-- 配送先セクション -->
         <div class="rp-section" id="rp-section-ship">
           <div class="rp-section-hdr" onclick="toggleRpSection('ship')">
@@ -1682,6 +1694,16 @@ function renderChatDetail(){
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">出品価格</span><span class="kv-v" id="prod-price">—</span></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">在庫</span><span class="kv-v" id="prod-qty">—</span></div>';
 
+  kvHtml+='<div class="prod-edit-bar"><button class="prod-edit-btn" onclick="toggleListingEdit()" id="btn-listing-edit">&#9998; 数量・価格を編集</button></div>';
+  kvHtml+='<div class="listing-edit" id="listing-edit">'
+    +'<div class="le-row"><label>数量</label><input type="number" id="le-qty" min="0" placeholder="変更しない"></div>'
+    +'<div class="le-row"><label>価格 (USD)</label><input type="number" id="le-price" step="0.01" min="0" placeholder="変更しない"></div>'
+    +'<div class="le-btns">'
+      +'<button class="btn btn-primary" onclick="saveListingEdit()" id="btn-le-save">更新</button>'
+      +'<button class="btn btn-ghost" onclick="toggleListingEdit()">閉じる</button>'
+    +'</div>'
+    +'<div class="le-note">eBayの出品情報が実際に書き換わります</div>'
+  +'</div>';
   kvHtml+='<div id="order-inline"></div>';
   document.getElementById('prod-kv').innerHTML=kvHtml;
 
@@ -2257,6 +2279,63 @@ async function translateToEnglish(){
     btn.innerHTML='<span class="arrow-mark">&#10007;</span>';
     alert('翻訳エラー: '+e.message);
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
+  }
+}
+
+// ===== 出品情報の編集 =====
+function toggleListingEdit(){
+  var box=document.getElementById('listing-edit');
+  if(!box) return;
+  var open=box.classList.toggle('open');
+  if(open){
+    // 現在値をプレースホルダーに反映
+    var q=document.getElementById('prod-qty');
+    var p=document.getElementById('prod-price');
+    var qi=document.getElementById('le-qty');
+    var pi=document.getElementById('le-price');
+    if(qi){ qi.value=''; var qt=(q&&q.textContent||'').match(/\d+/); qi.placeholder=qt?('現在 '+qt[0]+' 個'):'変更しない'; }
+    if(pi){ pi.value=''; var pt=(p&&p.textContent||'').match(/[\d.]+/); pi.placeholder=pt?('現在 '+pt[0]):'変更しない'; }
+    if(qi) qi.focus();
+  }
+}
+
+async function saveListingEdit(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  if(!m||!m.itemId){ alert('Item IDがありません'); return; }
+  var qty=document.getElementById('le-qty').value.trim();
+  var price=document.getElementById('le-price').value.trim();
+  if(!qty && !price){ alert('数量か価格のどちらかを入力してください'); return; }
+
+  var msg='eBayの出品情報を変更します。\n\n商品: '+(m.item||m.itemId);
+  if(qty) msg+='\n数量 → '+qty+' 個';
+  if(price) msg+='\n価格 → $'+price;
+  msg+='\n\nよろしいですか？';
+  if(!confirm(msg)) return;
+
+  var btn=document.getElementById('btn-le-save');
+  var orig=btn.innerHTML;
+  btn.innerHTML='更新中...'; btn.disabled=true;
+  try{
+    var r=await fetch('/api/ebay/update-listing',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:m.itemId, quantity:qty||null, price:price||null})});
+    var d=await r.json();
+    if(d.ok){
+      btn.innerHTML='&#10003; 更新しました';
+      // 表示を更新
+      delete itemDetailCache[m.itemId];
+      setTimeout(function(){
+        loadItemDetail(m.itemId, currentIdx);
+        toggleListingEdit();
+        btn.innerHTML=orig; btn.disabled=false;
+      },1200);
+    } else {
+      btn.innerHTML=orig; btn.disabled=false;
+      alert('更新できませんでした:\n'+(d.error||'不明なエラー'));
+    }
+  }catch(e){
+    btn.innerHTML=orig; btn.disabled=false;
+    alert('通信エラー: '+e.message);
   }
 }
 
