@@ -640,6 +640,27 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
   }
 });
 
+// ===== 注文の生データ（納税者番号の調査用） =====
+app.get('/api/ebay/order-full/:orderId', async (req, res) => {
+  try {
+    const d = await ebayApi.getOrderDetail(req.params.orderId);
+    if (!d) return res.json({ ok: false, error: '取得できません' });
+    const li = (d.lineItems && d.lineItems[0]) || {};
+    res.json({
+      ok: true,
+      orderId: d.orderId,
+      buyerKeys: d.buyer ? Object.keys(d.buyer) : [],
+      buyer: d.buyer || null,
+      lineItemKeys: Object.keys(li),
+      ebayCollectAndRemitTax: d.ebayCollectAndRemitTax || null,
+      lineItemTaxes: li.ebayCollectAndRemitTaxes || li.taxes || null,
+      topKeys: Object.keys(d),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 注文番号・バイヤー名で注文を検索（メッセージがなくても引ける） =====
 app.get('/api/ebay/order-search', async (req, res) => {
   try {
