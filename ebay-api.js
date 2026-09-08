@@ -521,18 +521,37 @@ function escXml(s) {
 // Fulfillment API では buyer.taxIdentifier が返らないため
 const taxIdCache = {};
 let lastTradingRaw = '';
-async function getOrderExtras(orderId) {
+async function getOrderExtras(orderId, opts) {
   if (!orderId) return null;
   const key = String(orderId);
   if (taxIdCache[key] !== undefined) return taxIdCache[key];
   try {
     const token = await getAccessToken();
-    const xml = '<?xml version="1.0" encoding="utf-8"?>'
-      + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
-      + '<OrderIDArray><OrderID>' + escXml(key) + '</OrderID></OrderIDArray>'
-      + '<DetailLevel>ReturnAll</DetailLevel>'
-      + '<OrderRole>Seller</OrderRole>'
-      + '</GetOrdersRequest>';
+    // Trading APIのOrderIDは形式が違うため、SalesRecordNumber や期間検索で探す
+    // opts.recordNo があればそれを使い、無ければ購入日の前後で検索する
+    let xml;
+    if (opts && opts.recordNo) {
+      xml = '<?xml version="1.0" encoding="utf-8"?>'
+        + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+        + '<OrderIDArray><OrderID>' + escXml(String(opts.recordNo)) + '</OrderID></OrderIDArray>'
+        + '<DetailLevel>ReturnAll</DetailLevel>'
+        + '<OrderRole>Seller</OrderRole>'
+        + '</GetOrdersRequest>';
+    } else {
+      // 注文日の前後1日で検索して、該当する注文を絞り込む
+      const base = (opts && opts.orderDate) ? new Date(opts.orderDate) : new Date();
+      const from = new Date(base.getTime() - 36 * 3600 * 1000).toISOString();
+      const to = new Date(base.getTime() + 36 * 3600 * 1000).toISOString();
+      xml = '<?xml version="1.0" encoding="utf-8"?>'
+        + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+        + '<CreateTimeFrom>' + from + '</CreateTimeFrom>'
+        + '<CreateTimeTo>' + to + '</CreateTimeTo>'
+        + '<OrderRole>Seller</OrderRole>'
+        + '<OrderStatus>All</OrderStatus>'
+        + '<DetailLevel>ReturnAll</DetailLevel>'
+        + '<Pagination><EntriesPerPage>100</EntriesPerPage><PageNumber>1</PageNumber></Pagination>'
+        + '</GetOrdersRequest>';
+    }
     const res = await fetch('https://api.ebay.com/ws/api.dll', {
       method: 'POST',
       headers: {
@@ -546,11 +565,22 @@ async function getOrderExtras(orderId) {
     });
     const t = await res.text();
     lastTradingRaw = t.substring(0, 4000);
-    const pick = (re) => (t.match(re) || [])[1] || '';
+    // 期間検索の場合は、対象の注文だけを取り出す
+    let scope = t;
+    if (!(opts && opts.recordNo)) {
+      const blocks = t.split('<Order>').slice(1);
+      const hit = blocks.find(b => b.indexOf('>' + key + '<') >= 0
+        || (opts && opts.recordNo && b.indexOf('<ShippingDetails>') >= 0));
+      if (hit) scope = hit;
+      else if (blocks.length === 1) scope = blocks[0];
+      else scope = '';
+    }
+    const t2 = scope;
+    const pick = (re) => (t2.match(re) || [])[1] || '';
 
     // 納税者番号
     let taxId = null;
-    const block = (t.match(/<BuyerTaxIdentifier>([\s\S]*?)<\/BuyerTaxIdentifier>/) || [])[1];
+    const block = (t2.match(/<BuyerTaxIdentifier>([\s\S]*?)<\/BuyerTaxIdentifier>/) || [])[1];
     if (block) {
       const type = (block.match(/<Type>([^<]+)<\/Type>/) || [])[1] || '';
       const id = (block.match(/<ID>([^<]+)<\/ID>/) || [])[1] || '';
@@ -558,7 +588,7 @@ async function getOrderExtras(orderId) {
     }
 
     // 配送先（Fulfillment APIで伏せられる古い注文でも取れることがある）
-    const shipBlock = (t.match(/<ShippingAddress>([\s\S]*?)<\/ShippingAddress>/) || [])[1] || '';
+    const shipBlock = (t2.match(/<ShippingAddress>([\s\S]*?)<\/ShippingAddress>/) || [])[1] || '';
     const g = (re) => (shipBlock.match(re) || [])[1] || '';
     const address = shipBlock ? {
       name: g(/<Name>([^<]*)<\/Name>/),
