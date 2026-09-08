@@ -581,6 +581,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bd-total{border-top:1px solid var(--border2);margin-top:2px;padding-top:5px;font-weight:700;}
 .bd-total .bd-v{color:#dc2626;font-weight:700;}
 .bd-note{font-size:10px;color:var(--text3);}
+.tax-id{font-family:var(--mono);font-weight:600;letter-spacing:0.02em;}
 .bd-empty{font-size:12px;color:var(--text3);padding:4px 0;}
 .bd-addr .bd-v{line-height:1.6;}
 
@@ -2556,6 +2557,12 @@ async function loadBuyerDetail(buyer, idx){
         +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）">'+COPY_ICON+'</button></div>';
     }
     b4+=r('電話', info.phone, true);
+    // 納税者番号（CPF / RFC / CNPJ など）
+    if(info.taxId && info.taxId.id){
+      b4+='<div class="bd-row"><span class="bd-k">'+esc(info.taxId.label||'納税者番号')+'</span>'
+        +'<span class="bd-v tax-id">'+esc(info.taxId.id)+'</span>'
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.taxId.id)+'" title="コピー">'+COPY_ICON+'</button></div>';
+    }
     // バイヤーの登録情報
     if(info.registrationDate){
       var rd2=new Date(info.registrationDate);
