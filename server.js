@@ -546,6 +546,93 @@ app.get('/api/ebay/order-detail/:orderId', async (req, res) => {
   }
 });
 
+// ===== シート上の全会話をeBay APIから取り直して修復 =====
+// 会話一覧に出てこない古い会話も conversationId から直接取得する
+app.get('/api/ebay/repair-all', async (req, res) => {
+  try {
+    const seller = await ebayApi.getSellerUsername();
+    const SELF = String(seller || '').toLowerCase();
+    if (!SELF) return res.json({ ok: false, error: 'セラー名を取得できません' });
+
+    const sheetId = process.env.SHEET_ID;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O`;
+    const r = await fetch(getUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+    const data = await r.json();
+    const rows = data.values || [];
+    if (rows.length <= 1) return res.json({ ok: false, error: 'シートが空です' });
+
+    const headers = rows[0];
+    const convIdx = headers.indexOf('conversationId');
+    const histIdx = headers.indexOf('history');
+    const fromIdx = headers.indexOf('msgFrom');
+    if (convIdx < 0 || histIdx < 0) return res.json({ ok: false, error: '必要な列がありません' });
+
+    const limit = parseInt(req.query.limit) || 400;
+    let fixed = 0, skipped = 0, failed = 0;
+    const updates = [];
+
+    for (let i = 1; i < rows.length && (fixed + skipped + failed) < limit; i++) {
+      const cid = rows[i][convIdx];
+      if (!cid) { skipped++; continue; }
+      let detail = null;
+      try {
+        detail = await ebayApi.getConversation(cid);
+      } catch (e) { failed++; continue; }
+      const msgs = (detail && detail.messages) || [];
+      if (msgs.length === 0) { skipped++; continue; }
+
+      const sorted = msgs.slice().sort((a, b) =>
+        new Date(a.createdDate || 0) - new Date(b.createdDate || 0));
+      const isSelf = (u) => String(u || '').toLowerCase() === SELF;
+
+      // 最後のバイヤーメッセージを latest とし、それ以外を history に
+      let lastBuyerIdx = -1;
+      for (let k = sorted.length - 1; k >= 0; k--) {
+        if (!isSelf(sorted[k].senderUsername)) { lastBuyerIdx = k; break; }
+      }
+      const hist = sorted
+        .filter((_, k) => k !== lastBuyerIdx)
+        .map(mm => ({
+          from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
+          text: mm.messageBody || '',
+          time: mm.createdDate || '',
+        }));
+      const latestMsg = lastBuyerIdx >= 0 ? sorted[lastBuyerIdx] : sorted[sorted.length - 1];
+      const msgFrom = isSelf(latestMsg.senderUsername) ? 'me' : 'buyer';
+
+      const rowNum = i + 1;
+      const hCol = String.fromCharCode(65 + histIdx);
+      updates.push({ range: `シート1!${hCol}${rowNum}`, values: [[JSON.stringify(hist)]] });
+      if (fromIdx >= 0) {
+        const fCol = String.fromCharCode(65 + fromIdx);
+        updates.push({ range: `シート1!${fCol}${rowNum}`, values: [[msgFrom]] });
+      }
+      fixed++;
+    }
+
+    // まとめて書き込み
+    if (updates.length) {
+      const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`;
+      const br = await fetch(batchUrl, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valueInputOption: 'RAW', data: updates }),
+      });
+      if (!br.ok) {
+        const t = await br.text();
+        return res.json({ ok: false, error: '書込失敗: ' + t.substring(0, 200) });
+      }
+    }
+
+    res.json({ ok: true, seller, totalRows: rows.length - 1, fixed, skipped, failed,
+      note: 'conversationIdから直接取得して修復しました。ツールを再読み込みしてください。' });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 履歴の送信者情報をeBay APIの値で修復 =====
 app.get('/api/ebay/repair-history', async (req, res) => {
   try {
