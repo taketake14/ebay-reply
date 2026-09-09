@@ -546,6 +546,28 @@ app.get('/api/ebay/order-detail/:orderId', async (req, res) => {
   }
 });
 
+// ===== シートのヘッダーを確認 =====
+app.get('/api/sheet/headers', async (req, res) => {
+  try {
+    const sheetId = process.env.SHEET_ID;
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A1:O3`,
+      { headers: { 'Authorization': `Bearer ${token}` } });
+    const d = await r.json();
+    const rows = d.values || [];
+    res.json({
+      ok: true,
+      headers: rows[0] || [],
+      headerCount: (rows[0] || []).length,
+      row1: (rows[1] || []).map((v, i) => i + ':' + String(v).substring(0, 25)),
+      row2: (rows[2] || []).map((v, i) => i + ':' + String(v).substring(0, 25)),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== conversationId 単体の取得テスト =====
 app.get('/api/ebay/conv-raw/:cid', async (req, res) => {
   try {
@@ -583,11 +605,21 @@ app.get('/api/ebay/repair-all', async (req, res) => {
     const rows = data.values || [];
     if (rows.length <= 1) return res.json({ ok: false, error: 'シートが空です' });
 
-    const headers = rows[0];
-    const convIdx = headers.indexOf('conversationId');
-    const histIdx = headers.indexOf('history');
-    const fromIdx = headers.indexOf('msgFrom');
-    if (convIdx < 0 || histIdx < 0) return res.json({ ok: false, error: '必要な列がありません' });
+    const headers = rows[0].map(x => String(x || '').trim());
+    // 列名の表記ゆれに対応（大文字小文字・空白）
+    const findCol = (names) => {
+      for (const n of names) {
+        const i = headers.findIndex(hh => hh.toLowerCase() === n.toLowerCase());
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const convIdx = findCol(['conversationId', 'conversation_id', 'convId', 'L']);
+    const histIdx = findCol(['history', 'History', 'M']);
+    const fromIdx = findCol(['msgFrom', 'msg_from', 'from', 'N']);
+    if (convIdx < 0 || histIdx < 0) {
+      return res.json({ ok: false, error: '必要な列がありません', headers, convIdx, histIdx });
+    }
 
     const limit = parseInt(req.query.limit) || 400;
     let fixed = 0, skipped = 0, failed = 0;
