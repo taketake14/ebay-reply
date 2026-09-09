@@ -593,13 +593,20 @@ app.get('/api/ebay/repair-all', async (req, res) => {
     let fixed = 0, skipped = 0, failed = 0;
     const updates = [];
 
+    let noCid = 0, apiEmpty = 0, apiOk = 0;
+    const reasons = [];
     for (let i = 1; i < rows.length && (fixed + skipped + failed) < limit; i++) {
       const cid = rows[i][convIdx];
-      if (!cid) { skipped++; continue; }
+      if (!cid) { noCid++; skipped++; continue; }
       let detail = null;
       try {
         detail = await ebayApi.getConversation(cid);
-      } catch (e) { failed++; continue; }
+      } catch (e) {
+        failed++;
+        if (reasons.length < 5) reasons.push('cid=' + cid + ' err=' + e.message);
+        continue;
+      }
+      if ((detail && detail.messages || []).length > 0) apiOk++; else apiEmpty++;
       const msgs = (detail && detail.messages) || [];
       if (msgs.length === 0) {
         // eBayから取得できない古い会話は、シート内の同一会話の行から再構築する
@@ -680,6 +687,7 @@ app.get('/api/ebay/repair-all', async (req, res) => {
     }
 
     res.json({ ok: true, seller, totalRows: rows.length - 1, fixed, skipped, failed,
+      noCid, apiOk, apiEmpty, updates: updates.length, reasons,
       note: 'conversationIdから直接取得して修復しました。ツールを再読み込みしてください。' });
   } catch (e) {
     res.json({ ok: false, error: e.message });
