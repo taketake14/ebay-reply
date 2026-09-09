@@ -546,6 +546,36 @@ app.get('/api/ebay/order-detail/:orderId', async (req, res) => {
   }
 });
 
+// ===== 履歴の送信者情報をeBay APIの値で修復 =====
+app.get('/api/ebay/repair-history', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 90;
+    const ebayMsgs = await ebayApi.getMessagesForApp(days);
+    let fixed = 0, checked = 0;
+    const errors = [];
+
+    for (const em of ebayMsgs) {
+      checked++;
+      try {
+        const r = await refreshRowInSheet(em, false);
+        if (r !== false) fixed++;
+      } catch (e) {
+        errors.push(e.message);
+      }
+    }
+
+    res.json({
+      ok: true,
+      seller: await ebayApi.getSellerUsername(),
+      checked, fixed,
+      errors: errors.slice(0, 5),
+      note: 'eBay APIの送信者情報でシートの履歴を上書きしました',
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 同期履歴（取りこぼし監査用） =====
 app.get('/api/ebay/synclog', (req, res) => {
   res.json({
@@ -1012,6 +1042,7 @@ app.get('/api/ebay/sync', async (req, res) => {
 
       if (existsInSheet) {
         // 既にシートにある会話。新しいメッセージが来ていれば行を更新する
+        // （eBay APIの送信者情報が唯一の正しい情報源なので、常にAPI側で上書きする）
         if (force || newTs > savedTs) {
           try {
             const isNew = newTs > savedTs;
@@ -1085,19 +1116,50 @@ app.post('/api/ebay/reply', async (req, res) => {
 
     // 送信した返信をシートのhistoryに追記して永続化（結果を待って返す）
     let saved = null;
-    if (conversationId) {
+    let convId = conversationId;
+
+    // conversationIdが無い場合（注文検索から開いた新規の会話など）は
+    // 送信結果またはeBayの会話一覧から会話IDを引き当てる
+    if (!convId && buyer) {
       try {
-        saved = await updateHistoryInSheet(conversationId, {
+        convId = (result && (result.conversationId || result.conversationID)) || null;
+        if (!convId) {
+          // 送信直後の会話一覧から該当バイヤーの会話を探す
+          const convs = await ebayApi.getConversations(2, 50).catch(() => null);
+          const list = (convs && convs.conversations) || [];
+          const lb = String(buyer).toLowerCase();
+          const hit = list.find(cv => {
+            const lm = cv.latestMessage || {};
+            const u = (lm.senderUsername || lm.recipientUsername || '').toLowerCase();
+            return u === lb || String(cv.otherPartyUsername || '').toLowerCase() === lb;
+          });
+          if (hit) convId = hit.conversationId;
+        }
+      } catch (e) {
+        console.error('[reply] conversationId lookup:', e.message);
+      }
+    }
+
+    if (convId) {
+      try {
+        saved = await updateHistoryInSheet(convId, {
           from: 'me',
           text: messageText,
           time: new Date().toISOString(),
         });
+        // シートに行が無い場合は新規追加する
+        if (saved && saved.ok === false && /見つかりません|not found/i.test(saved.error || '')) {
+          saved = await appendNewConversationRow({
+            conversationId: convId, buyer, itemId, messageText,
+          }).catch(e => ({ ok: false, error: e.message }));
+        }
       } catch (e) {
         console.error('updateHistoryInSheet error:', e.message);
         saved = { ok: false, error: e.message };
       }
     } else {
-      saved = { ok: false, error: 'conversationIdなし' };
+      // 会話IDが特定できない場合でも、次回の同期で取り込まれるので致命的ではない
+      saved = { ok: true, note: '会話IDが未確定のため、次回の同期時に履歴へ反映されます' };
     }
 
     res.json({ ok: true, result, saved });
@@ -1106,6 +1168,38 @@ app.post('/api/ebay/reply', async (req, res) => {
     res.json({ ok: false, error: e.message });
   }
 });
+
+// 新規会話をシートに1行追加する
+async function appendNewConversationRow({ conversationId, buyer, itemId, messageText }) {
+  try {
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      return { ok: false, error: 'シート未設定' };
+    }
+    const token = await getGoogleAccessToken();
+    const sheetName = encodeURIComponent('シート1');
+    const now = new Date().toISOString();
+    const history = JSON.stringify([{ from: 'me', text: messageText, time: now }]);
+    const values = [[
+      now, buyer || '', '', messageText || '', '', '', itemId || '',
+      'true', 'false', 'true', '', conversationId, history, 'me', '',
+    ]];
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!A:O:append`
+      + '?valueInputOption=RAW&insertDataOption=INSERT_ROWS';
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values }),
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      return { ok: false, error: t.substring(0, 200) };
+    }
+    return { ok: true, appended: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
 
 // ===== シート上の既存conversationId一覧を取得 =====
 // conversationId -> シート上の最新timestamp を返す
@@ -1606,7 +1700,9 @@ app.get('/api/messages', async (req, res) => {
       const allHistory = [];
       uniqueRows.forEach((m, idx) => {
         if (m.history && m.history.length > 0) {
-          m.history.forEach(h => allHistory.push({ from: h.from, text: h.text, time: h.time || m.timestamp }));
+          m.history.forEach(h => {
+            allHistory.push({ from: h.from === 'me' ? 'me' : 'buyer', text: h.text, time: h.time || m.timestamp });
+          });
         }
         // 最後の行のmsgは latest として別途表示されるので、それ以外だけ履歴に入れる
         if (idx < uniqueRows.length - 1 && m.msg) {
@@ -1629,7 +1725,7 @@ app.get('/api/messages', async (req, res) => {
         buyer: thread.buyer,
         subject: latest.subject,
         msg: latest.msg,
-        msgFrom: latest.msgFrom || 'buyer',
+        msgFrom: latest.msgFrom === 'me' ? 'me' : 'buyer',
         history: dedupedHistory,
         item: (function(){
           const iid = thread.itemId || latest.itemId;
