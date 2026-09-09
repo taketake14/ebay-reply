@@ -1424,6 +1424,21 @@ function clearChatSelection(){
   if(rp) rp.classList.add('panel-idle');
   var nm=document.getElementById('d-name');
   if(nm) nm.textContent='—';
+
+  // 返信欄もクリアする（前の相手への文面が残ると誤送信につながる）
+  var ja=document.getElementById('d-input-ja');
+  var en=document.getElementById('d-reply');
+  if(ja) ja.value='';
+  if(en) en.value='';
+  clearedBackup=null;
+  var ub=document.getElementById('btn-undo-reply');
+  if(ub) ub.disabled=true;
+  var st=document.getElementById('d-status');
+  if(st){ st.className='reply-status'; st.textContent=''; }
+  var mi=document.getElementById('memo-input');
+  if(mi) mi.value='';
+  if(typeof updateMemoBar==='function') updateMemoBar('');
+  if(typeof updateMemoUI==='function') updateMemoUI();
   renderList();
   if(typeof renderMiniList==='function') renderMiniList();
 }
