@@ -554,13 +554,15 @@ app.get('/api/ebay/repair-history', async (req, res) => {
     let fixed = 0, checked = 0;
     const errors = [];
 
+    const missing = [];
     for (const em of ebayMsgs) {
       checked++;
       try {
         const r = await refreshRowInSheet(em, false);
         if (r !== false) fixed++;
+        else missing.push({ buyer: em.buyer, cid: em.conversationId });
       } catch (e) {
-        errors.push(e.message);
+        errors.push((em.buyer || '?') + ': ' + e.message);
       }
     }
 
@@ -568,6 +570,8 @@ app.get('/api/ebay/repair-history', async (req, res) => {
       ok: true,
       seller: await ebayApi.getSellerUsername(),
       checked, fixed,
+      notInSheet: missing.length,
+      missingSample: missing.slice(0, 10),
       errors: errors.slice(0, 5),
       note: 'eBay APIの送信者情報でシートの履歴を上書きしました',
     });
@@ -1273,11 +1277,39 @@ async function refreshRowInSheet(em, forceUnread) {
   const convIdx = headers.indexOf('conversationId');
   if (convIdx < 0) return;
 
-  let targetRow = -1;
+  // 同じ会話が複数行ある場合、最新行を更新し、それ以外の重複行は履歴を空にする
+  const matchRows = [];
   for (let i = rows.length - 1; i >= 1; i--) {
-    if ((rows[i][convIdx] || '') === String(em.conversationId)) { targetRow = i; break; }
+    if ((rows[i][convIdx] || '') === String(em.conversationId)) matchRows.push(i);
   }
-  if (targetRow < 0) return;
+  if (matchRows.length === 0) return false;
+  const targetRow = matchRows[0];   // 最新行
+
+  // 重複行の history / msg をクリアして二重表示を防ぐ
+  const histIdx0 = headers.indexOf('history');
+  const msgIdx0 = headers.indexOf('message');
+  if (matchRows.length > 1 && histIdx0 >= 0) {
+    for (let k = 1; k < matchRows.length; k++) {
+      const dupRow = matchRows[k] + 1;
+      const col = String.fromCharCode(65 + histIdx0);
+      try {
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${col}${dupRow}?valueInputOption=RAW`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ values: [['[]']] }),
+        });
+        if (msgIdx0 >= 0) {
+          const mcol = String.fromCharCode(65 + msgIdx0);
+          await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}!${mcol}${dupRow}?valueInputOption=RAW`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ values: [['']] }),
+          });
+        }
+      } catch (e) { console.error('[refresh] dup clear:', e.message); }
+    }
+    console.log('[refresh] 重複行をクリア:', em.conversationId, matchRows.length + '行');
+  }
 
   const rowNum = targetRow + 1;
   const existing = rows[targetRow];
@@ -1701,7 +1733,9 @@ app.get('/api/messages', async (req, res) => {
       uniqueRows.forEach((m, idx) => {
         if (m.history && m.history.length > 0) {
           m.history.forEach(h => {
-            allHistory.push({ from: h.from === 'me' ? 'me' : 'buyer', text: h.text, time: h.time || m.timestamp });
+            // fromが欠けている古いデータは表示しない（誤った向きで出るのを防ぐ）
+            if (h.from !== 'me' && h.from !== 'buyer') return;
+            allHistory.push({ from: h.from, text: h.text, time: h.time || m.timestamp });
           });
         }
         // 最後の行のmsgは latest として別途表示されるので、それ以外だけ履歴に入れる
