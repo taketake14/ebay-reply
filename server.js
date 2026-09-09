@@ -546,6 +546,26 @@ app.get('/api/ebay/order-detail/:orderId', async (req, res) => {
   }
 });
 
+// ===== conversationId 単体の取得テスト =====
+app.get('/api/ebay/conv-raw/:cid', async (req, res) => {
+  try {
+    const d = await ebayApi.getConversation(req.params.cid);
+    const msgs = (d && d.messages) || [];
+    res.json({
+      ok: true,
+      keys: d ? Object.keys(d) : [],
+      count: msgs.length,
+      sample: msgs.slice(0, 5).map(m => ({
+        sender: m.senderUsername || '(空)',
+        recipient: m.recipientUsername || '(空)',
+        body: (m.messageBody || '').substring(0, 40),
+      })),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== シート上の全会話をeBay APIから取り直して修復 =====
 // 会話一覧に出てこない古い会話も conversationId から直接取得する
 app.get('/api/ebay/repair-all', async (req, res) => {
@@ -581,7 +601,40 @@ app.get('/api/ebay/repair-all', async (req, res) => {
         detail = await ebayApi.getConversation(cid);
       } catch (e) { failed++; continue; }
       const msgs = (detail && detail.messages) || [];
-      if (msgs.length === 0) { skipped++; continue; }
+      if (msgs.length === 0) {
+        // eBayから取得できない古い会話は、シート内の同一会話の行から再構築する
+        const sameRows = [];
+        for (let j = 1; j < rows.length; j++) {
+          if ((rows[j][convIdx] || '') === String(cid)) sameRows.push(j);
+        }
+        if (sameRows.length === 0) { skipped++; continue; }
+
+        const tsIdx = headers.indexOf('timestamp');
+        const msgIdx = headers.indexOf('message');
+        const rebuilt = [];
+        sameRows.forEach(j => {
+          const rowFrom = (fromIdx >= 0 ? rows[j][fromIdx] : '') || '';
+          const text = msgIdx >= 0 ? (rows[j][msgIdx] || '') : '';
+          const time = tsIdx >= 0 ? (rows[j][tsIdx] || '') : '';
+          if (text) rebuilt.push({ from: rowFrom === 'me' ? 'me' : 'buyer', text, time });
+          // 既存historyのうち from が明示されているものだけ残す
+          try {
+            const oldHist = JSON.parse(rows[j][histIdx] || '[]');
+            oldHist.forEach(h => {
+              if (h && h.text && (h.from === 'me' || h.from === 'buyer')) {
+                rebuilt.push({ from: h.from, text: h.text, time: h.time || time });
+              }
+            });
+          } catch (e) {}
+        });
+        if (rebuilt.length === 0) { skipped++; continue; }
+
+        const rowNum0 = sameRows[sameRows.length - 1] + 1;
+        const hCol0 = String.fromCharCode(65 + histIdx);
+        updates.push({ range: `シート1!${hCol0}${rowNum0}`, values: [[JSON.stringify(rebuilt)]] });
+        fixed++;
+        continue;
+      }
 
       const sorted = msgs.slice().sort((a, b) =>
         new Date(a.createdDate || 0) - new Date(b.createdDate || 0));
