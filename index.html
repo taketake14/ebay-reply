@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>ReplAI</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJkZDRiZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBkOTQ4OCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNSIgZmlsbD0idXJsKCNyZykiLz4KPHBhdGggZD0iTTI4IDE4TDE0IDMwbDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNSAzMGgxOGExMyAxMyAwIDAgMSAxMyAxM3Y1IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -45,7 +46,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* ===== グローバルヘッダー ===== */
 .app-header{height:46px;background:var(--teal-deep);display:flex;align-items:center;padding:0 18px;gap:14px;flex-shrink:0;z-index:100;}
-.app-logo{font-size:15px;font-weight:700;color:#fff;letter-spacing:-0.01em;white-space:nowrap;}
+.app-logo{display:flex;align-items:center;gap:9px;font-size:16px;font-weight:700;color:#fff;letter-spacing:-0.01em;white-space:nowrap;}
+.logo-mark{flex-shrink:0;}
+.logo-text{line-height:1;}
 .app-logo em{color:var(--teal-mid);font-style:normal;}
 .search-wrap{position:relative;flex:1;max-width:420px;display:flex;align-items:center;}
 .search-icon{position:absolute;left:11px;color:#8fb3ae;display:flex;align-items:center;pointer-events:none;}
@@ -787,7 +790,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 <!-- ログイン -->
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">Repl<em>AI</em></div>
+    <svg width="72" height="72" viewBox="0 0 64 64" fill="none" style="margin-bottom:14px;"><rect width="64" height="64" rx="15" fill="#fff"/><path d="M28 18L14 30l14 12" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 30h18a13 13 0 0 1 13 13v5" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="login-logo">Repl<em>AI</em></div>
     <div class="login-sub">IDとパスワードを入力してください</div>
     <div class="login-field">
       <input type="email" id="id-input" placeholder="メールアドレス（ID）" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
@@ -803,7 +806,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 <!-- グローバルヘッダー -->
 <div class="app-header">
-  <span class="app-logo" onclick="backToList()" title="受信トレイに戻る" style="cursor:pointer;">Repl<em>AI</em></span>
+  <span class="app-logo" onclick="backToList()" title="受信トレイに戻る" style="cursor:pointer;"><svg class="logo-mark" width="26" height="26" viewBox="0 0 64 64" fill="none"><rect width="64" height="64" rx="15" fill="#fff"/><path d="M28 18L14 30l14 12" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 30h18a13 13 0 0 1 13 13v5" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="logo-text">Repl<em>AI</em></span></span>
   <div class="search-wrap">
     <span class="search-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.5 12.5L17 17"/></svg></span>
     <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / Item ID / SKU / 注文番号..." oninput="onSearch(this.value)">
