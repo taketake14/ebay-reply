@@ -1153,6 +1153,10 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
         }
       }
       order = ebayApi.formatOrder(full);
+      // 実際の注文件数でリピーター判定できるようにする
+      if (order && ordersByBuyerAll[lu]) {
+        order.orderCount = ordersByBuyerAll[lu].length;
+      }
 
       // 納税者番号・古い注文の配送先はTrading APIからしか取れない
       if (order && (!order.taxId || !order.addressLine1 || !order.name)) {
@@ -2003,7 +2007,17 @@ app.get('/api/messages', async (req, res) => {
           if (cached && cached.imageUrl) return cached.imageUrl;
           return thread.imgUrl || latest.imgUrl;
         })(),
-        sold: thread.sold || latest.sold || buyerOrderSet.has(String(thread.buyer||'').toLowerCase()),
+        sold: (function(){
+          const lu = String(thread.buyer || '').toLowerCase();
+          const itemId = String(thread.itemId || latest.itemId || '');
+          // 商品IDが分かる場合は、その商品を実際に購入しているかで判定する
+          if (itemId && ordersByBuyerAll[lu]) {
+            return ordersByBuyerAll[lu].some(o =>
+              (o.lineItems || []).some(li => String(li.legacyItemId || '') === itemId));
+          }
+          // 商品IDが無い古いデータは従来通りバイヤー単位で判定
+          return thread.sold || latest.sold || buyerOrderSet.has(lu);
+        })(),
         cancel: cancelByBuyer[String(thread.buyer||'').toLowerCase()] || null,
         timestamp: latest.timestamp,
         read: thread.read,
