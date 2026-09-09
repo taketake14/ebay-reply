@@ -2893,15 +2893,20 @@ async function loadBuyerDetail(buyer, idx){
     slot.innerHTML=h;
   }
 
-  if(buyerDetailCache[buyer]!==undefined){ render(buyerDetailCache[buyer]); return; }
+  // 同じバイヤーでも商品が違えば別の注文なので、商品IDをキャッシュキーに含める
+  var mCur=messages[idx];
+  var itemKey=(mCur&&mCur.itemId)||'';
+  var cacheKey=buyer+'|'+itemKey;
+  if(buyerDetailCache[cacheKey]!==undefined){ render(buyerDetailCache[cacheKey]); return; }
 
   try{
-    var r=await fetch('/api/ebay/buyer/'+encodeURIComponent(buyer));
+    var url='/api/ebay/buyer/'+encodeURIComponent(buyer)+(itemKey?('?itemId='+encodeURIComponent(itemKey)):'');
+    var r=await fetch(url);
     var d=await r.json();
-    buyerDetailCache[buyer]=d.buyer||null;
+    buyerDetailCache[cacheKey]=d.buyer||null;
     render(d.buyer||null);
   }catch(e){
-    buyerDetailCache[buyer]=null;
+    buyerDetailCache[cacheKey]=null;
     render(null);
   }
 }
