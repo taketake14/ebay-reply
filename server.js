@@ -291,6 +291,7 @@ let buyerSetUpdatedAt = 0;
 let orderByBuyer = {};   // username(lower) -> 注文オブジェクト（最新）
 let cancelByBuyer = {};  // username(lower) -> キャンセル情報
 let buyerByOrderId = {}; // orderId -> username(lower)
+let ordersByBuyerAll = {}; // username(lower) -> 注文の配列（全件）
 
 // Post-Order APIからキャンセル一覧を取得し、バイヤー単位のマップを作る
 async function refreshCancelMap() {
@@ -362,6 +363,9 @@ async function refreshBuyerSet() {
         // 注文IDからバイヤーを引けるようにする（キャンセル紐付け用）
         if (o.orderId) buyerByOrderId[o.orderId] = lu;
         if (o.legacyOrderId) buyerByOrderId[o.legacyOrderId] = lu;
+        // 商品ごとの照合用に全注文を保持
+        if (!ordersByBuyerAll[lu]) ordersByBuyerAll[lu] = [];
+        if (!ordersByBuyerAll[lu].some(x => x.orderId === o.orderId)) ordersByBuyerAll[lu].push(o);
       });
       if (batch.length < 200) break;
       offset += 200;
@@ -1097,8 +1101,19 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
     // 軽いGetUserを先に取得。注文情報は購入者リストに載っている場合のみ取りに行く
     const user = await ebayApi.getUserInfo(uname).catch(() => null);
     const lu = String(uname).toLowerCase();
+    const wantItemId = String(req.query.itemId || '').trim();
     let order = null;
-    const cachedOrder = orderByBuyer[lu];
+    let cachedOrder = orderByBuyer[lu];
+
+    // 商品IDが指定されている場合、その商品の注文を優先して探す
+    // （同じバイヤーが複数商品を問い合わせるケースで混同しないように）
+    if (wantItemId && ordersByBuyerAll[lu]) {
+      const hit = ordersByBuyerAll[lu].find(o =>
+        (o.lineItems || []).some(li => String(li.legacyItemId || '') === wantItemId));
+      if (hit) cachedOrder = hit;
+      else cachedOrder = null;   // その商品は購入されていない
+    }
+
     if (cachedOrder) {
       // 一覧取得ではキャンセル詳細が空なので、個別取得で補完する
       let full = cachedOrder;
@@ -1886,12 +1901,15 @@ app.get('/api/messages', async (req, res) => {
     rawMessages.length = 0;
     Array.prototype.push.apply(rawMessages, deduped);
 
-    // ===== 同一バイヤーをスレッドにまとめる =====
+    // ===== 会話ごとにスレッドをまとめる =====
+    // eBayは商品ごとに別会話なので、conversationId を優先してキーにする。
+    // 同じバイヤーでも別商品の問い合わせは別スレッドとして扱う。
     const threadMap = {};
     rawMessages.forEach(m => {
-      // バイヤー名を正規化（前後空白・不可視文字・引用符を除去）
-      const key = String(m.buyer || '').toLowerCase().replace(/[\s\u200b-\u200f"'`]/g, '').trim();
-      if (!key) return;
+      const buyerKey = String(m.buyer || '').toLowerCase().replace(/[\s\u200b-\u200f"'`]/g, '').trim();
+      if (!buyerKey) return;
+      // conversationId があればそれを、無ければバイヤー名でまとめる（古いデータ用）
+      const key = m.conversationId ? ('c:' + m.conversationId) : ('b:' + buyerKey);
       if (!threadMap[key]) {
         threadMap[key] = { ...m, threadMessages: [m], sold: m.sold };
       } else {
