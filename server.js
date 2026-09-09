@@ -712,6 +712,18 @@ app.get('/api/ebay/repair-all', async (req, res) => {
         const fCol = String.fromCharCode(65 + fromIdx);
         updates.push({ range: `シート1!${fCol}${rowNum}`, values: [[msgFrom]] });
       }
+      // message列も最新メッセージで揃える（履歴と食い違うと吹き出しがずれる）
+      const msgIdx2 = findCol(['message', 'msg']);
+      if (msgIdx2 >= 0) {
+        const mCol = String.fromCharCode(65 + msgIdx2);
+        updates.push({ range: `シート1!${mCol}${rowNum}`, values: [[latestMsg.messageBody || '']] });
+      }
+      // timestamp も最新メッセージの時刻に
+      const tsIdx2 = findCol(['timestamp']);
+      if (tsIdx2 >= 0 && latestMsg.createdDate) {
+        const tCol = String.fromCharCode(65 + tsIdx2);
+        updates.push({ range: `シート1!${tCol}${rowNum}`, values: [[latestMsg.createdDate]] });
+      }
       fixed++;
     }
 
@@ -1950,7 +1962,13 @@ app.get('/api/messages', async (req, res) => {
         buyer: thread.buyer,
         subject: latest.subject,
         msg: latest.msg,
-        msgFrom: latest.msgFrom === 'me' ? 'me' : 'buyer',
+        msgFrom: (function(){
+          if (latest.msgFrom === 'me') return 'me';
+          // 履歴の中に同じ本文があり、それが自分の送信ならmeに揃える
+          const same = dedupedHistory.find(h => h.text && h.text === latest.msg);
+          if (same && same.from === 'me') return 'me';
+          return 'buyer';
+        })(),
         history: dedupedHistory,
         item: (function(){
           const iid = thread.itemId || latest.itemId;
