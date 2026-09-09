@@ -470,6 +470,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .btn-ai2{background:#fff;color:#0d9488;border:1.5px solid #5eead4;font-weight:700;}
 .btn-clear{background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
 .btn-clear:hover{background:#fef2f2;border-color:#fca5a5;color:#dc2626;}
+.h-adjust{display:flex;gap:3px;margin-left:8px;padding-left:8px;border-left:1px solid var(--border);}
+.h-btn{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid var(--border2);background:#fff;color:var(--text3);border-radius:6px;cursor:pointer;transition:all 0.12s;}
+.h-btn:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;}
+.h-btn:active{transform:scale(0.92);}
 .btn-undo{margin-left:auto;background:#fff;color:var(--text2);border:1px solid var(--border2);font-weight:600;}
 .btn-undo:hover:not(:disabled){background:#f0fdfa;border-color:#5eead4;color:var(--teal);}
 .btn-undo:disabled{opacity:0.4;cursor:not-allowed;}
@@ -1036,6 +1040,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
           </select>
           <button class="btn btn-undo" onclick="undoReplyClear()" id="btn-undo-reply" title="クリア前の内容に戻す" disabled>&#8630; 戻す</button>
           <button class="btn btn-clear" onclick="clearReplyFields()" id="btn-clear-reply" title="日本語・英語の入力欄を空にする">&#10005; クリア</button>
+          <div class="h-adjust">
+            <button class="h-btn" onclick="expandReplyArea()" title="返信欄を最大にする">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M3.5 7.5L8 3l4.5 4.5"/></svg>
+            </button>
+            <button class="h-btn" onclick="collapseReplyArea()" title="返信欄を最小にする">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10M3.5 8.5L8 13l4.5-4.5"/></svg>
+            </button>
+          </div>
         </div>
         <div class="reply-split">
           <!-- 左：日本語 -->
@@ -1654,6 +1666,7 @@ function setMiniFilter(f,btn){
   miniFilter=f;
   document.querySelectorAll('#s2-side .side-filter').forEach(function(b){b.classList.remove('on');});
   if(btn) btn.classList.add('on');
+  clearChatSelection();   // 条件が変わるので選択を解除する
   renderMiniList();
 }
 function getMiniFiltered(){
