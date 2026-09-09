@@ -184,8 +184,13 @@ async function getMessagesForApp(daysBack) {
   const convs = await getConversations(daysBack, 50);
   const list = (convs && convs.conversations) || [];
   const out = [];
-  const SELF = String(process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142').toLowerCase();
-  const isSelf = (u) => String(u || '').toLowerCase() === SELF;
+  // ログイン中のセラー名をAPIから取得（固定値に依存しない）
+  const sellerName = await getSellerUsername();
+  const SELF = String(sellerName || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
+  const isSelf = (u) => {
+    const s = String(u || '').toLowerCase();
+    return !!s && !!SELF && s === SELF;
+  };
 
   for (let i = 0; i < list.length; i++) {
     const c = list[i];
@@ -234,8 +239,13 @@ async function getMessagesForApp(daysBack) {
           ts = sorted[lastBuyerIdx].createdDate || ts;
           // それ以外すべて（自分の返信を含む）を history に。自分の返信が後にあってもここに残る
           history = sorted.filter(function(_, k) { return k !== lastBuyerIdx; }).map(function(mm) {
+            // senderUsername が空の場合は受信者から逆算する
+            var isMine = isSelf(mm.senderUsername);
+            if (!mm.senderUsername && mm.recipientUsername) {
+              isMine = !isSelf(mm.recipientUsername);
+            }
             return {
-              from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
+              from: isMine ? 'me' : 'buyer',
               text: mm.messageBody || '',
               time: mm.createdDate || '',
             };
@@ -515,6 +525,42 @@ async function getItemInfo(legacyItemId) {
 function escXml(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+// ===== ログイン中のセラー名を取得（誰が使っても正しく判定するため） =====
+let cachedSellerName = null;
+async function getSellerUsername() {
+  if (cachedSellerName) return cachedSellerName;
+  try {
+    const token = await getAccessToken();
+    const xml = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<GetUserRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+      + '<DetailLevel>ReturnSummary</DetailLevel>'
+      + '</GetUserRequest>';
+    const res = await fetch('https://api.ebay.com/ws/api.dll', {
+      method: 'POST',
+      headers: {
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+        'X-EBAY-API-CALL-NAME': 'GetUser',
+        'X-EBAY-API-IAF-TOKEN': token,
+        'Content-Type': 'text/xml',
+      },
+      body: xml,
+    });
+    const t = await res.text();
+    const u = (t.match(/<UserID>([^<]+)<\/UserID>/) || [])[1];
+    if (u) {
+      cachedSellerName = u;
+      console.log('[seller] ログイン中のセラー:', u);
+      return u;
+    }
+  } catch (e) {
+    console.error('getSellerUsername error:', e.message);
+  }
+  // 取得できない場合は環境変数にフォールバック
+  cachedSellerName = process.env.EBAY_SELLER_USERNAME || '';
+  return cachedSellerName;
 }
 
 // ===== Trading API GetOrders で納税者番号を取得 =====
@@ -1413,6 +1459,7 @@ module.exports = {
   cancelReasonLabel: cancelReasonLabel,
   extractTaxId: extractTaxId,
   getOrderExtras: getOrderExtras,
+  getSellerUsername: getSellerUsername,
   getLastTradingRaw: function(){ return lastTradingRaw; },
   getLastTradingRaw: () => lastTradingRaw,
   getOrderDetail: getOrderDetail,
