@@ -627,9 +627,20 @@ app.get('/api/ebay/repair-all', async (req, res) => {
 
     let noCid = 0, apiEmpty = 0, apiOk = 0;
     const reasons = [];
-    for (let i = 1; i < rows.length && (fixed + skipped + failed) < limit; i++) {
+
+    // conversationId を持つ行だけを対象にする（古いGmail取り込み行は列が無い）
+    const targetIdx = [];
+    for (let i = 1; i < rows.length; i++) {
+      if (rows[i][convIdx]) targetIdx.push(i);
+    }
+    noCid = (rows.length - 1) - targetIdx.length;
+
+    // 新しい行から処理する
+    targetIdx.reverse();
+
+    for (const i of targetIdx) {
+      if ((fixed + skipped + failed) >= limit) break;
       const cid = rows[i][convIdx];
-      if (!cid) { noCid++; skipped++; continue; }
       let detail = null;
       try {
         detail = await ebayApi.getConversation(cid);
