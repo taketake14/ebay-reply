@@ -533,9 +533,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .id-fb{font-size:11px;font-weight:600;color:#475467;background:#f2f4f7;padding:1px 6px;border-radius:10px;white-space:nowrap;}
 .repeat-tag{font-size:10px;font-weight:700;color:#8a5a12;background:#fffaf0;border:1px solid #f0d49a;padding:1px 7px;border-radius:4px;white-space:nowrap;}
 
-/* 購入履歴 */
+.bd-card{margin-top:8px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+
+/* 購入履歴（独立した枠） */
+.ph-sec{margin-top:8px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.ph-sec-hdr{background:#f7fdfc;padding:7px 11px;font-size:10.5px;font-weight:700;color:#12554e;border-bottom:1px solid #d5efeb;}
 .bd-history{align-items:flex-start;}
-.ph-box{background:#f8fafc;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.ph-box{background:#fff;}
 .ph-row{padding:7px 9px;border-bottom:1px solid #eef2f6;}
 .ph-row:last-child{border-bottom:none;}
 .ph-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;}
@@ -606,7 +610,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bd-block:last-child{margin-bottom:0;}
 .bd-block-t{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.06em;padding:3px 0 4px;border-bottom:1px solid var(--border2);margin-bottom:4px;}
 /* バイヤー詳細も商品パネルと同じテーブル形式に揃える */
-.bd-row{display:flex;align-items:center;gap:8px;padding:0;min-height:32px;border-bottom:1px solid #f1f5f9;font-size:11.5px;}
+.bd-row{display:flex;align-items:center;gap:8px;padding:0 11px;min-height:32px;border-bottom:1px solid #f1f5f9;font-size:11.5px;}
 .bd-row:last-child{border-bottom:none;}
 .bd-k{flex-shrink:0;width:72px;color:#94a3b8;font-size:10px;font-weight:600;}
 .bd-v{flex:1;min-width:0;color:var(--text);word-break:break-word;}
@@ -657,11 +661,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .rp-toggle-icon{font-size:10px;color:var(--text3);transition:transform 0.15s;}
 .rp-toggle-icon.closed{transform:rotate(-90deg);}
 .rp-section-body{padding:0;display:flex;flex-direction:column;gap:0;min-width:0;overflow:hidden;}
+/* メモセクションだけは余白を持たせる */
+#rp-body-memo{padding:11px 12px;gap:9px;}
 /* 画像・商品名・その他の直接要素には余白を付ける（kv行は全幅にする） */
 .rp-section-body > .prod-img-wrap,
 .rp-section-body > .prod-name-row,
 .rp-section-body > .cancel-alert,
-.rp-section-body > .buyer-links{margin:10px 12px 0;max-width:calc(100% - 24px);box-sizing:border-box;}
+.rp-section-body > .buyer-links{margin-bottom:10px;margin:10px 12px 0;max-width:calc(100% - 24px);box-sizing:border-box;}
 .rp-section-body > .prod-kv,
 .rp-section-body > .buyer-detail-box{margin-top:8px;}
 .rp-section-body.hidden{display:none;}
@@ -703,7 +709,7 @@ a.kv-v:hover{text-decoration:underline;}
 .buyer-panel-avatar{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0;}
 .buyer-panel-name{font-size:14px;font-weight:600;color:var(--text);}
 
-.buyer-links{display:flex;flex-direction:column;gap:6px;}
+.buyer-links{margin-bottom:10px;display:flex;flex-direction:column;gap:6px;}
 .buyer-link-chip{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--bg3);text-decoration:none;color:var(--accent);font-size:11px;font-weight:500;}
 .buyer-link-chip:hover{background:var(--accent-light);border-color:var(--accent);}
 
@@ -1978,8 +1984,9 @@ function renderChatDetail(){
   var linksHtml='';
 
   // バイヤー詳細情報（eBay APIから取得）
-  linksHtml+='<div id="buyer-detail" style="margin-top:8px;padding:9px 11px;background:var(--bg3);border-radius:8px;border:1px solid var(--border);">'
-    +'<div style="font-size:11px;color:var(--text3);font-weight:600;">読み込み中...</div></div>';
+  linksHtml+='<div id="buyer-detail" class="bd-card">'
+    +'<div style="font-size:11px;color:var(--text3);font-weight:600;padding:9px 11px;">読み込み中...</div></div>';
+  linksHtml+='<div id="purchase-history-slot"></div>';
 
   document.getElementById('buyer-links').innerHTML=linksHtml;
   loadBuyerDetail(m.buyer, currentIdx);
@@ -2871,6 +2878,19 @@ async function loadBuyerDetail(buyer, idx){
       b4+=r('eBay登録', rd2.toLocaleDateString('ja-JP')+(yy>0?'（'+yy+'年）':''), false);
     }
 
+    // 納税者番号（CPF / RFC / CNPJ など）
+    if(info.taxId && info.taxId.id){
+      b4+='<div class="bd-row"><span class="bd-k">'+esc(info.taxId.label||'納税者番号')+'</span>'
+        +'<span class="bd-v tax-id">'+esc(info.taxId.id)+'</span>'
+        +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(info.taxId.id)+'" title="コピー">'+COPY_ICON+'</button></div>';
+    }
+    // バイヤーの登録情報
+    if(info.registrationDate){
+      var rd2=new Date(info.registrationDate);
+      var yy=Math.floor((Date.now()-rd2.getTime())/(365.25*86400000));
+      b4+=r('eBay登録', rd2.toLocaleDateString('ja-JP')+(yy>0?'（'+yy+'年）':''), false);
+    }
+
     // 過去の購入履歴（今開いている注文は重複するので除く）
     if(info.purchaseHistory && info.purchaseHistory.length){
       var curOrder=String(info.orderId||'');
@@ -2953,6 +2973,29 @@ async function loadBuyerDetail(buyer, idx){
     }
 
     slot.innerHTML=h;
+
+    // 購入履歴は別枠にして、バイヤー枠の下に置く
+    var hslot=document.getElementById('purchase-history-slot');
+    if(hslot){
+      var curOrder=String(info.orderId||'');
+      var past=(info.purchaseHistory||[]).filter(function(o){ return String(o.orderId||'')!==curOrder; });
+      if(past.length){
+        var ph='<div class="ph-sec"><div class="ph-sec-hdr">購入履歴 '+past.length+'件</div><div class="ph-box">';
+        past.forEach(function(o){
+          var dt=o.date?new Date(o.date).toLocaleDateString('ja-JP',{year:'2-digit',month:'numeric',day:'numeric'}):'';
+          ph+='<div class="ph-row">'
+            +'<div class="ph-top"><span class="ph-date">'+esc(dt)+'</span>'
+              +(o.total?'<span class="ph-price">'+esc(o.total)+'</span>':'')+'</div>'
+            +'<div class="ph-title">'+esc(o.title||'（商品名なし）')+(o.qty>1?' ×'+o.qty:'')+'</div>'
+            +(o.orderId?'<div class="ph-oid">'+esc(o.orderId)+'</div>':'')
+          +'</div>';
+        });
+        ph+='</div></div>';
+        hslot.innerHTML=ph;
+      } else {
+        hslot.innerHTML='';
+      }
+    }
   }
 
   // 同じバイヤーでも商品が違えば別の注文なので、商品IDをキャッシュキーに含める
