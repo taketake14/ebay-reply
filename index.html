@@ -521,13 +521,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s2-right-panel::-webkit-scrollbar-thumb:hover{background:var(--text3);}
 .rp-section{border-bottom:1px solid var(--border);flex-shrink:0;}
 
-/* ===== 左パネル：コピーボタン ===== */
-.cp-btn{flex-shrink:0;width:24px;height:24px;padding:0;border:1px solid transparent;background:transparent;border-radius:5px;cursor:pointer;color:var(--text3);display:flex;align-items:center;justify-content:center;opacity:0.45;transition:all 0.13s;}
-.cp-btn:hover{opacity:1;background:var(--accent-light);border-color:#99f6e4;color:var(--accent);}
-.cp-btn:active{transform:scale(0.92);}
-.cp-btn.done{background:#dcfce7;border-color:#86efac;color:#16a34a;opacity:1;}
-.cp-btn svg{display:block;}
-
 .buyer-panel-row{display:flex;align-items:center;gap:9px;}
 .buyer-panel-sub{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;}
 .sub-country{font-size:12px;font-weight:600;color:var(--text);}
@@ -538,7 +531,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .id-fb{font-size:11px;font-weight:600;color:#475467;background:#f2f4f7;padding:1px 6px;border-radius:10px;white-space:nowrap;}
 .repeat-tag{font-size:10px;font-weight:700;color:#8a5a12;background:#fffaf0;border:1px solid #f0d49a;padding:1px 7px;border-radius:4px;white-space:nowrap;}
 
-.bd-card{margin-top:8px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+/* 全幅の帯として表示する。左右に枠線があるとその分だけ中身がズレるため上下だけにする */
+.bd-card{margin-top:8px;background:#fff;border:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0;overflow:hidden;}
 
 /* 購入履歴（独立した枠） */
 .ph-sec{margin-top:8px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
@@ -560,11 +554,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .prod-name-row{display:flex;align-items:flex-start;gap:6px;}
 .prod-name-row .prod-name{flex:1;min-width:0;}
-
-/* 商品パネルの行：罫線をなくしてラベルを薄く小さく */
-.prod-kv-row{display:flex;align-items:baseline;gap:8px;padding:4px 0;border:none;}
-.prod-kv-row .kv-k{flex-shrink:0;min-width:66px;font-size:10.5px;color:#98a2b3;font-weight:500;letter-spacing:0.02em;}
-.prod-kv-row .kv-v{flex:1;min-width:0;word-break:break-all;font-size:12.5px;color:#1d2939;font-weight:500;}
 
 /* 注文情報ブロック（薄い背景で1グループに見せる） */
 /* 出品情報の編集 */
@@ -676,8 +665,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 画像・商品名・その他の直接要素には余白を付ける（kv行は全幅にする） */
 .rp-section-body > .prod-img-wrap,
 .rp-section-body > .prod-name-row,
-.rp-section-body > .cancel-alert,
-.rp-section-body > .buyer-links{margin-bottom:10px;margin:10px 12px 0;max-width:calc(100% - 24px);box-sizing:border-box;}
+.rp-section-body > .cancel-alert{margin-bottom:10px;margin:10px 12px 0;max-width:calc(100% - 24px);box-sizing:border-box;}
+/* バイヤー詳細は商品セクションの行と同じく全幅にする。
+   ここに左右の余白を付けると、行の中のコピーボタンが商品セクションとズレる */
+.rp-section-body > .buyer-links{margin:10px 0 0;max-width:100%;box-sizing:border-box;}
 .rp-section-body > .prod-kv,
 .rp-section-body > .buyer-detail-box{margin-top:8px;}
 .rp-section-body.hidden{display:none;}
@@ -685,28 +676,28 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 .panel-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}
 
-/* ===== B案：テーブル型パネル ===== */
+/* 右パネルの項目行。商品セクション(.prod-kv-row)とバイヤー詳細(.bd-row)で
+   左右の余白を必ず同じにする。ここが揃っていないと右端のコピーボタンが
+   セクションごとに縦一直線にならない。左右の余白は12pxで統一。
+   ※ 同じクラス名の定義を複数箇所に書かないこと（後から書いた方が勝って崩れる） */
 .prod-kv-row{display:flex;align-items:center;gap:10px;padding:7px 12px;min-height:34px;border-bottom:1px solid #f1f5f9;box-sizing:border-box;}
 .prod-kv-row:last-child{border-bottom:none;}
 .kv-k{font-size:10px;color:#94a3b8;font-weight:600;width:66px;flex-shrink:0;letter-spacing:0.01em;line-height:1.4;}
 .kv-v{flex:1;min-width:0;font-size:11.5px;color:var(--text);word-break:break-word;line-height:1.5;}
 .kv-v.link,a.kv-v{color:var(--teal);font-weight:700;text-decoration:none;font-family:var(--mono);font-size:12px;}
 a.kv-v:hover{text-decoration:underline;}
-.cp-btn{flex-shrink:0;width:24px;height:24px;border:1px solid var(--border);background:#fff;border-radius:5px;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.12s;}
-.cp-btn:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;}
-.cp-btn svg{width:12px;height:12px;}
+/* コピーボタン。定義はここ1か所だけにする（複数箇所に書くと打ち消し合って崩れる） */
+.cp-btn{flex-shrink:0;width:24px;height:24px;padding:0;border:1px solid var(--border);background:#fff;border-radius:5px;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;opacity:0.45;transition:all 0.12s;}
+.cp-btn:hover{opacity:1;border-color:var(--teal);color:var(--teal);background:#f0fdfa;}
+.cp-btn:active{transform:scale(0.92);}
+.cp-btn.done{background:#dcfce7;border-color:#86efac;color:#16a34a;opacity:1;}
+.cp-btn svg{display:block;width:12px;height:12px;}
 
 /* 商品パネル */
 .prod-img-wrap{width:100%;height:150px;flex-shrink:0;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border);overflow:hidden;}
 .prod-img-wrap img{width:100%;height:100%;object-fit:contain;}
 .prod-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.5;}
 .prod-kv{display:flex;flex-direction:column;gap:0;}
-.prod-kv-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);}
-.prod-kv-row:last-child{border-bottom:none;}
-.kv-k{font-size:12px;color:var(--text2);font-weight:500;}
-.kv-v{font-size:13px;font-weight:600;color:var(--text);}
-.kv-v.link{color:var(--accent);cursor:pointer;text-decoration:none;}
-.kv-v.link:hover{text-decoration:underline;}
 .copy-chips-section{display:flex;flex-direction:column;gap:6px;}
 .copy-chips-label{font-size:11px;color:var(--text2);font-weight:600;}
 .copy-chips{display:flex;flex-wrap:wrap;gap:5px;}
