@@ -638,7 +638,7 @@ async function getOrderExtras(orderId, opts) {
           body: xml,
         });
         const t = await res.text();
-        lastTradingRaw = t.substring(0, 4000);
+        lastTradingRaw = t.substring(0, 20000);
 
         const blocks = t.split('<Order>').slice(1);
         const hit = blocks.find(b => b.indexOf('>' + key + '<') >= 0);
@@ -661,7 +661,7 @@ async function getOrderExtras(orderId, opts) {
     if (block) {
       const type = (block.match(/<Type>([^<]+)<\/Type>/) || [])[1] || '';
       const id = (block.match(/<ID>([^<]+)<\/ID>/) || [])[1] || '';
-      if (id) taxId = { id, type, label: taxIdLabel(type), country: '', kind: 'buyer' };
+      if (id) taxId = { id, type, label: taxIdLabel(type, id), country: '', kind: 'buyer' };
     }
 
     // 配送先（Fulfillment APIで伏せられる古い注文でも取れることがある）
@@ -883,9 +883,27 @@ const TAX_ID_LABELS = {
   RUT: 'RUT', VATIN: 'VAT', CodiceFiscale: 'Codice Fiscale',
   TRN: 'TRN',
 };
-function taxIdLabel(t) {
-  if (!t) return '納税者番号';
-  return TAX_ID_LABELS[t] || t;
+// eBayのTradingAPIは、対応表に無い種類の番号を一律 CustomCode として返す。
+// そのままだと画面に「CustomCode」と出てしまうため、番号の形から種類を判定する。
+// 判定できないものは種類名を出さず「納税者番号」と表示する（誤った種類名を出さないため）
+function taxIdKindFromValue(v) {
+  const s = String(v || '').replace(/[\s.\-\/]/g, '').toUpperCase();
+  if (!s) return '';
+  if (/^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(s)) return 'CURP';   // メキシコ（18桁）
+  if (/^[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}$/.test(s)) return 'RFC';           // メキシコ（12〜13桁）
+  if (/^\d{11}$/.test(s)) return 'CPF';                                  // ブラジル個人
+  if (/^\d{14}$/.test(s)) return 'CNPJ';                                 // ブラジル法人
+  return '';
+}
+
+function taxIdLabel(t, value) {
+  const known = t && TAX_ID_LABELS[t];
+  if (known) return known;
+  // CustomCode や未知の種類コードは、そのまま出さずに番号の形から判定する
+  const guessed = taxIdKindFromValue(value);
+  if (guessed) return TAX_ID_LABELS[guessed] || guessed;
+  if (t && t !== 'CustomCode') return t;
+  return '納税者番号';
 }
 
 // 注文からバイヤーの納税者番号／eBay参照番号を取り出す
@@ -902,7 +920,7 @@ function extractTaxId(o) {
     return {
       id: ti.taxpayerId,
       type: ti.taxIdentifierType || '',
-      label: taxIdLabel(ti.taxIdentifierType),
+      label: taxIdLabel(ti.taxIdentifierType, ti.taxpayerId),
       country: ti.issuingCountry || '',
       kind: 'buyer',
     };
