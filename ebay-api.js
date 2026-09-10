@@ -179,17 +179,41 @@ async function updateConversationRead(conversationId, isRead) {
   });
 }
 
+// 会話データそのものからセラー名を推定する。
+// GetUser が一時的に失敗しても、送信者の向きを誤ったままシートに書かないための保険。
+// セラーは全ての会話に登場するので、全会話に共通して現れるユーザー名がセラー。
+function guessSellerFromConversations(list) {
+  if (!list || list.length < 2) return '';
+  const count = {};
+  list.forEach(c => {
+    const lm = c.latestMessage || {};
+    const names = new Set();
+    if (lm.senderUsername) names.add(String(lm.senderUsername).toLowerCase());
+    if (lm.recipientUsername) names.add(String(lm.recipientUsername).toLowerCase());
+    names.forEach(n => { count[n] = (count[n] || 0) + 1; });
+  });
+  let best = '', bestN = 0;
+  Object.keys(count).forEach(n => { if (count[n] > bestN) { bestN = count[n]; best = n; } });
+  return bestN >= list.length ? best : '';
+}
+
 async function getMessagesForApp(daysBack) {
   daysBack = daysBack || 7;
   const convs = await getConversations(daysBack, 50);
   const list = (convs && convs.conversations) || [];
   const out = [];
   // ログイン中のセラー名をAPIから取得（固定値に依存しない）
-  const sellerName = await getSellerUsername();
-  const SELF = String(sellerName || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
+  const sellerName = await getSellerUsername().catch(() => '');
+  let SELF = String(sellerName || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
+  if (!SELF) SELF = guessSellerFromConversations(list);
+  // セラー名が分からないまま処理を続けると、全メッセージがバイヤー扱いになり、
+  // その誤った向きがシートに保存されて後から直せなくなる。ここで必ず止める。
+  if (!SELF) {
+    throw new Error('セラー名を特定できないため同期を中止しました（誤った送信者情報の保存を防ぐため）');
+  }
   const isSelf = (u) => {
     const s = String(u || '').toLowerCase();
-    return !!s && !!SELF && s === SELF;
+    return !!s && s === SELF;
   };
 
   for (let i = 0; i < list.length; i++) {
@@ -573,62 +597,61 @@ async function getOrderExtras(orderId, opts) {
   if (taxIdCache[key] !== undefined) return taxIdCache[key];
   try {
     const token = await getAccessToken();
-    // Trading APIのOrderIDは形式が違うため、SalesRecordNumber や期間検索で探す
-    // opts.recordNo があればそれを使い、無ければ購入日の前後で検索する
-    let xml;
-    if (opts && opts.recordNo) {
-      xml = '<?xml version="1.0" encoding="utf-8"?>'
-        + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
-        + '<OrderIDArray><OrderID>' + escXml(String(opts.recordNo)) + '</OrderID></OrderIDArray>'
-        + '<DetailLevel>ReturnAll</DetailLevel>'
-        + '<OrderRole>Seller</OrderRole>'
-        + '</GetOrdersRequest>';
-    } else {
-      // 注文日の前後で検索。Trading APIは90日より古い注文を返さないため範囲を丸める
-      const base = (opts && opts.orderDate) ? new Date(opts.orderDate) : new Date();
-      const limit = Date.now() - 89 * 86400000;   // 90日制限の内側
-      let fromMs = base.getTime() - 36 * 3600 * 1000;
-      let toMs = base.getTime() + 36 * 3600 * 1000;
-      if (fromMs < limit) {
-        // 90日より古い注文はTrading APIでは取得できない
-        taxIdCache[key] = { taxId: null, address: null, email: '', tooOld: true };
-        return taxIdCache[key];
+    const base = (opts && opts.orderDate) ? new Date(opts.orderDate) : new Date();
+    // Trading APIは90日より古い注文を返さない
+    if (base.getTime() < Date.now() - 89 * 86400000) {
+      taxIdCache[key] = { taxId: null, address: null, email: '', tooOld: true };
+      return taxIdCache[key];
+    }
+
+    // 注文日の前後を検索して、対象の注文を含むブロックを取り出す。
+    // ※ 販売レコード番号(SalesRecordNumber)をOrderIDとして投げてはいけない。
+    //    別物なのでeBayは何も返さず、納税者番号も配送先も取れなくなる。
+    // 出品数の多いアカウントでは1ページ100件を超えることがあるのでページ送りする。
+    // まず狭い範囲で探し、見つからなければ範囲を広げる。
+    const WINDOWS_H = [6, 36];
+    const MAX_PAGES = 5;
+    let scope = '';
+
+    for (const hours of WINDOWS_H) {
+      const from = new Date(base.getTime() - hours * 3600 * 1000).toISOString();
+      const to = new Date(base.getTime() + hours * 3600 * 1000).toISOString();
+      for (let page = 1; page <= MAX_PAGES; page++) {
+        const xml = '<?xml version="1.0" encoding="utf-8"?>'
+          + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+          + '<CreateTimeFrom>' + from + '</CreateTimeFrom>'
+          + '<CreateTimeTo>' + to + '</CreateTimeTo>'
+          + '<OrderRole>Seller</OrderRole>'
+          + '<OrderStatus>All</OrderStatus>'
+          + '<DetailLevel>ReturnAll</DetailLevel>'
+          + '<Pagination><EntriesPerPage>100</EntriesPerPage><PageNumber>' + page + '</PageNumber></Pagination>'
+          + '</GetOrdersRequest>';
+        const res = await fetch('https://api.ebay.com/ws/api.dll', {
+          method: 'POST',
+          headers: {
+            'X-EBAY-API-SITEID': '0',
+            'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+            'X-EBAY-API-CALL-NAME': 'GetOrders',
+            'X-EBAY-API-IAF-TOKEN': token,
+            'Content-Type': 'text/xml',
+          },
+          body: xml,
+        });
+        const t = await res.text();
+        lastTradingRaw = t.substring(0, 4000);
+
+        const blocks = t.split('<Order>').slice(1);
+        const hit = blocks.find(b => b.indexOf('>' + key + '<') >= 0);
+        if (hit) { scope = hit; break; }
+
+        const totalPages = parseInt((t.match(/<TotalNumberOfPages>(\d+)<\/TotalNumberOfPages>/) || [])[1] || '1', 10);
+        if (page >= totalPages) break;
       }
-      const from = new Date(fromMs).toISOString();
-      const to = new Date(toMs).toISOString();
-      xml = '<?xml version="1.0" encoding="utf-8"?>'
-        + '<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
-        + '<CreateTimeFrom>' + from + '</CreateTimeFrom>'
-        + '<CreateTimeTo>' + to + '</CreateTimeTo>'
-        + '<OrderRole>Seller</OrderRole>'
-        + '<OrderStatus>All</OrderStatus>'
-        + '<DetailLevel>ReturnAll</DetailLevel>'
-        + '<Pagination><EntriesPerPage>100</EntriesPerPage><PageNumber>1</PageNumber></Pagination>'
-        + '</GetOrdersRequest>';
+      if (scope) break;
     }
-    const res = await fetch('https://api.ebay.com/ws/api.dll', {
-      method: 'POST',
-      headers: {
-        'X-EBAY-API-SITEID': '0',
-        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
-        'X-EBAY-API-CALL-NAME': 'GetOrders',
-        'X-EBAY-API-IAF-TOKEN': token,
-        'Content-Type': 'text/xml',
-      },
-      body: xml,
-    });
-    const t = await res.text();
-    lastTradingRaw = t.substring(0, 4000);
-    // 期間検索の場合は、対象の注文だけを取り出す
-    let scope = t;
-    if (!(opts && opts.recordNo)) {
-      const blocks = t.split('<Order>').slice(1);
-      const hit = blocks.find(b => b.indexOf('>' + key + '<') >= 0
-        || (opts && opts.recordNo && b.indexOf('<ShippingDetails>') >= 0));
-      if (hit) scope = hit;
-      else if (blocks.length === 1) scope = blocks[0];
-      else scope = '';
-    }
+
+    if (!scope) return { taxId: null, address: null, email: '' };
+
     const t2 = scope;
     const pick = (re) => (t2.match(re) || [])[1] || '';
 
@@ -660,8 +683,7 @@ async function getOrderExtras(orderId, opts) {
     if (taxId || address) taxIdCache[key] = r;   // 取得できた場合のみキャッシュ
     return r;
   } catch (e) {
-    console.error('getBuyerTaxId error:', e.message);
-    taxIdCache[key] = null;
+    console.error('getOrderExtras error:', e.message);
     return null;
   }
 }
