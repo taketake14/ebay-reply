@@ -125,7 +125,7 @@ async function getConversations(daysBack, want) {
   const start = new Date(end.getTime() - daysBack * 24 * 60 * 60 * 1000);
 
   const seen = {};        // conversationId -> conversation
-  let totalReported = 0;
+  let expectedTotal = 0;  // 各ブロックがeBayから申告された件数の合計
   let calls = 0;
   let incomplete = false;         // 取りこぼしが起きたか
   const gaps = [];                // 取りこぼした期間
@@ -151,7 +151,9 @@ async function getConversations(daysBack, want) {
       return;
     }
     const batch = (res && res.conversations) || [];
-    if (res && res.total) totalReported = Math.max(totalReported, res.total);
+    // 期間全体の件数は、分割前のブロックが申告した件数を足し合わせて求める。
+    // （細かく割った子ブロックを足すと二重に数えてしまう）
+    if (depth === 0 && res && typeof res.total === 'number') expectedTotal += res.total;
     batch.forEach(cv => { if (cv && cv.conversationId) seen[cv.conversationId] = cv; });
 
     if (batch.length < PAGE_LIMIT) return;   // 上限未満なら取りこぼしなし
@@ -164,15 +166,18 @@ async function getConversations(daysBack, want) {
       gaps.push({ from: s.toISOString(), to: e.toISOString(), reason: '15分あたり50件超' });
       return;
     }
-    const mid = new Date(s.getTime() + Math.floor(spanMs / 2));
-    await fetchRange(mid, e, depth + 1);   // 新しい側を先に
-    await fetchRange(s, mid, depth + 1);
+    const midMs = s.getTime() + Math.floor(spanMs / 2);
+    await fetchRange(new Date(midMs + 1), e, depth + 1);   // 新しい側を先に
+    await fetchRange(s, new Date(midMs), depth + 1);
   }
 
-  // 全期間を12時間ずつ、新しい側から順に必ず一巡する
-  for (let e = end.getTime(); e > start.getTime(); e -= BLOCK_MS) {
-    const s = Math.max(start.getTime(), e - BLOCK_MS);
-    await fetchRange(new Date(s), new Date(e), 0);
+  // 全期間を12時間ずつ、新しい側から順に必ず一巡する。
+  // ブロック同士が1ミリ秒でも重なると件数を二重に数えてしまうのでずらす
+  let upper = end.getTime();
+  while (upper > start.getTime()) {
+    const lower = Math.max(start.getTime(), upper - BLOCK_MS);
+    await fetchRange(new Date(lower), new Date(upper), 0);
+    upper = lower - 1;
   }
 
   const list = Object.values(seen).sort((a, b) => {
@@ -182,11 +187,11 @@ async function getConversations(daysBack, want) {
   });
 
   // eBayが申告した総件数に届いていなければ、区間ごとの判定に関わらず取りこぼし扱いにする
-  if (totalReported && list.length < totalReported) incomplete = true;
+  if (expectedTotal && list.length < expectedTotal) incomplete = true;
 
   return {
     conversations: list,
-    total: totalReported || list.length,
+    total: expectedTotal || list.length,
     complete: !incomplete,
     gaps: gaps.slice(0, 20),
     _calls: calls,
