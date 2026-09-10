@@ -186,12 +186,14 @@ async function getConversations(daysBack, want) {
     return tb - ta;   // 新しい順
   });
 
-  // eBayが申告した総件数に届いていなければ、区間ごとの判定に関わらず取りこぼし扱いにする
-  if (expectedTotal && list.length < expectedTotal) incomplete = true;
-
+  // ※ eBayが各リクエストで返す total は「その期間に動きがあった会話数」で、
+  //    期間をまたぐ会話は複数のブロックで数えられる。そのため合計しても
+  //    期間全体の実数にはならない（重複分だけ多くなる）。
+  //    完全に取れたかどうかは、各ブロックが50件上限に当たったかどうかで判定する。
   return {
     conversations: list,
-    total: expectedTotal || list.length,
+    total: list.length,
+    totalGross: expectedTotal,   // ブロックごとの申告件数の合計（延べ件数・参考値）
     complete: !incomplete,
     gaps: gaps.slice(0, 20),
     _calls: calls,
