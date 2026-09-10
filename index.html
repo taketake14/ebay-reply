@@ -151,7 +151,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .list-cancel.closed{background:#fff;color:#64748b;border:1.5px solid #cbd5e1;}
 .list-cancel.keep{background:#fff;color:#047857;border:1.5px solid #6ee7b7;}
 
-.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#fff;color:#0f766e;border:1.5px solid #5eead4;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:2.5px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
+.sold-mark{display:inline-flex;align-items:center;gap:3px;background:#0f766e;color:#fff;border:1.5px solid #0f766e;font-size:11px;font-weight:800;letter-spacing:0.04em;padding:2.5px 10px;border-radius:5px;line-height:1.4;white-space:nowrap;}
 
 
 .s1-row{position:relative;display:grid;gap:0;padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;transition:background 0.1s;}
@@ -209,8 +209,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .tag-other{background:#f1f5f9;color:var(--text2);}
 /* 状態 */
 .s1-status-cell{display:flex;flex-direction:column;gap:3px;}
-.s1-sold-badge{font-size:11px;padding:3px 8px;border-radius:4px;background:#dc2626;color:#fff;font-weight:700;white-space:nowrap;display:inline-block;}
-.s1-replied-badge{font-size:10px;padding:2px 7px;border-radius:4px;background:#ccfbf1;color:#1e40af;font-weight:600;white-space:nowrap;display:inline-block;}
 /* バイヤー */
 .s1-buyer-cell{display:flex;align-items:center;gap:8px;min-width:0;}
 .s1-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0;}
@@ -299,7 +297,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* SOLD：サムネイル画像の下部に重ねる帯（他要素に一切干渉しない） */
 /* サムネイル列：画像の下にSOLD（画像に重ねない） */
 .s1-thumb-col{display:flex;flex-direction:column;align-items:center;gap:3px;}
-.s1-sold-tag{display:block;width:64px;text-align:center;background:#dc2626;color:#fff;font-size:9px;font-weight:800;letter-spacing:0.1em;padding:2px 0;border-radius:3px;line-height:1.3;}
 
 .s1-preview{font-size:13px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* メモは琥珀の枠で目立たせる */
@@ -356,7 +353,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-cancel-tag.open{background:#dc2626;color:#fff;}
 .mini-cancel-tag.closed{background:#fff;color:#64748b;border:1.2px solid #cbd5e1;}
 .mini-cancel-tag.keep{background:#fff;color:#047857;border:1.2px solid #6ee7b7;}
-.mini-sold-tag{display:block;width:56px;text-align:center;background:#fff;color:#0f766e;border:1.2px solid #5eead4;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
+.mini-sold-tag{display:block;width:56px;text-align:center;background:#0f766e;color:#fff;border:1.2px solid #0f766e;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
 
 .mini-thumb img{width:100%;height:100%;object-fit:contain;}
 .mini-info{flex:1;min-width:0;}
@@ -381,7 +378,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .sold-circle.mini{width:16px;height:16px;font-size:9px;}
 .mini-hm{font-size:11.5px;font-weight:500;color:var(--text2);}
 .mini-item.read .mini-date{color:#0f172a;font-weight:600;}
-.mini-sold{background:#dc2626;color:#fff;font-size:8.5px;font-weight:700;padding:0 4px;border-radius:3px;flex-shrink:0;}
 .mini-dot{width:6px;height:6px;border-radius:50%;background:#f97316;flex-shrink:0;}
 
 /* チャットカラム（リサイズ対応） */
@@ -535,8 +531,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bd-card{margin-top:8px;background:#fff;border:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0;overflow:hidden;}
 
 /* 購入履歴（独立した枠） */
-.ph-sec{margin-top:8px;background:#fff;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.ph-sec-hdr{background:#f7fdfc;padding:7px 11px;font-size:10.5px;font-weight:700;color:#12554e;border-bottom:1px solid #d5efeb;}
+.ph-sec{margin-top:8px;background:#fff;border:none;border-top:1px solid var(--border);border-bottom:1px solid var(--border);border-radius:0;overflow:hidden;}
+.ph-sec-hdr{background:#f7fdfc;padding:7px 12px;font-size:10.5px;font-weight:700;color:#12554e;border-bottom:1px solid #d5efeb;}
 .bd-history{align-items:flex-start;}
 .ph-box{background:#fff;}
 .ph-row{padding:9px 12px;border-bottom:1px solid #eef2f6;}
@@ -600,12 +596,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .prod-total .kv-k{font-weight:700;color:var(--text);}
 .prod-total .kv-v{font-weight:700;color:#dc2626;font-size:13px;}
 .unsold-tag{background:#f2f4f7;color:#667085;border:1px solid #e3e8ef;font-size:11px;font-weight:600;padding:2px 9px;border-radius:5px;letter-spacing:0.03em;}
-.sold-tag{background:#fff;color:#0f766e;border:1.5px solid #5eead4;font-size:11px;font-weight:800;padding:1.5px 9px;border-radius:5px;letter-spacing:0.04em;}
+.sold-tag{background:#0f766e;color:#fff;border:1.5px solid #0f766e;font-size:11px;font-weight:800;padding:1.5px 9px;border-radius:5px;letter-spacing:0.04em;}
 
 /* ===== バイヤー詳細：グループ表示 ===== */
 .bd-block{margin-bottom:10px;}
 .bd-block:last-child{margin-bottom:0;}
-.bd-block-t{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.06em;padding:3px 0 4px;border-bottom:1px solid var(--border2);margin-bottom:4px;}
+.bd-block-t{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.06em;padding:3px 12px 4px;border-bottom:1px solid var(--border2);margin-bottom:4px;}
 /* バイヤー詳細も商品パネルと同じテーブル形式に揃える */
 .bd-row{display:flex;align-items:center;gap:10px;padding:7px 12px;min-height:34px;border-bottom:1px solid #f1f5f9;font-size:11.5px;box-sizing:border-box;}
 .bd-row:last-child{border-bottom:none;}
@@ -621,7 +617,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bd-note{font-size:10px;color:var(--text3);}
 .addr-note{font-size:10.5px;color:#8a5a12;background:#fffaf0;border:1px solid #f0d49a;border-radius:5px;padding:5px 8px;line-height:1.5;}
 .tax-id{font-family:var(--mono);font-weight:600;letter-spacing:0.02em;}
-.bd-empty{font-size:12px;color:var(--text3);padding:4px 0;}
+/* カード内の左右余白は12pxで統一する（.bd-row と揃える） */
+.bd-empty{font-size:12px;color:var(--text3);padding:8px 12px;}
 .bd-addr .bd-v{line-height:1.6;}
 
 /* メモバー（パネル最上部に固定） */
@@ -642,7 +639,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .memo-bar.has-memo .memo-bar-icon{display:none;}
 
 /* 注文ブロックのSOLDバッジ */
-.blk-sold{display:inline-block;background:#dc2626;color:#fff;font-size:9px;font-weight:700;padding:1px 7px;border-radius:4px;margin-left:6px;letter-spacing:0.04em;vertical-align:middle;}
 
 /* メモありインジケーター（折りたたみ時も見える） */
 .memo-dot{display:none;width:7px;height:7px;border-radius:50%;background:#e8a838;margin-left:5px;flex-shrink:0;}
@@ -1606,11 +1602,6 @@ function renderList(){
     var tagsHtml=tags.map(function(t){return '<span class="tag '+t.cls+'">'+t.label+'</span>';}).join('');
     var initials=m.buyer.charAt(0).toUpperCase();
     var avatarStyle=getAvatarStyle(m.buyer);
-    // 状態セル
-    var statusHtml='';
-    if(m.sold) statusHtml+='<span class="s1-sold-badge">SOLD</span>';
-    if(m.replied) statusHtml+='<span class="s1-replied-badge">&#10003;</span>';
-    if(!statusHtml) statusHtml='<span style="color:var(--text3);font-size:11px;">—</span>';
     // 商品ID情報
     var idsHtml='';
     if(m.itemId) idsHtml+='Item: '+m.itemId;
