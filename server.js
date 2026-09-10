@@ -1526,10 +1526,12 @@ async function getSheetConvState() {
       const cid = rows[i][iConv];
       if (!cid) continue;
       const ts = new Date(rows[i][iTs] || 0).getTime() || 0;
-      if (map[cid] && ts <= map[cid].ts) continue;
       let hist = [];
       if (iHist >= 0) { try { hist = JSON.parse(rows[i][iHist] || '[]') || []; } catch (e) { hist = []; } }
       const from = (iFrom >= 0 ? rows[i][iFrom] : '') || 'buyer';
+      // 同じ会話が複数行ある場合は「一番下の行」を採用する。
+      // 書き込み側(refreshRowInSheet)も一番下の行を更新するため、
+      // ここで別の行を見ていると食い違いが永久に解消せず、修復が延々と繰り返される。
       map[cid] = {
         ts,
         sig: from + '|' + hist.length + '|' + hist.map(x => (x && x.from === 'me') ? '1' : '0').join(''),
@@ -2209,6 +2211,9 @@ app.get('/latest', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 // ===== eBayから定期自動同期（3分ごと） =====
+// 会話ごとの修復試行回数。何度書いても直らない行を延々と書き続けないための記録
+const healAttempts = {};
+
 async function autoSyncFromEbay() {
   if (autoSyncRunning) return;
   autoSyncRunning = true;
@@ -2252,9 +2257,21 @@ async function autoSyncFromEbay() {
           } catch (e) { console.error('[autoSync] refresh:', e.message); }
           continue;
         }
+        if (st && em.sig && st.sig === em.sig && healAttempts[cid]) delete healAttempts[cid];
         // 新着が無くても、保存済みの送信者の向きがeBayの内容と食い違っていれば直す。
         // 過去に誤って保存された行は、これが無いと新着が来るまで永久に直らない。
         if (st && em.sig && st.sig !== em.sig && healed < HEAL_LIMIT) {
+          // 同じ会話を何度直しても食い違いが解消しない場合は、書き込みが効いていない。
+          // 際限なくシートへ書き続けないよう、3回で打ち切って記録に残す
+          const tried = healAttempts[cid] || 0;
+          if (tried >= 3) {
+            if (tried === 3) {
+              healAttempts[cid] = tried + 1;
+              console.error('[autoSync] 修復が反映されないため打ち切り:', cid, 'シート=', st.sig, 'API=', em.sig);
+            }
+            continue;
+          }
+          healAttempts[cid] = tried + 1;
           try {
             await refreshRowInSheet(em, false);   // 未読には戻さない
             healed++;
