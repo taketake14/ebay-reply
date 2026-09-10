@@ -1257,10 +1257,13 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
         } catch (e) { console.error('[buyer] extras:', e.message); }
       }
 
-      // Fulfillment APIで日時が取れない場合はPost-Order APIから補完
-      if (order && order.cancelState && order.cancelState !== 'NONE_REQUESTED' && !order.cancelRequestedAt) {
+      // キャンセルの有無は Post-Order API を正とする。
+      // Fulfillment API の cancelState は、実際にキャンセル依頼があった注文でも
+      // NONE_REQUESTED を返すことがある（受信トレイには出るのに商品情報には出ない、
+      // という画面間の食い違いの原因になっていた）
+      if (order) {
         try {
-          const cmap = await ebayApi.getCancellations(120);
+          const cmap = await ebayApi.getCancellations(180);
           const legacyId = cachedOrder.legacyOrderId || cachedOrder.orderId;
           const hit = cmap && (cmap[legacyId] || cmap[cachedOrder.orderId]);
           if (hit) {
@@ -1270,7 +1273,6 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
             order.cancelReasonLabel = ebayApi.cancelReasonLabel(hit.reason || order.cancelReason);
             order.cancelRequestedBy = hit.initiator || order.cancelRequestedBy;
             order.cancelId = hit.cancelId || '';
-            // Post-Orderの状態の方が正確なので上書きする
             if (hit.state) {
               const ci = ebayApi.cancelInfo(hit.state);
               order.cancelState = hit.state;
