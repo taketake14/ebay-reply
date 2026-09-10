@@ -884,8 +884,16 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
 // ===== Trading APIからの補完データを確認 =====
 app.get('/api/ebay/order-extras/:orderId', async (req, res) => {
   try {
+    // 注文日が指定されていない場合はキャッシュから探す
+    let od = req.query.date || null;
+    if (!od) {
+      const lu = buyerByOrderId[req.params.orderId];
+      const o = lu && (ordersByBuyerAll[lu] || []).find(x =>
+        x.orderId === req.params.orderId || x.legacyOrderId === req.params.orderId);
+      if (o) od = o.creationDate;
+    }
     const ex = await ebayApi.getOrderExtras(req.params.orderId, {
-      orderDate: req.query.date || null,
+      orderDate: od,
       recordNo: req.query.rec || null,
     });
     if (req.query.raw === '1') {
