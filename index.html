@@ -536,16 +536,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 購入履歴 */
 .bd-history{align-items:flex-start;}
 .ph-box{background:#f8fafc;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
-.ph-head{background:#eef2f6;padding:5px 9px;font-size:10.5px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);}
 .ph-row{padding:7px 9px;border-bottom:1px solid #eef2f6;}
 .ph-row:last-child{border-bottom:none;}
 .ph-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;}
 .ph-date{font-size:10.5px;color:var(--text3);font-family:var(--mono);font-weight:600;}
 .ph-price{font-size:11px;font-weight:700;color:#0f766e;font-family:var(--mono);}
 .ph-title{font-size:11px;color:var(--text);line-height:1.45;margin-bottom:4px;word-break:break-word;}
-.ph-links{display:flex;gap:5px;}
-.ph-link{font-size:9.5px;color:var(--teal);background:#fff;border:1px solid #99f6e4;padding:1px 7px;border-radius:9px;text-decoration:none;}
-.ph-link:hover{background:#f0fdfa;}
+.ph-oid{font-size:9.5px;color:#94a3b8;font-family:var(--mono);margin-top:3px;}
 .sub-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
 .sub-tag.sold{background:#fee2e2;color:#dc2626;border-color:#fecaca;font-weight:700;}
 
@@ -659,12 +656,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-fixed{padding:12px 12px 11px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;}
 .rp-toggle-icon{font-size:10px;color:var(--text3);transition:transform 0.15s;}
 .rp-toggle-icon.closed{transform:rotate(-90deg);}
-.rp-section-body{padding:0;display:flex;flex-direction:column;gap:0;}
+.rp-section-body{padding:0;display:flex;flex-direction:column;gap:0;min-width:0;overflow:hidden;}
 /* 画像・商品名・その他の直接要素には余白を付ける（kv行は全幅にする） */
 .rp-section-body > .prod-img-wrap,
 .rp-section-body > .prod-name-row,
 .rp-section-body > .cancel-alert,
-.rp-section-body > .buyer-links{margin:10px 12px 0;}
+.rp-section-body > .buyer-links{margin:10px 12px 0;max-width:calc(100% - 24px);box-sizing:border-box;}
 .rp-section-body > .prod-kv,
 .rp-section-body > .buyer-detail-box{margin-top:8px;}
 .rp-section-body.hidden{display:none;}
@@ -2720,7 +2717,7 @@ async function loadBuyerDetail(buyer, idx){
     if(subEl){
       if(info.purchased && (info.countryLabel||info.country)){
         // 購入者：配送先の国
-        subEl.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>';
+        subEl.innerHTML='<span class="sub-country">'+esc(info.countryLabel||info.country)+'</span>';
       } else if(!info.purchased){
         subEl.innerHTML='<span class="sub-tag">未購入</span>';
       } else {
@@ -2763,11 +2760,12 @@ async function loadBuyerDetail(buyer, idx){
       // バッジ条件：
       //  ・未購入商品の問い合わせ → 過去に1件でも購入があれば表示
       //  ・購入済み商品(SOLD)の問い合わせ → 2件以上のときだけ表示（今回の注文と重複するため）
+      // 購入済み商品の画面では、今回の注文を除いた件数で判定する
       var repeat='';
       var cnt=info.orderCount||0;
-      var showBadge = info.purchased ? (cnt>=2) : (cnt>=1);
-      if(showBadge){
-        repeat=' <span class="repeat-tag" title="このバイヤーには購入履歴があります">購入歴 '+cnt+'件</span>';
+      var others = info.purchased ? Math.max(0, cnt-1) : cnt;
+      if(others>=1){
+        repeat=' <span class="repeat-tag" title="このバイヤーには他にも購入履歴があります">購入歴 '+others+'件</span>';
       }
       pbEl2.innerHTML=(pbEl2.getAttribute('data-base')||'')+fbTxt+repeat;
     }
@@ -2776,7 +2774,7 @@ async function loadBuyerDetail(buyer, idx){
     var pcEl2=document.getElementById('prod-buyer-country');
     if(pcEl2){
       if(info.purchased && (info.countryLabel||info.country)){
-        pcEl2.innerHTML='<span class="sub-country">&#128666; '+esc(info.countryLabel||info.country)+'</span>';
+        pcEl2.innerHTML='<span class="sub-country">'+esc(info.countryLabel||info.country)+'</span>';
       } else if(!info.purchased){
         pcEl2.innerHTML='<span class="kv-muted">未購入</span>';
       } else {
@@ -2860,25 +2858,6 @@ async function loadBuyerDetail(buyer, idx){
         +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）">'+COPY_ICON+'</button></div>';
     }
     b4+=r('電話', info.phone, true);
-    // 過去の購入履歴
-    if(info.purchaseHistory && info.purchaseHistory.length){
-      var ph='<div class="ph-box"><div class="ph-head">&#128230; 購入履歴 '+info.purchaseHistory.length+'件</div>';
-      info.purchaseHistory.forEach(function(o){
-        var dt=o.date?new Date(o.date).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric'}):'';
-        ph+='<div class="ph-row">'
-          +'<div class="ph-top"><span class="ph-date">'+esc(dt)+'</span>'
-            +(o.total?'<span class="ph-price">'+esc(o.total)+'</span>':'')+'</div>'
-          +'<div class="ph-title">'+esc(o.title||'（商品名なし）')+(o.qty>1?' ×'+o.qty:'')+'</div>'
-          +'<div class="ph-links">'
-            +(o.orderId?'<a href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(o.orderId)+'" target="_blank" class="ph-link">注文</a>':'')
-            +(o.itemId?'<a href="https://www.ebay.com/itm/'+encodeURIComponent(o.itemId)+'" target="_blank" class="ph-link">商品</a>':'')
-          +'</div>'
-        +'</div>';
-      });
-      ph+='</div>';
-      b4+='<div class="bd-row bd-history"><span class="bd-k">購入履歴</span><span class="bd-v">'+ph+'</span></div>';
-    }
-
     // 納税者番号（CPF / RFC / CNPJ など）
     if(info.taxId && info.taxId.id){
       b4+='<div class="bd-row"><span class="bd-k">'+esc(info.taxId.label||'納税者番号')+'</span>'
@@ -2890,6 +2869,26 @@ async function loadBuyerDetail(buyer, idx){
       var rd2=new Date(info.registrationDate);
       var yy=Math.floor((Date.now()-rd2.getTime())/(365.25*86400000));
       b4+=r('eBay登録', rd2.toLocaleDateString('ja-JP')+(yy>0?'（'+yy+'年）':''), false);
+    }
+
+    // 過去の購入履歴（今開いている注文は重複するので除く）
+    if(info.purchaseHistory && info.purchaseHistory.length){
+      var curOrder=String(info.orderId||'');
+      var past=info.purchaseHistory.filter(function(o){ return String(o.orderId||'')!==curOrder; });
+      if(past.length){
+        var ph='<div class="ph-box">';
+        past.forEach(function(o){
+          var dt=o.date?new Date(o.date).toLocaleDateString('ja-JP',{year:'2-digit',month:'numeric',day:'numeric'}):'';
+          ph+='<div class="ph-row">'
+            +'<div class="ph-top"><span class="ph-date">'+esc(dt)+'</span>'
+              +(o.total?'<span class="ph-price">'+esc(o.total)+'</span>':'')+'</div>'
+            +'<div class="ph-title">'+esc(o.title||'（商品名なし）')+(o.qty>1?' ×'+o.qty:'')+'</div>'
+            +(o.orderId?'<div class="ph-oid">'+esc(o.orderId)+'</div>':'')
+          +'</div>';
+        });
+        ph+='</div>';
+        b4+='<div class="bd-row bd-history"><span class="bd-k">購入履歴</span><span class="bd-v">'+ph+'</span></div>';
+      }
     }
     html+=block('', b4);
 
