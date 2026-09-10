@@ -107,7 +107,18 @@ async function fetchConversationRange(startDate, endDate) {
 }
 
 // 期間を分割して取りこぼしなく取得する
-// 1回50件の上限に達したら、その期間を半分に割って再取得する
+//
+// eBayの会話一覧APIは1リクエスト50件が上限で、offsetによるページングが使えない。
+// そのため期間を細かく区切って取得するしかない。
+//
+// 以前の実装は「50件に達したら期間を半分に割る」だけで、呼び出し回数の上限(24回)に
+// 達すると残りの期間を黙って捨てていた。その結果、取得件数が総件数に足りなくても
+// エラーにならず、同期済みとして扱われて会話が永久に取り込まれなかった。
+//
+// 対策：
+//  1. まず期間を固定幅（12時間）で区切り、全区間を必ず1回は取得する
+//  2. 50件に達した区間だけ、15分になるまで半分に割って取り直す
+//  3. 取りこぼしが起きた場合は complete:false を返し、呼び出し側が判断できるようにする
 async function getConversations(daysBack, want) {
   daysBack = daysBack || 7;
   const end = new Date();
@@ -116,32 +127,53 @@ async function getConversations(daysBack, want) {
   const seen = {};        // conversationId -> conversation
   let totalReported = 0;
   let calls = 0;
-  const MAX_CALLS = 24;   // 安全弁
+  let incomplete = false;         // 取りこぼしが起きたか
+  const gaps = [];                // 取りこぼした期間
+  const BLOCK_MS = 12 * 60 * 60 * 1000;   // 最初に区切る幅
+  const MIN_SPAN_MS = 15 * 60 * 1000;     // これ以上は細かく割らない
+  // 呼び出し回数の上限。期間の長さに応じて増やす（固定値だと長期間で必ず足りなくなる）
+  const MAX_CALLS = Math.max(60, Math.ceil(daysBack) * 24);
 
-  async function walk(s, e, depth) {
-    if (calls >= MAX_CALLS) return;
+  async function fetchRange(s, e, depth) {
+    if (calls >= MAX_CALLS) {
+      incomplete = true;
+      gaps.push({ from: s.toISOString(), to: e.toISOString(), reason: '呼び出し回数の上限' });
+      return;
+    }
     calls++;
     let res;
     try {
       res = await fetchConversationRange(s, e);
     } catch (err) {
       console.error('fetchConversationRange error:', err.message);
+      incomplete = true;
+      gaps.push({ from: s.toISOString(), to: e.toISOString(), reason: err.message });
       return;
     }
     const batch = (res && res.conversations) || [];
     if (res && res.total) totalReported = Math.max(totalReported, res.total);
     batch.forEach(cv => { if (cv && cv.conversationId) seen[cv.conversationId] = cv; });
 
-    // 上限まで埋まった＝取りこぼしの可能性がある。期間を半分にして再取得
+    if (batch.length < PAGE_LIMIT) return;   // 上限未満なら取りこぼしなし
+
+    // 上限まで埋まった＝取りこぼしの可能性がある。期間を半分にして取り直す
     const spanMs = e.getTime() - s.getTime();
-    if (batch.length >= PAGE_LIMIT && depth < 5 && spanMs > 60 * 60 * 1000) {
-      const mid = new Date(s.getTime() + Math.floor(spanMs / 2));
-      await walk(mid, e, depth + 1);   // 新しい側を先に
-      await walk(s, mid, depth + 1);
+    if (spanMs <= MIN_SPAN_MS) {
+      // これ以上細かくできない。15分に50件以上あるので取りこぼしが確定
+      incomplete = true;
+      gaps.push({ from: s.toISOString(), to: e.toISOString(), reason: '15分あたり50件超' });
+      return;
     }
+    const mid = new Date(s.getTime() + Math.floor(spanMs / 2));
+    await fetchRange(mid, e, depth + 1);   // 新しい側を先に
+    await fetchRange(s, mid, depth + 1);
   }
 
-  await walk(start, end, 0);
+  // 全期間を12時間ずつ、新しい側から順に必ず一巡する
+  for (let e = end.getTime(); e > start.getTime(); e -= BLOCK_MS) {
+    const s = Math.max(start.getTime(), e - BLOCK_MS);
+    await fetchRange(new Date(s), new Date(e), 0);
+  }
 
   const list = Object.values(seen).sort((a, b) => {
     const ta = new Date((a.latestMessage && a.latestMessage.createdDate) || a.createdDate || 0).getTime() || 0;
@@ -149,7 +181,16 @@ async function getConversations(daysBack, want) {
     return tb - ta;   // 新しい順
   });
 
-  return { conversations: list, total: totalReported || list.length, _calls: calls };
+  // eBayが申告した総件数に届いていなければ、区間ごとの判定に関わらず取りこぼし扱いにする
+  if (totalReported && list.length < totalReported) incomplete = true;
+
+  return {
+    conversations: list,
+    total: totalReported || list.length,
+    complete: !incomplete,
+    gaps: gaps.slice(0, 20),
+    _calls: calls,
+  };
 }
 
 async function getConversation(conversationId) {
@@ -202,6 +243,11 @@ async function getMessagesForApp(daysBack) {
   const convs = await getConversations(daysBack, 50);
   const list = (convs && convs.conversations) || [];
   const out = [];
+  // 期間の会話を全部取れたかどうかを呼び出し側に伝える。
+  // 取りこぼしがあるのに「同期済み」として扱うと、その会話は二度と取り込まれない。
+  out.complete = convs ? convs.complete !== false : false;
+  out.totalReported = convs ? convs.total : 0;
+  out.gaps = (convs && convs.gaps) || [];
   // ログイン中のセラー名をAPIから取得（固定値に依存しない）
   const sellerName = await getSellerUsername().catch(() => '');
   let SELF = String(sellerName || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
@@ -292,6 +338,8 @@ async function getMessagesForApp(daysBack) {
     }
 
     out.push({
+      // 履歴の向きの署名。シートの保存内容と比べて、違っていれば書き直す
+      sig: msgFrom + '|' + history.length + '|' + history.map(function(h){ return h.from === 'me' ? '1' : '0'; }).join(''),
       conversationId: cid,
       buyer: buyer,
       subject: subject,
