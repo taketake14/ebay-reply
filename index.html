@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>ReplAI</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJkZDRiZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBkOTQ4OCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNSIgZmlsbD0idXJsKCNyZykiLz4KPHBhdGggZD0iTTI4IDE4TDE0IDMwbDE0IDEyIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0xNSAzMGgxOGExMyAxMyAwIDAgMSAxMyAxM3Y1IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJkZDRiZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzBkOTQ4OCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPgo8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNCIgZmlsbD0idXJsKCNnKSIvPgo8cGF0aCBkPSJNMTMgMTVoMzhhNSA1IDAgMCAxIDUgNXYyMWE1IDUgMCAwIDEtNSA1SDMzbC0xMSA4IDEtOGgtMTBhNSA1IDAgMCAxLTUtNVYyMGE1IDUgMCAwIDEgNS01eiIgZmlsbD0iI2ZmZiIvPgo8cGF0aCBkPSJNMjEgMzBsNyA3IDE1LTE1LjUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzBkOTQ4OCIgc3Ryb2tlLXdpZHRoPSI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg==">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
@@ -608,9 +608,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bd-block{margin-bottom:10px;}
 .bd-block:last-child{margin-bottom:0;}
 .bd-block-t{font-size:10px;font-weight:700;color:var(--text3);letter-spacing:0.06em;padding:3px 0 4px;border-bottom:1px solid var(--border2);margin-bottom:4px;}
-.bd-row{display:flex;align-items:flex-start;gap:6px;padding:3px 0;font-size:12px;}
-.bd-k{flex-shrink:0;min-width:62px;color:var(--text3);font-size:11px;padding-top:1px;}
+/* バイヤー詳細も商品パネルと同じテーブル形式に揃える */
+.bd-row{display:flex;align-items:center;gap:8px;padding:0;min-height:32px;border-bottom:1px solid #f1f5f9;font-size:11.5px;}
+.bd-row:last-child{border-bottom:none;}
+.bd-k{flex-shrink:0;width:72px;color:#94a3b8;font-size:10px;font-weight:600;}
 .bd-v{flex:1;min-width:0;color:var(--text);word-break:break-word;}
+.bd-addr{align-items:flex-start;padding:8px 0;}
+.bd-addr .bd-k{padding-top:2px;}
+.bd-addr .bd-v{line-height:1.6;}
 .bd-v.link{color:var(--accent);text-decoration:none;}
 .bd-v.link:hover{text-decoration:underline;}
 .bd-total{border-top:1px solid var(--border2);margin-top:2px;padding-top:5px;font-weight:700;}
@@ -645,7 +650,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .memo-dot{display:none;width:7px;height:7px;border-radius:50%;background:#e8a838;margin-left:5px;flex-shrink:0;}
 .memo-dot.on{display:inline-block;}
 /* セクション見出し：薄いティール地＋左のアクセント線で構造を示す */
-.rp-section-hdr{padding:9px 12px 9px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#eefaf8;border-top:1px solid #d5efeb;border-bottom:1px solid #d5efeb;border-left:3px solid var(--teal);user-select:none;transition:background 0.12s;}
+.rp-section-hdr{padding:8px 12px 8px 13px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#eefaf8;border-bottom:1px solid #d5efeb;border-left:3px solid var(--teal);user-select:none;transition:background 0.12s;}
 .rp-section-hdr:hover{background:#dff5f1;}
 .rp-section-title{font-size:12px;font-weight:700;color:#12554e;letter-spacing:0.02em;}
 .rp-toggle-icon{font-size:10px;color:#5f8f89;transition:transform 0.15s;}
@@ -654,11 +659,29 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-fixed{padding:12px 12px 11px;background:#fff;border-bottom:1px solid var(--border);flex-shrink:0;}
 .rp-toggle-icon{font-size:10px;color:var(--text3);transition:transform 0.15s;}
 .rp-toggle-icon.closed{transform:rotate(-90deg);}
-.rp-section-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.rp-section-body{padding:0;display:flex;flex-direction:column;gap:0;}
+/* 画像・商品名・その他の直接要素には余白を付ける（kv行は全幅にする） */
+.rp-section-body > .prod-img-wrap,
+.rp-section-body > .prod-name-row,
+.rp-section-body > .cancel-alert,
+.rp-section-body > .buyer-links{margin:10px 12px 0;}
+.rp-section-body > .prod-kv,
+.rp-section-body > .buyer-detail-box{margin-top:8px;}
 .rp-section-body.hidden{display:none;}
 
 
 .panel-body{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:12px;}
+
+/* ===== B案：テーブル型パネル ===== */
+.prod-kv-row{display:flex;align-items:center;gap:8px;padding:0 0 0 12px;min-height:32px;border-bottom:1px solid #f1f5f9;}
+.prod-kv-row:last-child{border-bottom:none;}
+.kv-k{font-size:10px;color:#94a3b8;font-weight:600;width:72px;flex-shrink:0;letter-spacing:0.01em;}
+.kv-v{flex:1;min-width:0;font-size:11.5px;color:var(--text);word-break:break-word;}
+.kv-v.link,a.kv-v{color:var(--teal);font-weight:700;text-decoration:none;font-family:var(--mono);font-size:12px;}
+a.kv-v:hover{text-decoration:underline;}
+.cp-btn{flex-shrink:0;width:24px;height:24px;margin-right:8px;border:1px solid var(--border);background:#fff;border-radius:5px;cursor:pointer;color:#94a3b8;display:flex;align-items:center;justify-content:center;padding:0;transition:all 0.12s;}
+.cp-btn:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;}
+.cp-btn svg{width:12px;height:12px;}
 
 /* 商品パネル */
 .prod-img-wrap{width:100%;height:150px;flex-shrink:0;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border);overflow:hidden;}
@@ -808,7 +831,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 <!-- ログイン -->
 <div id="login-screen">
   <div class="login-box">
-    <svg width="72" height="72" viewBox="0 0 64 64" fill="none" style="margin-bottom:14px;"><rect width="64" height="64" rx="15" fill="#fff"/><path d="M28 18L14 30l14 12" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 30h18a13 13 0 0 1 13 13v5" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="login-logo">Repl<em>AI</em></div>
+    <svg width="72" height="72" viewBox="0 0 64 64" fill="none" style="margin-bottom:14px;"><rect width="64" height="64" rx="14" fill="#fff"/><path d="M13 15h38a5 5 0 0 1 5 5v21a5 5 0 0 1-5 5H33l-11 8 1-8h-10a5 5 0 0 1-5-5V20a5 5 0 0 1 5-5z" fill="#0d9488"/><path d="M21 30l7 7 15-15.5" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="login-logo">Repl<em>AI</em></div>
     <div class="login-sub">IDとパスワードを入力してください</div>
     <div class="login-field">
       <input type="email" id="id-input" placeholder="メールアドレス（ID）" onkeydown="if(event.key==='Enter')document.getElementById('pw-input').focus()">
@@ -824,7 +847,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 <!-- グローバルヘッダー -->
 <div class="app-header">
-  <span class="app-logo" onclick="backToList()" title="受信トレイに戻る" style="cursor:pointer;"><svg class="logo-mark" width="26" height="26" viewBox="0 0 64 64" fill="none"><rect width="64" height="64" rx="15" fill="#fff"/><path d="M28 18L14 30l14 12" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 30h18a13 13 0 0 1 13 13v5" stroke="#0d9488" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="logo-text">Repl<em>AI</em></span></span>
+  <span class="app-logo" onclick="backToList()" title="受信トレイに戻る" style="cursor:pointer;"><svg class="logo-mark" width="26" height="26" viewBox="0 0 64 64" fill="none"><rect width="64" height="64" rx="14" fill="#fff"/><path d="M13 15h38a5 5 0 0 1 5 5v21a5 5 0 0 1-5 5H33l-11 8 1-8h-10a5 5 0 0 1-5-5V20a5 5 0 0 1 5-5z" fill="#0d9488"/><path d="M21 30l7 7 15-15.5" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="logo-text">Repl<em>AI</em></span></span>
   <div class="search-wrap">
     <span class="search-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M12.5 12.5L17 17"/></svg></span>
     <input class="header-search" id="header-search" placeholder="バイヤー名 / 商品名 / Item ID / SKU / 注文番号..." oninput="onSearch(this.value)">
@@ -2737,9 +2760,14 @@ async function loadBuyerDetail(buyer, idx){
         if(info.positivePercent) fbTxt+=' / '+Math.round(parseFloat(info.positivePercent))+'%';
         fbTxt+='</span>';
       }
+      // バッジ条件：
+      //  ・未購入商品の問い合わせ → 過去に1件でも購入があれば表示
+      //  ・購入済み商品(SOLD)の問い合わせ → 2件以上のときだけ表示（今回の注文と重複するため）
       var repeat='';
-      if(info.hasPastPurchase && info.orderCount){
-        repeat=' <span class="repeat-tag" title="このバイヤーは過去に購入しています">&#127881; 購入歴 '+info.orderCount+'件</span>';
+      var cnt=info.orderCount||0;
+      var showBadge = info.purchased ? (cnt>=2) : (cnt>=1);
+      if(showBadge){
+        repeat=' <span class="repeat-tag" title="このバイヤーには購入履歴があります">購入歴 '+cnt+'件</span>';
       }
       pbEl2.innerHTML=(pbEl2.getAttribute('data-base')||'')+fbTxt+repeat;
     }
