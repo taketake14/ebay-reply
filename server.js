@@ -294,48 +294,86 @@ app.get('/api/sheet/dedupe', async (req, res) => {
 let buyerOrderSet = new Set();
 let buyerSetUpdatedAt = 0;
 let orderByBuyer = {};   // username(lower) -> 注文オブジェクト（最新）
-let cancelByBuyer = {};  // username(lower) -> キャンセル情報
+let cancelByBuyer = {};  // username(lower) -> キャンセル情報（診断用。表示には使わない）
+let cancelByOrderId = {}; // orderId -> キャンセル情報（表示はこちらを使う）
 let buyerByOrderId = {}; // orderId -> username(lower)
 let ordersByBuyerAll = {}; // username(lower) -> 注文の配列（全件）
 
-// Post-Order APIからキャンセル一覧を取得し、バイヤー単位のマップを作る
+// スレッド（＝1つの商品についての会話）に対応するキャンセル情報を返す。
+//
+// 以前はバイヤー名だけで引いていたため、同じバイヤーの別商品の会話にも
+// 無関係なキャンセルが表示されていた。未購入の商品の問い合わせにまで
+// キャンセル表示が出るため、注文単位で判定する。
+function findCancelForThread(buyerLower, itemId, orderId) {
+  // 1. 行に注文番号があればそれで直接引く
+  if (orderId && cancelByOrderId[orderId]) return cancelByOrderId[orderId];
+
+  const orders = ordersByBuyerAll[buyerLower] || [];
+
+  // 2. 商品IDから、その商品を含む注文を特定して引く
+  if (itemId) {
+    const hits = orders.filter(o =>
+      (o.lineItems || []).some(li => String(li.legacyItemId || '') === String(itemId)));
+    for (const o of hits) {
+      const c = cancelByOrderId[o.orderId] || cancelByOrderId[o.legacyOrderId];
+      if (c) return c;
+    }
+    // その商品の注文が分かっていてキャンセルが無い、または
+    // そもそもその商品を買っていない場合は、キャンセルは存在しない
+    return null;
+  }
+
+  // 3. 商品IDも注文番号も無い古いデータ。
+  //    注文が1件しかないバイヤーは取り違えようがないので、その場合だけ表示する
+  if (orders.length === 1) {
+    const o = orders[0];
+    return cancelByOrderId[o.orderId] || cancelByOrderId[o.legacyOrderId] || null;
+  }
+  return null;
+}
+
+// Post-Order APIからキャンセル一覧を取得し、注文単位のマップを作る
 async function refreshCancelMap() {
   try {
     const cmap = await ebayApi.getCancellations(180);
     if (!cmap) return;
+    const byOrder = {};
     const byBuyer = {};
-    // キャンセル側から注文IDでバイヤーを引く（複数注文があっても取りこぼさない）
     Object.keys(cmap).forEach(oid => {
+      const hit = cmap[oid];
+      const ci = ebayApi.cancelInfo(hit.state);
+      const info = {
+        state: hit.state,
+        label: ci.label,
+        short: ci.short,
+        kind: ci.kind,
+        requestedAt: hit.requestedAt,
+        closedAt: hit.closedAt,
+        reason: hit.reason,
+        reasonLabel: ebayApi.cancelReasonLabel(hit.reason),
+        initiator: hit.initiator,
+        cancelId: hit.cancelId,
+        orderId: oid,
+      };
+      // 注文単位のマップ（表示に使う）
+      byOrder[oid] = info;
+
+      // バイヤー単位のマップ（診断用にのみ残す）
       const lu = buyerByOrderId[oid];
       if (!lu) return;
-      const hit = cmap[oid];
-      {
-        const ci = ebayApi.cancelInfo(hit.state);
-        // 未決着（対応が必要なもの）を優先して残す
-        const cur = byBuyer[lu];
-        if (cur && cur.kind !== 'open' && ci.kind === 'open') {
-          // openを優先
-        } else if (cur && cur.kind === 'open' && ci.kind !== 'open') {
-          return;
-        } else if (cur && new Date(cur.requestedAt || 0) > new Date(hit.requestedAt || 0)) {
-          return;
-        }
-        byBuyer[lu] = {
-          state: hit.state,
-          label: ci.label,
-          short: ci.short,
-          kind: ci.kind,
-          requestedAt: hit.requestedAt,
-          closedAt: hit.closedAt,
-          reason: hit.reason,
-          reasonLabel: ebayApi.cancelReasonLabel(hit.reason),
-          initiator: hit.initiator,
-          cancelId: hit.cancelId,
-        };
+      const cur = byBuyer[lu];
+      if (cur && cur.kind !== 'open' && ci.kind === 'open') {
+        // openを優先
+      } else if (cur && cur.kind === 'open' && ci.kind !== 'open') {
+        return;
+      } else if (cur && new Date(cur.requestedAt || 0) > new Date(hit.requestedAt || 0)) {
+        return;
       }
+      byBuyer[lu] = info;
     });
+    cancelByOrderId = byOrder;
     cancelByBuyer = byBuyer;
-    console.log('[cancelMap] ' + Object.keys(byBuyer).length + '件のキャンセルを紐付け');
+    console.log('[cancelMap] 注文' + Object.keys(byOrder).length + '件 / バイヤー' + Object.keys(byBuyer).length + '人');
   } catch (e) {
     console.error('refreshCancelMap error:', e.message);
   }
@@ -518,6 +556,7 @@ app.get('/api/ebay/cancel-map', async (req, res) => {
       cancellations: cancelIds.length,
       ordersIndexed: Object.keys(buyerByOrderId).length,
       matched: matched.length,
+      mappedOrders: Object.keys(cancelByOrderId).length,
       mappedBuyers: Object.keys(cancelByBuyer).length,
       unmatchedSample: cancelIds.filter(id => !buyerByOrderId[id]).slice(0, 8),
       matchedSample: matched.slice(0, 8).map(id => id + ' -> ' + buyerByOrderId[id]),
@@ -2116,7 +2155,11 @@ app.get('/api/messages', async (req, res) => {
           // 商品IDが無い古いデータは従来通りバイヤー単位で判定
           return thread.sold || latest.sold || buyerOrderSet.has(lu);
         })(),
-        cancel: cancelByBuyer[String(thread.buyer||'').toLowerCase()] || null,
+        cancel: findCancelForThread(
+          String(thread.buyer || '').toLowerCase(),
+          String(thread.itemId || latest.itemId || ''),
+          String(thread.orderId || latest.orderId || '')
+        ),
         timestamp: latest.timestamp,
         read: thread.read,
         starred: thread.starred,
