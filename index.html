@@ -664,6 +664,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .rp-toggle-icon{font-size:10px;color:var(--text3);transition:transform 0.15s;}
 .rp-toggle-icon.closed{transform:rotate(-90deg);}
 .rp-section-body{padding:0;display:flex;flex-direction:column;gap:0;min-width:0;overflow:hidden;}
+.prod-kv,.bd-card{width:100%;box-sizing:border-box;}
 /* メモセクションだけは余白を持たせる */
 #rp-body-memo{padding:12px;gap:10px;}
 #rp-body-product,#rp-body-ship{padding-bottom:4px;}
@@ -2710,6 +2711,32 @@ async function loadItemDetail(itemId, idx, hasBasics){
 
 // ===== バイヤー詳細情報を取得して表示 =====
 var buyerDetailCache={};
+// 購入履歴を別枠に描画する
+function renderPurchaseHistory(info){
+  var hslot=document.getElementById('purchase-history-slot');
+  if(!hslot) return;
+  var curOrder=String((info&&info.orderId)||'');
+  var past=((info&&info.purchaseHistory)||[]).filter(function(o){ return String(o.orderId||'')!==curOrder; });
+  if(!past.length){ hslot.innerHTML=''; return; }
+  var ph='<div class="ph-sec"><div class="ph-sec-hdr">購入履歴 '+past.length+'件</div>';
+  past.forEach(function(o){
+    var dt=o.date?new Date(o.date).toLocaleDateString('ja-JP',{year:'2-digit',month:'numeric',day:'numeric'}):'';
+    ph+='<div class="ph-row">'
+      +'<div class="ph-top"><span class="ph-date">'+esc(dt)+'</span>'
+        +(o.total?'<span class="ph-price">'+esc(o.total)+'</span>':'')+'</div>'
+      +'<div class="ph-title">'+esc(o.title||'（商品名なし）')+(o.qty>1?' ×'+o.qty:'')+'</div>'
+      +(o.orderId?'<div class="ph-meta">'
+        +'<a href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(o.orderId)+'" target="_blank" class="ph-link">注文</a>'
+        +'<span class="ph-oid">'+esc(o.orderId)+'</span></div>':'')
+      +(o.itemId?'<div class="ph-meta">'
+        +'<a href="https://www.ebay.com/itm/'+encodeURIComponent(o.itemId)+'" target="_blank" class="ph-link">商品</a>'
+        +'<span class="ph-oid">'+esc(o.itemId)+'</span></div>':'')
+    +'</div>';
+  });
+  ph+='</div>';
+  hslot.innerHTML=ph;
+}
+
 async function loadBuyerDetail(buyer, idx){
   var el=document.getElementById('buyer-detail');
   if(!el||!buyer) return;
@@ -2771,13 +2798,7 @@ async function loadBuyerDetail(buyer, idx){
       // バッジ条件：
       //  ・未購入商品の問い合わせ → 過去に1件でも購入があれば表示
       //  ・購入済み商品(SOLD)の問い合わせ → 2件以上のときだけ表示（今回の注文と重複するため）
-      // 購入済み商品の画面では、今回の注文を除いた件数で判定する
-      var repeat='';
-      var cnt=info.orderCount||0;
-      var others = info.purchased ? Math.max(0, cnt-1) : cnt;
-      if(others>=1){
-        repeat=' <span class="repeat-tag" title="このバイヤーには他にも購入履歴があります">購入歴 '+others+'件</span>';
-      }
+      var repeat='';   // 購入歴バッジは状況欄に表示する
       pbEl2.innerHTML=(pbEl2.getAttribute('data-base')||'')+fbTxt+repeat;
     }
 
@@ -2821,6 +2842,8 @@ async function loadBuyerDetail(buyer, idx){
     if(!info.purchased){
       html+='<div class="bd-empty">購入履歴なし（未購入バイヤー）</div>';
       el2.innerHTML=html;
+      renderPurchaseHistory(info);
+
       renderOrderInline(null);
       return;
     }
@@ -2828,12 +2851,18 @@ async function loadBuyerDetail(buyer, idx){
     // 商品パネルの状況欄にキャンセル状態を表示
     var slot=document.getElementById('cancel-tag-slot');
     if(slot){
+      var tags='';
       if(info.cancelShort){
         var cls='cancel-tag '+(info.cancelKind||'open');
-        slot.innerHTML='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+esc(info.cancelShort)+'</span>';
-      } else {
-        slot.innerHTML='';
+        tags+='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+esc(info.cancelShort)+'</span>';
       }
+      // 購入歴（今回の注文を除いた件数）
+      var cnt=info.orderCount||0;
+      var others=info.purchased?Math.max(0,cnt-1):cnt;
+      if(others>=1){
+        tags+='<span class="repeat-tag" title="このバイヤーには他にも購入履歴があります">購入歴 '+others+'件</span>';
+      }
+      slot.innerHTML=tags;
     }
 
     // バイヤーからのリクエストで未対応の場合のみ警告を出す
@@ -2945,36 +2974,6 @@ async function loadBuyerDetail(buyer, idx){
     }
 
     slot.innerHTML=h;
-
-    // 購入履歴は別枠にして、バイヤー枠の下に置く
-    var hslot=document.getElementById('purchase-history-slot');
-    if(hslot){
-      var curOrder=String(info.orderId||'');
-      var past=(info.purchaseHistory||[]).filter(function(o){ return String(o.orderId||'')!==curOrder; });
-      if(past.length){
-        var ph='<div class="ph-sec"><div class="ph-sec-hdr">購入履歴 '+past.length+'件</div><div class="ph-box">';
-        past.forEach(function(o){
-          var dt=o.date?new Date(o.date).toLocaleDateString('ja-JP',{year:'2-digit',month:'numeric',day:'numeric'}):'';
-          ph+='<div class="ph-row">'
-            +'<div class="ph-top"><span class="ph-date">'+esc(dt)+'</span>'
-              +(o.total?'<span class="ph-price">'+esc(o.total)+'</span>':'')+'</div>'
-            +'<div class="ph-title">'+esc(o.title||'（商品名なし）')+(o.qty>1?' ×'+o.qty:'')+'</div>'
-            +(o.orderId?'<div class="ph-meta">'
-              +'<a href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(o.orderId)+'" target="_blank" class="ph-link">注文を開く</a>'
-              +'<span class="ph-oid">'+esc(o.orderId)+'</span>'
-            +'</div>':'')
-            +(o.itemId?'<div class="ph-meta">'
-              +'<a href="https://www.ebay.com/itm/'+encodeURIComponent(o.itemId)+'" target="_blank" class="ph-link">商品を開く</a>'
-              +'<span class="ph-oid">'+esc(o.itemId)+'</span>'
-            +'</div>':'')
-          +'</div>';
-        });
-        ph+='</div></div>';
-        hslot.innerHTML=ph;
-      } else {
-        hslot.innerHTML='';
-      }
-    }
   }
 
   // 同じバイヤーでも商品が違えば別の注文なので、商品IDをキャッシュキーに含める
