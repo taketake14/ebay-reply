@@ -841,6 +841,7 @@ app.get('/api/ebay/diag', async (req, res) => {
       ok: true,
       days,
       total: convs ? convs.total : null,
+      totalGross: convs ? convs.totalGross : null,
       fetched: list.length,
       apiCalls: convs ? convs._calls : null,
       complete: convs ? convs.complete !== false : null,
