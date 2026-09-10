@@ -80,7 +80,10 @@ async function writeStateToSheet(rowIndex, read, starred, replied, memo) {
 }
 
 // ===== eBayメール解析関数 =====
-function parseEbayEmail(rawBody, fromName) {
+// ※ conversationId を持たない古い行（Gmail取り込み時代のデータ）専用。
+//    eBay APIから取り込んだ行では使われない。
+//    sellerName は呼び出し側が GetUser から取得した値を渡す（利用者ごとに違うため直書きしない）
+function parseEbayEmail(rawBody, fromName, sellerName) {
   if (!rawBody) return { buyer: fromName || 'unknown', newMsg: '', history: [], itemId: '', orderId: '', itemName: '', sold: false };
 
   // 1. バイヤー名
@@ -102,10 +105,10 @@ function parseEbayEmail(rawBody, fromName) {
     if (fallback) newMsg = fallback[1].trim();
   }
 
-  // 3. 会話履歴抽出（修正版）
-  // Dear samuraisoul142142, [TEXT] - buyer → from:'buyer'
-  // Dear buyer名, [TEXT] - samuraisoul142142 → from:'me'
-  const SELLER = 'samuraisoul142142';
+  // 3. 会話履歴抽出
+  // Dear セラー名, [TEXT] - buyer → from:'buyer'
+  // Dear buyer名, [TEXT] - セラー名 → from:'me'
+  const SELLER = String(sellerName || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
   const history = [];
   const seen = new Set();
   const blockRe = /Dear ([^,\n]+),\s*\n+([\s\S]*?)\n+- (\S+)(?:\n|$)/g;
@@ -121,9 +124,9 @@ function parseEbayEmail(rawBody, fromName) {
     if (newMsgKey && key === newMsgKey) continue;
     seen.add(key);
     let from;
-    if (block.recipient.toLowerCase() === SELLER.toLowerCase()) {
+    if (SELLER && block.recipient.toLowerCase() === SELLER) {
       from = 'buyer'; // Dear セラー → バイヤーから来たメッセージ
-    } else if (block.sender.toLowerCase() === SELLER.toLowerCase()) {
+    } else if (SELLER && block.sender.toLowerCase() === SELLER) {
       from = 'me'; // - セラー → セラーが送ったメッセージ
     } else {
       from = 'buyer'; // どちらでもなければバイヤー扱い
@@ -142,7 +145,9 @@ function parseEbayEmail(rawBody, fromName) {
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].match(/Item ID:\s*\d+/) && i > 0) {
       const candidate = lines[i - 1].trim();
-      if (candidate && candidate.length > 3 && !candidate.match(/^(Dear|Hi|Hello|Thank|Best|Ken|View|Order|Email|We |©)/i)) {
+      // 挨拶文・定型行を商品名と誤認しないための除外。個人名は入れない
+      // （例：Kenwood のような商品名まで弾かれてしまうため）
+      if (candidate && candidate.length > 3 && !candidate.match(/^(Dear|Hi|Hello|Thank|Best|View|Order|Email|We |©)/i)) {
         itemName = candidate;
         break;
       }
@@ -867,7 +872,7 @@ app.get('/api/ebay/conv/:buyer', async (req, res) => {
     res.json({
       ok: true,
       conversationId: hit.conversationId,
-      SELF: process.env.EBAY_SELLER_USERNAME || 'samuraisoul142142',
+      SELF: await ebayApi.getSellerUsername().catch(() => ''),
       latestMessageSender: (hit.latestMessage || {}).senderUsername,
       messages: msgs.map(m => ({
         sender: m.senderUsername,
@@ -1767,7 +1772,8 @@ app.post('/webhook', async (req, res) => {
   const data = req.body;
   const rawBody = data.message || '';
   const fromName = data.buyer || '';
-  const parsed = parseEbayEmail(rawBody, fromName);
+  const sellerName = await ebayApi.getSellerUsername().catch(() => '');
+  const parsed = parseEbayEmail(rawBody, fromName, sellerName);
   const msg = {
     id: Date.now(),
     buyer: parsed.buyer || 'unknown',
@@ -1891,6 +1897,8 @@ app.get('/api/messages', async (req, res) => {
     if (rows.length <= 1) return res.json({ messages });
 
     const headers = rows[0];
+    // 古い行の送信者判定に使う。GetUserの値はキャッシュされるので毎回APIを叩くわけではない
+    const sellerName = await ebayApi.getSellerUsername().catch(() => '');
     const rawMessages = rows.slice(1).map((row, i) => {
       const obj = {};
       headers.forEach((h, j) => { obj[h] = row[j] || ''; });
@@ -1913,7 +1921,7 @@ app.get('/api/messages', async (req, res) => {
           sold: false,
         };
       } else {
-        parsed = parseEbayEmail(rawBody, fromName);
+        parsed = parseEbayEmail(rawBody, fromName, sellerName);
       }
       const id = i + 1;
       const savedState = stateStore[id] || {};
