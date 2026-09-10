@@ -954,7 +954,7 @@ a.kv-v:hover{text-decoration:underline;}
 ・返金・キャンセルは絶対に約束しない。「確認してから回答する」とだけ伝える。
 ・仕様の詳細は絶対に推測で答えない。「確認してから回答する」と伝える。
 ・在庫確認は「確認中です」と答える。在庫ありとは言わない。
-・丁寧かつ簡潔に。名義はKenで返信する。"></textarea>
+・丁寧かつ簡潔に。署名は自分の名前にする（例：Best regards, Taro）。"></textarea>
     <div class="manual-actions">
       <button class="btn btn-primary" onclick="saveManual()">保存</button>
       <span class="save-ok" id="save-ok">&#10003; 保存しました</span>
@@ -1270,11 +1270,11 @@ var replyJaCache = {};
 
 // 定型文（カテゴリ付き）。localStorageで編集・追加可能
 var CANNED_DEFAULT = [
-  {cat:'一般', label:'営業時間外', text:'Thank you for your message. Our store operates Monday to Friday, from 9:00 AM to 6:00 PM (Japan Standard Time). We are closed on weekends and Japanese public holidays. We will respond to your inquiry on the next business day. Thank you for your patience.\n\nBest regards,\nKen', ja:'メッセージありがとうございます。当店の営業時間は月曜〜金曜の9:00〜18:00（日本時間）です。土日祝はお休みをいただいております。翌営業日にご返信いたしますので、少々お待ちください。'},
-  {cat:'一般', label:'確認します', text:'Thank you for your message. I will check on this and get back to you as soon as possible. Thank you for your patience.\n\nBest regards,\nKen', ja:'メッセージありがとうございます。確認のうえ、できるだけ早くご連絡いたします。少々お待ちください。'},
-  {cat:'価格', label:'値引き不可', text:'Thank you for your interest! Unfortunately, the price is already set at our best value and we are unable to offer a discount. If you would like to make an offer, please use the "Make Offer" feature on eBay.\n\nBest regards,\nKen', ja:'ご興味をお持ちいただきありがとうございます。恐れ入りますが、すでに最良の価格を設定しておりお値引きはいたしかねます。オファーをご希望の場合はeBayの「Make Offer」機能をご利用ください。'},
-  {cat:'商品', label:'写真送付不可', text:'Thank you for your inquiry. Unfortunately, the item is stored at a remote warehouse and we are unable to provide additional photos at this time. Please refer to the photos in the listing for details.\n\nBest regards,\nKen', ja:'お問い合わせありがとうございます。恐れ入りますが、商品は遠方の倉庫に保管しており、追加のお写真をお送りすることができません。出品ページの写真をご確認ください。'},
-  {cat:'配送', label:'発送完了', text:'Thank you for your purchase! Your order has been shipped. Please allow some time for the tracking information to be updated. If you have any questions, feel free to contact us.\n\nBest regards,\nKen', ja:'ご購入ありがとうございます。商品を발送いたしました。追跡情報の反映まで少しお時間をいただく場合があります。ご不明な点がありましたらお気軽にご連絡ください。'},
+  {cat:'一般', label:'営業時間外', text:'Thank you for your message. Our store operates Monday to Friday, from 9:00 AM to 6:00 PM (Japan Standard Time). We are closed on weekends and Japanese public holidays. We will respond to your inquiry on the next business day. Thank you for your patience.', ja:'メッセージありがとうございます。当店の営業時間は月曜〜金曜の9:00〜18:00（日本時間）です。土日祝はお休みをいただいております。翌営業日にご返信いたしますので、少々お待ちください。'},
+  {cat:'一般', label:'確認します', text:'Thank you for your message. I will check on this and get back to you as soon as possible. Thank you for your patience.', ja:'メッセージありがとうございます。確認のうえ、できるだけ早くご連絡いたします。少々お待ちください。'},
+  {cat:'価格', label:'値引き不可', text:'Thank you for your interest! Unfortunately, the price is already set at our best value and we are unable to offer a discount. If you would like to make an offer, please use the "Make Offer" feature on eBay.', ja:'ご興味をお持ちいただきありがとうございます。恐れ入りますが、すでに最良の価格を設定しておりお値引きはいたしかねます。オファーをご希望の場合はeBayの「Make Offer」機能をご利用ください。'},
+  {cat:'商品', label:'写真送付不可', text:'Thank you for your inquiry. Unfortunately, the item is stored at a remote warehouse and we are unable to provide additional photos at this time. Please refer to the photos in the listing for details.', ja:'お問い合わせありがとうございます。恐れ入りますが、商品は遠方の倉庫に保管しており、追加のお写真をお送りすることができません。出品ページの写真をご確認ください。'},
+  {cat:'配送', label:'発送完了', text:'Thank you for your purchase! Your order has been shipped. Please allow some time for the tracking information to be updated. If you have any questions, feel free to contact us.', ja:'ご購入ありがとうございます。商品を発送いたしました。追跡情報の反映まで少しお時間をいただく場合があります。ご不明な点がありましたらお気軽にご連絡ください。'},
 ];
 
 var CANNED = (function(){
@@ -1346,7 +1346,7 @@ var DEMO_DATA = [
    history:[{from:'buyer',text:'Hi, I have a question about this item.',time:'2026-04-11 03:20'},{from:'me',text:'Thank you for your message! Please feel free to ask anything.',time:'2026-04-11 09:15'}],
    msg:'Hi I still waiting for the respond',replyHistory:[],reply:'',status:'pending'},
   {id:3,buyer:'shattockd',orderId:'24-14411-18421',itemId:'305795300103',item:'FUJITSU ScanSnap S1500',imgUrl:'',sold:true,read:false,starred:true,replied:false,memo:'ローラー交換の件要確認',time:'09:22',date:'2026-04-14',history:[],
-   msg:'Hi Ken, the rubber rollers must be perished. The rollers feel sticky to touch. Regards Dave',replyHistory:[],reply:'',status:'pending'},
+   msg:'Hi there, the rubber rollers must be perished. The rollers feel sticky to touch. Regards Dave',replyHistory:[],reply:'',status:'pending'},
   {id:4,buyer:'gib-9689',orderId:'',itemId:'306203867233',item:'High School DxD Light Novel Vol.1-25',imgUrl:'',sold:false,read:false,starred:false,replied:false,memo:'',time:'09:05',date:'2026-04-16',history:[],
    msg:'So have no drawings is only written right?',replyHistory:[],reply:'',status:'pending'},
   {id:5,buyer:'carlos_mx',orderId:'',itemId:'',item:'Tokina Macro Lens FIRIN 100mm F2.8',imgUrl:'',sold:false,read:false,starred:false,replied:false,memo:'',time:'23:10',date:'2026-04-13',history:[],
@@ -2332,7 +2332,6 @@ function renderChatBubbles(){
       return;
     }
     var side=h.from==='me'?'mine':'theirs';
-    var who=h.from==='me'?'Ken':m.buyer;
     // 新着バッジは「未返信 かつ 最後のメッセージがバイヤーから」の場合だけ
     // 新着バッジは廃止
     html+='<div class="bbl-wrap '+side+'">'
@@ -3424,7 +3423,9 @@ async function generateReply(i, hint){
   if(aiBtn){aiBtn.innerHTML='&#9203; 生成中...';aiBtn.disabled=true;}
   var manual=localStorage.getItem('ebay_manual')||'';
   var manualSection=manual?'\n\n【対応マニュアル（必ず厳守）】\n'+manual:'';
-  var histText=(m.history||[]).map(function(h){return (h.from==='me'?'Ken':m.buyer)+': '+h.text;}).join('\n');
+  // 自分側のラベルに個人名は使わない。名前を書くとAIがそれを署名に流用してしまう。
+  // 署名はマニュアル欄（ユーザーごとの設定）で指定してもらう。
+  var histText=(m.history||[]).map(function(h){return (h.from==='me'?'セラー（自分）':m.buyer)+': '+h.text;}).join('\n');
   var histSection=histText?'\n\n【過去のやり取り】\n'+histText:'';
   var prompt='あなたはeBay輸出セラーのメッセージ返信アシスタントです。'+manualSection+histSection
     +'\nバイヤー名: '+m.buyer+'\n商品: '+(m.item||'不明')+'\n購入状況: '+(m.sold?'購入済み (SOLD)':'問い合わせのみ（未購入）')
