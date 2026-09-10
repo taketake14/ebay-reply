@@ -1107,11 +1107,17 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
 
     // 商品IDが指定されている場合、その商品の注文を優先して探す
     // （同じバイヤーが複数商品を問い合わせるケースで混同しないように）
+    let historyOnly = null;
     if (wantItemId && ordersByBuyerAll[lu]) {
       const hit = ordersByBuyerAll[lu].find(o =>
         (o.lineItems || []).some(li => String(li.legacyItemId || '') === wantItemId));
-      if (hit) cachedOrder = hit;
-      else cachedOrder = null;   // その商品は購入されていない
+      if (hit) {
+        cachedOrder = hit;
+      } else {
+        // この商品は未購入。ただし過去の購入履歴は表示したいので保持しておく
+        cachedOrder = null;
+        historyOnly = ordersByBuyerAll[lu];
+      }
     }
 
     if (cachedOrder) {
@@ -1153,9 +1159,28 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
         }
       }
       order = ebayApi.formatOrder(full);
-      // 実際の注文件数でリピーター判定できるようにする
+      // 購入履歴（このバイヤーの全注文）を添える
       if (order && ordersByBuyerAll[lu]) {
-        order.orderCount = ordersByBuyerAll[lu].length;
+        const all = ordersByBuyerAll[lu];
+        order.orderCount = all.length;
+        order.purchaseHistory = all
+          .slice()
+          .sort((a, b) => new Date(b.creationDate || 0) - new Date(a.creationDate || 0))
+          .map(o => {
+            const li = (o.lineItems || [])[0] || {};
+            const ps = o.pricingSummary || {};
+            return {
+              orderId: o.orderId || '',
+              date: o.creationDate || '',
+              itemId: li.legacyItemId || '',
+              title: li.title || '',
+              sku: li.sku || '',
+              qty: li.quantity || 1,
+              total: ps.total ? (ps.total.value + ' ' + ps.total.currency) : '',
+              status: o.orderFulfillmentStatus || '',
+            };
+          })
+          .slice(0, 20);
       }
 
       // 納税者番号・古い注文の配送先はTrading APIからしか取れない
@@ -1218,9 +1243,32 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
       userCountryLabel: user.country ? ebayApi.countryName(user.country) : '',
       ebaySite: user.site || '',
     } : {};
-    const buyer = order
+    let buyer = order
       ? Object.assign({}, order, common, { purchased: true })
       : (user ? Object.assign({ purchased: false }, common) : null);
+
+    // 過去の購入履歴を添える（この商品が未購入でも表示する）
+    const allOrders = ordersByBuyerAll[lu];
+    if (buyer && allOrders && allOrders.length) {
+      buyer.orderCount = allOrders.length;
+      buyer.hasPastPurchase = true;
+      buyer.purchaseHistory = allOrders
+        .slice()
+        .sort((a, b) => new Date(b.creationDate || 0) - new Date(a.creationDate || 0))
+        .slice(0, 20)
+        .map(o => {
+          const li = (o.lineItems || [])[0] || {};
+          const ps = o.pricingSummary || {};
+          return {
+            orderId: o.orderId || '',
+            date: o.creationDate || '',
+            itemId: li.legacyItemId || '',
+            title: li.title || '',
+            qty: li.quantity || 1,
+            total: ps.total ? (ps.total.value + ' ' + ps.total.currency) : '',
+          };
+        });
+    }
     res.json({ ok: !!buyer, buyer, debug: debug ? ebayApi.getLastOrderDebug() : undefined });
   } catch (e) {
     res.json({ ok: false, error: e.message });
