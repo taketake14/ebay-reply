@@ -531,7 +531,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* バイヤーIDの横に出す評価・リピーター */
 .id-fb{font-size:11px;font-weight:600;color:#475467;background:#f2f4f7;padding:1px 6px;border-radius:10px;white-space:nowrap;}
-.repeat-tag{font-size:10px;font-weight:700;color:#6941c6;background:#f4f0ff;border:1px solid #e4d9ff;padding:1px 6px;border-radius:4px;white-space:nowrap;}
+.repeat-tag{font-size:10px;font-weight:700;color:#8a5a12;background:#fffaf0;border:1px solid #f0d49a;padding:1px 7px;border-radius:4px;white-space:nowrap;}
+
+/* 購入履歴 */
+.bd-history{align-items:flex-start;}
+.ph-box{background:#f8fafc;border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+.ph-head{background:#eef2f6;padding:5px 9px;font-size:10.5px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);}
+.ph-row{padding:7px 9px;border-bottom:1px solid #eef2f6;}
+.ph-row:last-child{border-bottom:none;}
+.ph-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px;}
+.ph-date{font-size:10.5px;color:var(--text3);font-family:var(--mono);font-weight:600;}
+.ph-price{font-size:11px;font-weight:700;color:#0f766e;font-family:var(--mono);}
+.ph-title{font-size:11px;color:var(--text);line-height:1.45;margin-bottom:4px;word-break:break-word;}
+.ph-links{display:flex;gap:5px;}
+.ph-link{font-size:9.5px;color:var(--teal);background:#fff;border:1px solid #99f6e4;padding:1px 7px;border-radius:9px;text-decoration:none;}
+.ph-link:hover{background:#f0fdfa;}
 .sub-tag{font-size:10px;padding:1px 7px;border-radius:4px;background:var(--bg3);color:var(--text3);border:1px solid var(--border2);}
 .sub-tag.sold{background:#fee2e2;color:#dc2626;border-color:#fecaca;font-weight:700;}
 
@@ -2723,8 +2737,10 @@ async function loadBuyerDetail(buyer, idx){
         if(info.positivePercent) fbTxt+=' / '+Math.round(parseFloat(info.positivePercent))+'%';
         fbTxt+='</span>';
       }
-      var repeat=(info.orderCount&&info.orderCount>1)
-        ? ' <span class="repeat-tag">リピーター '+info.orderCount+'回</span>' : '';
+      var repeat='';
+      if(info.hasPastPurchase && info.orderCount){
+        repeat=' <span class="repeat-tag" title="このバイヤーは過去に購入しています">&#127881; 購入歴 '+info.orderCount+'件</span>';
+      }
       pbEl2.innerHTML=(pbEl2.getAttribute('data-base')||'')+fbTxt+repeat;
     }
 
@@ -2816,6 +2832,25 @@ async function loadBuyerDetail(buyer, idx){
         +'<button class="cp-btn" onclick="copyValue(this.getAttribute(\'data-v\'),this)" data-v="'+esc(fullCopy)+'" title="住所をコピー（英語表記）">'+COPY_ICON+'</button></div>';
     }
     b4+=r('電話', info.phone, true);
+    // 過去の購入履歴
+    if(info.purchaseHistory && info.purchaseHistory.length){
+      var ph='<div class="ph-box"><div class="ph-head">&#128230; 購入履歴 '+info.purchaseHistory.length+'件</div>';
+      info.purchaseHistory.forEach(function(o){
+        var dt=o.date?new Date(o.date).toLocaleDateString('ja-JP',{year:'numeric',month:'numeric',day:'numeric'}):'';
+        ph+='<div class="ph-row">'
+          +'<div class="ph-top"><span class="ph-date">'+esc(dt)+'</span>'
+            +(o.total?'<span class="ph-price">'+esc(o.total)+'</span>':'')+'</div>'
+          +'<div class="ph-title">'+esc(o.title||'（商品名なし）')+(o.qty>1?' ×'+o.qty:'')+'</div>'
+          +'<div class="ph-links">'
+            +(o.orderId?'<a href="https://www.ebay.com/mesh/ord/details?orderid='+encodeURIComponent(o.orderId)+'" target="_blank" class="ph-link">注文</a>':'')
+            +(o.itemId?'<a href="https://www.ebay.com/itm/'+encodeURIComponent(o.itemId)+'" target="_blank" class="ph-link">商品</a>':'')
+          +'</div>'
+        +'</div>';
+      });
+      ph+='</div>';
+      b4+='<div class="bd-row bd-history"><span class="bd-k">購入履歴</span><span class="bd-v">'+ph+'</span></div>';
+    }
+
     // 納税者番号（CPF / RFC / CNPJ など）
     if(info.taxId && info.taxId.id){
       b4+='<div class="bd-row"><span class="bd-k">'+esc(info.taxId.label||'納税者番号')+'</span>'
