@@ -897,10 +897,7 @@ app.get('/api/ebay/order-extras/:orderId', async (req, res) => {
         x.orderId === req.params.orderId || x.legacyOrderId === req.params.orderId);
       if (o) od = o.creationDate;
     }
-    const ex = await ebayApi.getOrderExtras(req.params.orderId, {
-      orderDate: od,
-      recordNo: req.query.rec || null,
-    });
+    const ex = await ebayApi.getOrderExtras(req.params.orderId, { orderDate: od });
     if (req.query.raw === '1') {
       return res.type('text/plain').send(ebayApi.getLastTradingRaw() || '(空)');
     }
@@ -988,7 +985,7 @@ app.get('/api/ebay/order-search', async (req, res) => {
 
     const formatted = ebayApi.formatOrder(order);
     if (formatted && (!formatted.taxId || !formatted.addressLine1 || !formatted.name)) {
-      const ex = await ebayApi.getOrderExtras(order.legacyOrderId || order.orderId, { orderDate: order.creationDate, recordNo: order.salesRecordReference }).catch(() => null);
+      const ex = await ebayApi.getOrderExtras(order.legacyOrderId || order.orderId, { orderDate: order.creationDate }).catch(() => null);
       if (ex) {
         if (!formatted.taxId && ex.taxId) formatted.taxId = ex.taxId;
         const a = ex.address;
@@ -1199,7 +1196,7 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
       // 納税者番号・古い注文の配送先はTrading APIからしか取れない
       if (order && (!order.taxId || !order.addressLine1 || !order.name)) {
         try {
-          const ex = await ebayApi.getOrderExtras(full.legacyOrderId || full.orderId, { orderDate: full.creationDate, recordNo: full.salesRecordReference });
+          const ex = await ebayApi.getOrderExtras(full.legacyOrderId || full.orderId, { orderDate: full.creationDate });
           if (ex) {
             if (!order.taxId && ex.taxId) order.taxId = ex.taxId;
             const a = ex.address;
