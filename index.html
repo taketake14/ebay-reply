@@ -91,14 +91,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s1-filter:hover:not(.on){background:var(--bg3);}
 
 /* 列順：時刻 | 商品画像 | 商品名+ID | タグ | 状態 | バイヤー/メッセージ | ★ */
-.s1-table-header{display:grid;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;}
+/* ヘッダーと行は同じスクロール枠(.s1-scroll)に入れる。
+   別々にスクロールさせると、行側だけにスクロールバーが出た時に列がずれるため。 */
+.s1-table-header{display:grid;gap:0;padding:7px 18px;background:var(--bg3);border-bottom:1px solid var(--border);flex-shrink:0;position:sticky;top:0;z-index:6;width:max-content;min-width:100%;}
 /* 列リサイザー */
 .s1-th{font-size:13px;color:var(--text);font-weight:700;text-transform:uppercase;letter-spacing:0.05em;position:relative;user-select:none;padding-right:6px;border-right:1px solid var(--border2);}
 .s1-th:last-child{border-right:none;}
 .col-resizer{position:absolute;right:-3px;top:0;height:100%;width:6px;cursor:col-resize;background:transparent;z-index:10;}
 .col-resizer:hover,.col-resizer.dragging{background:var(--orange);border-radius:2px;}
 
-.s1-body{flex:1;overflow-y:auto;}
+/* 縦にも横にもスクロールする唯一の枠。ヘッダーと行を一緒に動かす */
+.s1-scroll{flex:1;min-height:0;min-width:0;overflow:auto;}
+/* 列幅の合計に合わせて広がる。枠より狭い時は枠いっぱいに伸ばす */
+.s1-body{width:max-content;min-width:100%;}
 
 /* ===== 受信トレイ：左サイドバー（フィルター） ===== */
 .s1-main{flex:1;display:flex;min-height:0;overflow:hidden;}
@@ -920,6 +925,7 @@ a.kv-v:hover{text-decoration:underline;}
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
       <div class="s1-listwrap">
+        <div class="s1-scroll" id="s1-scroll">
         <div class="s1-table-header" id="s1-table-header-row" style="display:grid;">
       <div class="s1-th" style="width:36px;text-align:center;"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" style="cursor:pointer;width:15px;height:15px;accent-color:var(--orange);"></div>
       <div class="s1-th s1-col-time th-center" data-col="time">時刻<div class="col-resizer" data-col="time"></div></div>
@@ -933,6 +939,7 @@ a.kv-v:hover{text-decoration:underline;}
       <div class="s1-th s1-col-unread th-center" data-col="unread">既読<div class="col-resizer" data-col="unread"></div></div>
     </div>
     <div class="s1-body" id="msg-list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -3701,6 +3708,37 @@ document.addEventListener('mousedown',function(e){
 
 
 (function(){
+  // ===== 右パネルの幅の上限 =====
+  // 画面幅は利用者ごとに違うので、保存値をそのまま復元すると狭い画面で崩れる。
+  // 上限は必ずこの2つの関数だけで判定する（複数箇所に条件を書くと片方が漏れるため）
+  var RP_MIN_W = 160;    // 右パネルの最小幅
+  var CHAT_MIN_W = 360;  // チャット欄の最小幅（.s2-chat-col の min-width と同じ）
+  function rpMaxWidth(){
+    var main=document.querySelector('.s2-main');
+    var rp=document.getElementById('right-panel');
+    var chat=document.getElementById('chat-col');
+    if(!main||!rp||!chat) return null;
+    var total=main.getBoundingClientRect().width;
+    if(total<=0) return null;   // 画面が非表示のときは判定しない
+    var others=0;
+    Array.prototype.forEach.call(main.children,function(el){
+      if(el===rp||el===chat) return;
+      others+=el.getBoundingClientRect().width;
+    });
+    return Math.max(RP_MIN_W, total-others-CHAT_MIN_W);
+  }
+  function clampRightPanel(){
+    var rp=document.getElementById('right-panel');
+    if(!rp) return;
+    var max=rpMaxWidth();
+    if(max===null) return;
+    if(rp.getBoundingClientRect().width>max){
+      rp.style.flex='none';
+      rp.style.width=max+'px';
+    }
+  }
+  window.clampRightPanel=clampRightPanel;
+
   // ===== リサイザーのサイズ復元 =====
   function restoreResize(){
     try{
@@ -3729,6 +3767,7 @@ document.addEventListener('mousedown',function(e){
       }
       if(s.rightW&&rightPanel){rightPanel.style.flex='none';rightPanel.style.width=s.rightW+'px';}
       if(chatCol){chatCol.style.flex='1';chatCol.style.width='auto';}
+      clampRightPanel();   // 保存値が今の画面幅に対して広すぎる場合はここで縮める
     }catch(e){}
   }
   function saveResize(){
@@ -3753,6 +3792,7 @@ document.addEventListener('mousedown',function(e){
   window.addEventListener('resize',function(){
     clearTimeout(resizeTimer);
     resizeTimer=setTimeout(function(){
+      clampRightPanel();   // ウィンドウを狭めた時も右パネルを縮める
       var col=document.getElementById('chat-col');
       var ca=document.getElementById('chat-wrap');
       var ra=document.getElementById('reply-area');
@@ -3846,7 +3886,9 @@ document.addEventListener('mousedown',function(e){
     var dx=e.clientX-hStartX;
     // レイアウト: 左=パネル(right-panel) / 右=チャット(chat-col)
     // 右へドラッグ(dx>0) → 左のパネルが広がる
-    var newPW=Math.max(160, hStartRW+dx);
+    var newPW=Math.max(RP_MIN_W, hStartRW+dx);
+    var maxPW=rpMaxWidth();
+    if(maxPW!==null&&newPW>maxPW) newPW=maxPW;   // チャット欄を潰さない
     rightPanel.style.width=newPW+'px';
     rightPanel.style.flex='none';
     chatCol.style.flex='1';
