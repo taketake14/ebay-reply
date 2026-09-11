@@ -1346,7 +1346,11 @@ function ebayImg(url, size){
   return url.replace(/\/s-l\d+\.(jpg|png|webp)/i, '/s-l'+size+'.$1');
 }
 
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// HTMLエスケープ。
+// 引用符も必ずエスケープすること。data-orig や title などの属性値に文字列を入れており、
+// バイヤーの本文に " が含まれるとそこで属性が途切れて、以降の文字が消える
+//（翻訳が途中で切れる原因になっていた）。同時に余計な属性が生成される危険もある。
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function escAttr(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n');}
 function toJST(ts){
   if(!ts) return {date:'',time:''};
