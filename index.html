@@ -432,6 +432,27 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-wrap.mine .bbl-ja{padding:3px 12px 3px 0;border-left:none;border-right:2px solid #5eead4;text-align:left;color:#134e4a;}
 .new-badge{font-size:11px;font-weight:600;color:#b54708;text-align:center;padding:3px 12px;margin:4px 0;background:#fffaeb;border:1px solid #fedf89;border-radius:20px;display:inline-block;align-self:center;letter-spacing:0.02em;}
 
+/* 添付ファイル */
+.bbl-att{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-width:74%;}
+.bbl-wrap.mine .bbl-att{justify-content:flex-end;margin-left:auto;}
+.att-img{display:block;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#fff;}
+.att-img img{display:block;max-width:220px;max-height:220px;object-fit:cover;}
+.att-file{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;max-width:100%;word-break:break-all;}
+.att-file:hover{border-color:var(--teal);color:var(--teal);}
+/* 返信欄の添付 */
+.att-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--border);background:var(--bg2);}
+.att-bar.empty{display:none;}
+.att-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:4px 6px 4px 10px;max-width:240px;}
+.att-chip .an{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.att-chip .as{color:var(--text3);font-size:10.5px;flex-shrink:0;}
+.att-chip .ax{border:none;background:#eef2f6;color:#64748b;border-radius:50%;width:18px;height:18px;line-height:1;cursor:pointer;flex-shrink:0;font-size:11px;}
+.att-chip .ax:hover{background:#fee2e2;color:#b91c1c;}
+.att-chip.uploading{opacity:0.6;}
+.att-add{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:#475569;background:#fff;border:1px solid var(--border);border-radius:14px;padding:5px 12px;cursor:pointer;}
+.att-add:hover{border-color:var(--teal);color:var(--teal);}
+.att-add:disabled{opacity:0.5;cursor:not-allowed;}
+.att-note{font-size:10.5px;color:var(--text3);}
+
 /* 返信エリア */
 .reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
 .reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;}
@@ -1121,6 +1142,14 @@ a.kv-v:hover{text-decoration:underline;}
           </div>
         </div>
         <div class="reply-actions"></div>
+        <!-- 添付ファイル。eBayの上限は1メッセージ5個まで -->
+        <div class="att-bar" id="att-bar">
+          <button class="att-add" id="att-add" onclick="document.getElementById('att-input').click()">&#128206; ファイルを添付</button>
+          <span class="att-note" id="att-note">画像・PDF・Word・テキスト／5個まで</span>
+          <input type="file" id="att-input" multiple style="display:none"
+            accept="image/*,.pdf,.doc,.docx,.txt,.csv,.rtf,.odt"
+            onchange="onAttachPick(this.files); this.value='';">
+        </div>
       </div>
     </div>
   </div>
@@ -2025,6 +2054,23 @@ function updateStarBtn(){
   btn.classList.toggle('on',m.starred);
 }
 
+// ===== 添付ファイルの表示 =====
+// 画像はそのまま見せ、それ以外はファイル名のリンクにする
+function attachHtml(media){
+  if(!media || !media.length) return '';
+  var items=media.map(function(a){
+    var name=a.name||'添付ファイル';
+    if(a.mediaType==='IMAGE'){
+      return '<a class="att-img" href="'+esc(a.url)+'" target="_blank" rel="noopener" title="'+esc(name)+'">'
+        +'<img src="'+esc(a.url)+'" alt="'+esc(name)+'" loading="lazy" '
+        +'onerror="this.parentElement.className=\'att-file\';this.parentElement.textContent=\'&#128206; \'+this.alt;"></a>';
+    }
+    var icon = a.mediaType==='PDF' ? '&#128196;' : (a.mediaType==='DOC' ? '&#128221;' : '&#128196;');
+    return '<a class="att-file" href="'+esc(a.url)+'" target="_blank" rel="noopener">'+icon+' '+esc(name)+'</a>';
+  }).join('');
+  return '<div class="bbl-att">'+items+'</div>';
+}
+
 // ===== チャット翻訳（Claude API・吹き出し単位） =====
 var chatTranslateMode = false;
 // 翻訳結果のキャッシュ（本文 → 日本語訳）。同じ文は再翻訳しない
@@ -2198,14 +2244,14 @@ function renderChatBubbles(){
   var html='';
   var allItems=(m.history||[]).map(function(h,i){
     var t=new Date(h.time||0).getTime();
-    return {from:h.from, text:h.text, time:h.time||'', isNew:false, ts:(isNaN(t)?0:t), ord:i};
+    return {from:h.from, text:h.text, time:h.time||'', media:h.media, isNew:false, ts:(isNaN(t)?0:t), ord:i};
   });
   // 最新メッセージ（バイヤーからの新着）
   var nt=new Date(m.timestamp||0).getTime();
   var newTs=isNaN(nt)?0:nt;
   // 注文検索で追加した仮エントリはメッセージ本文を吹き出しにしない
   if(!m.orderOnly){
-    allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), isNew:true, ts:newTs, ord:allItems.length});
+    allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), media:m.msgMedia, isNew:true, ts:newTs, ord:allItems.length});
   }
 
   // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
@@ -2322,6 +2368,7 @@ function renderChatBubbles(){
     // 新着バッジは廃止
     html+='<div class="bbl-wrap '+side+'">'
       +'<div class="bbl '+side+(h.isNew?' new-msg':'')+'" data-orig="'+esc(h.text)+'">'+esc(h.text)+'</div>'
+      +attachHtml(h.media)
       +'<div class="bbl-meta">'+esc(fmtTime(h.time))
         +'<button class="bbl-tr-btn" onclick="translateBubble('+idx+',this)" title="この吹き出しを日本語に">日本語</button>'
       +'</div>'
@@ -2987,6 +3034,99 @@ async function loadBuyerDetail(buyer, idx){
 }
 
 // ===== eBayに直接送信 =====
+// ===== 添付ファイルの選択と送信準備 =====
+// eBayの上限（公式仕様）。画面側でも先に弾いて、無駄な送信を避ける
+var ATT_MAX_COUNT = 5;
+var ATT_MAX_TEXT = 2000;
+var ATT_MAX_BYTES = 20 * 1024 * 1024;
+var pendingAttachments = [];   // アップロード済みで、まだ送信していない添付
+
+function fmtSize(n){
+  if(n>=1048576) return (n/1048576).toFixed(1)+'MB';
+  if(n>=1024) return Math.round(n/1024)+'KB';
+  return n+'B';
+}
+
+function renderAttachments(){
+  var bar=document.getElementById('att-bar');
+  if(!bar) return;
+  // 既存のチップだけ消す（ボタンと注意書きは残す）
+  Array.prototype.slice.call(bar.querySelectorAll('.att-chip')).forEach(function(c){c.remove();});
+  var addBtn=document.getElementById('att-add');
+  pendingAttachments.forEach(function(a,i){
+    var chip=document.createElement('span');
+    chip.className='att-chip'+(a.uploading?' uploading':'');
+    chip.innerHTML='<span class="an">'+esc(a.name)+'</span>'
+      +'<span class="as">'+(a.uploading?'送信準備中':fmtSize(a.size||0))+'</span>'
+      +(a.uploading?'':'<button class="ax" title="外す" onclick="removeAttachment('+i+')">&#10005;</button>');
+    bar.insertBefore(chip, addBtn);
+  });
+  if(addBtn) addBtn.disabled = pendingAttachments.length >= ATT_MAX_COUNT;
+  var note=document.getElementById('att-note');
+  if(note){
+    note.textContent = pendingAttachments.length
+      ? (pendingAttachments.length+' / '+ATT_MAX_COUNT+' 個')
+      : '画像・PDF・Word・テキスト／'+ATT_MAX_COUNT+'個まで';
+  }
+}
+
+function removeAttachment(i){
+  var a=pendingAttachments[i];
+  if(!a) return;
+  pendingAttachments.splice(i,1);
+  renderAttachments();
+  // 保存済みのファイルも消しておく（使われないまま残さない）
+  if(a.id) fetch('/api/media/'+encodeURIComponent(a.id),{method:'DELETE'}).catch(function(){});
+}
+
+async function onAttachPick(files){
+  if(!files || !files.length) return;
+  var list=Array.prototype.slice.call(files);
+  if(pendingAttachments.length + list.length > ATT_MAX_COUNT){
+    alert('添付は1件のメッセージにつき'+ATT_MAX_COUNT+'個までです。\n現在'+pendingAttachments.length+'個、追加しようとしたのが'+list.length+'個です。');
+    return;
+  }
+  for(const f of list){
+    if(f.size > ATT_MAX_BYTES){
+      alert(f.name+' は '+fmtSize(f.size)+' あります。20MB以下にしてください。');
+      continue;
+    }
+    var placeholder={name:f.name,size:f.size,uploading:true};
+    pendingAttachments.push(placeholder);
+    renderAttachments();
+    try{
+      var b64=await new Promise(function(resolve,reject){
+        var r=new FileReader();
+        r.onload=function(){ resolve(String(r.result).split(',')[1]); };
+        r.onerror=function(){ reject(new Error('ファイルを読めませんでした')); };
+        r.readAsDataURL(f);
+      });
+      var res=await fetch('/api/media/upload',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({filename:f.name,mimeType:f.type,dataBase64:b64})
+      });
+      var d=await res.json();
+      var at=pendingAttachments.indexOf(placeholder);
+      if(d.ok && d.media){
+        if(at>=0) pendingAttachments[at]=d.media;
+      } else {
+        if(at>=0) pendingAttachments.splice(at,1);
+        alert(f.name+' を添付できませんでした。\n'+(d.error||'原因不明'));
+      }
+    }catch(e){
+      var at2=pendingAttachments.indexOf(placeholder);
+      if(at2>=0) pendingAttachments.splice(at2,1);
+      alert(f.name+' を添付できませんでした。\n'+e.message);
+    }
+    renderAttachments();
+  }
+}
+
+function clearAttachments(){
+  pendingAttachments=[];
+  renderAttachments();
+}
+
 async function sendReplyToEbay(){
   if(currentIdx===null) return;
   var m=messages[currentIdx];
@@ -2999,7 +3139,21 @@ async function sendReplyToEbay(){
   var raw=document.getElementById('d-reply').value || '';
   // 連続改行を1つにまとめる（eBay側で間延びするのを防ぐ）
   var text=raw.replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
-  if(!text){ alert('返信文が空です'); return; }
+  // 添付だけを送ることもできる
+  var atts=pendingAttachments.filter(function(a){return a && a.id;});
+  if(pendingAttachments.some(function(a){return a && a.uploading;})){
+    alert('添付の準備がまだ終わっていません。少し待ってから送信してください。');
+    return;
+  }
+  if(!text && atts.length===0){ alert('返信文が空です'); return; }
+  if(text.length > ATT_MAX_TEXT){
+    alert('本文が'+text.length+'文字です。eBayの上限は'+ATT_MAX_TEXT+'文字なので、短くしてください。');
+    return;
+  }
+  if(atts.length > ATT_MAX_COUNT){
+    alert('添付は'+ATT_MAX_COUNT+'個までです。');
+    return;
+  }
   if(!m.conversationId && !m.buyer){ alert('送信先が特定できません'); return; }
 
   // 安全確認：画面に表示中のバイヤー名と送信先が一致するか
@@ -3022,7 +3176,8 @@ async function sendReplyToEbay(){
         conversationId: targetConvId,
         buyer: targetBuyer,
         messageText: text,
-        itemId: targetItemId
+        itemId: targetItemId,
+        media: atts.map(function(a){return {id:a.id,name:a.name,mediaType:a.mediaType};})
       })
     });
     var d=await r.json();
@@ -3042,10 +3197,14 @@ async function sendReplyToEbay(){
       if(!tm) tm=m;
       tm.replied=true;
       if(!tm.history) tm.history=[];
+      // 送信できた添付を履歴の吹き出しに反映して、添付欄を空にする
+      var sentMedia=atts.map(function(a){return {name:a.name,mediaType:a.mediaType,url:a.url};});
+      clearAttachments();
       var nowTs=new Date();
       var msgTs=new Date(targetTs||0);
       if(!isNaN(msgTs.getTime()) && nowTs<=msgTs) nowTs=new Date(msgTs.getTime()+1000);
-      tm.history.push({from:'me', text:text, time:nowTs.toISOString()});
+      tm.history.push({from:'me', text:text, time:nowTs.toISOString(),
+        media: sentMedia.length ? sentMedia : undefined});
       saveState(tm);
       // 表示中の会話を送信対象に合わせ直す
       var ti=messages.indexOf(tm);
