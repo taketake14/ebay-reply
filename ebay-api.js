@@ -209,7 +209,12 @@ async function getConversation(conversationId) {
 }
 
 async function sendMessage(opts) {
-  const body = { messageText: opts.messageText };
+  const body = {};
+  if (opts.messageText) body.messageText = opts.messageText;
+  // 添付。eBayは1メッセージ5個までで、mediaUrlはHTTPSの公開URLである必要がある
+  if (Array.isArray(opts.messageMedia) && opts.messageMedia.length) {
+    body.messageMedia = opts.messageMedia;
+  }
   if (opts.conversationId) body.conversationId = opts.conversationId;
   else if (opts.otherPartyUsername) body.otherPartyUsername = opts.otherPartyUsername;
   if (opts.itemId) body.reference = { referenceType: 'LISTING', referenceId: String(opts.itemId) };
@@ -243,6 +248,20 @@ function guessSellerFromConversations(list) {
   let best = '', bestN = 0;
   Object.keys(count).forEach(n => { if (count[n] > bestN) { bestN = count[n]; best = n; } });
   return bestN >= list.length ? best : '';
+}
+
+// eBayから届いたメッセージに添付されているファイルを取り出す。
+// messageMedia は mediaName / mediaType / mediaUrl を持つ（IMAGE/PDF/DOC/TXT）
+function mediaOf(mm) {
+  const arr = (mm && Array.isArray(mm.messageMedia)) ? mm.messageMedia : [];
+  const out = arr.map(function (x) {
+    return {
+      name: (x && x.mediaName) || '',
+      mediaType: (x && x.mediaType) || '',
+      url: (x && x.mediaUrl) || '',
+    };
+  }).filter(function (x) { return !!x.url; });
+  return out.length ? out : undefined;
 }
 
 async function getMessagesForApp(daysBack) {
@@ -294,6 +313,7 @@ async function getMessagesForApp(daysBack) {
     }
 
     let history = [];
+    let bodyMedia = mediaOf(lm);
     let body = lm.messageBody || '';
     let ts = lm.createdDate || c.createdDate || new Date().toISOString();
     let subject = '';
@@ -314,6 +334,7 @@ async function getMessagesForApp(daysBack) {
         if (lastBuyerIdx >= 0) {
           body = sorted[lastBuyerIdx].messageBody || body;
           ts = sorted[lastBuyerIdx].createdDate || ts;
+          bodyMedia = mediaOf(sorted[lastBuyerIdx]);
           // それ以外すべて（自分の返信を含む）を history に。自分の返信が後にあってもここに残る
           history = sorted.filter(function(_, k) { return k !== lastBuyerIdx; }).map(function(mm) {
             // senderUsername が空の場合は受信者から逆算する
@@ -325,6 +346,7 @@ async function getMessagesForApp(daysBack) {
               from: isMine ? 'me' : 'buyer',
               text: mm.messageBody || '',
               time: mm.createdDate || '',
+              media: mediaOf(mm),
             };
           });
         } else {
@@ -332,12 +354,14 @@ async function getMessagesForApp(daysBack) {
           const latest = sorted[sorted.length - 1];
           body = latest.messageBody || body;
           ts = latest.createdDate || ts;
+          bodyMedia = mediaOf(latest);
           msgFrom = 'me';
           history = sorted.slice(0, -1).map(function(mm) {
             return {
               from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
               text: mm.messageBody || '',
               time: mm.createdDate || '',
+              media: mediaOf(mm),
             };
           });
         }
@@ -345,6 +369,8 @@ async function getMessagesForApp(daysBack) {
     }
 
     out.push({
+      // この会話の最新メッセージに付いていた添付
+      bodyMedia: bodyMedia,
       // 履歴の向きの署名。シートの保存内容と比べて、違っていれば書き直す
       sig: msgFrom + '|' + history.length + '|' + history.map(function(h){ return h.from === 'me' ? '1' : '0'; }).join(''),
       conversationId: cid,
