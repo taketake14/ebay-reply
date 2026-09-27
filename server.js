@@ -2,6 +2,7 @@ const express = require('express');
 const fetch = require('node-fetch');
 const path = require('path');
 const ebayApi = require('./ebay-api');
+const storage = require('./storage');
 const app = express();
 let autoSyncRunning = false;
 let lastSyncAt = 0;          // 最後に同期が成功した時刻（ミリ秒）
@@ -11,20 +12,21 @@ function recordSync(entry) {
   syncLog.unshift(Object.assign({ at: new Date().toISOString() }, entry));
   if (syncLog.length > 30) syncLog = syncLog.slice(0, 30);
 }
-app.use(express.json());
+// 添付ファイルはbase64でJSONに載せて受け取るため、上限を広げておく
+app.use(express.json({ limit: '30mb' }));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 // ===== Google Sheets JWT認証 =====
-async function getGoogleAccessToken() {
+async function getGoogleAccessToken(scope) {
   const creds = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_JSON);
   const now = Math.floor(Date.now() / 1000);
   const header = { alg: 'RS256', typ: 'JWT' };
   const payload = {
     iss: creds.client_email,
-    scope: 'https://www.googleapis.com/auth/spreadsheets',
+    scope: scope || 'https://www.googleapis.com/auth/spreadsheets',
     aud: 'https://oauth2.googleapis.com/token',
     exp: now + 3600,
     iat: now,
@@ -1411,7 +1413,7 @@ app.get('/api/ebay/sync', async (req, res) => {
         message: em.body || '',
         msg: em.body || '',
         msgFrom: em.msgFrom || 'buyer',
-        history: em.history || [],
+        history: historyWithBodyMedia(em.history, em.bodyMedia),
         item: itemInfo ? itemInfo.title : extractItemFromSubject(em.subject || ''),
         orderId: '',
         itemId: em.itemId || '',
@@ -1445,14 +1447,197 @@ app.get('/api/ebay/sync', async (req, res) => {
   }
 });
 
+// 最新メッセージに付いていた添付を、履歴JSONの中に専用の印として保存する。
+// シートの列構成を変えずに済ませるための入れ物で、本文が無いので吹き出しには出ない。
+function historyWithBodyMedia(history, bodyMedia) {
+  const arr = (history || []).slice();
+  if (bodyMedia && bodyMedia.length) arr.push({ __bodyMedia: true, media: bodyMedia });
+  return arr;
+}
+// 履歴JSONから、上の印を取り除いた本来の履歴だけを返す
+function historyOnly(arr) {
+  return (arr || []).filter(function (h) { return h && !h.__bodyMedia; });
+}
+// 履歴JSONから、最新メッセージの添付を取り出す
+function bodyMediaOf(arr) {
+  const hit = (arr || []).find(function (h) { return h && h.__bodyMedia; });
+  return (hit && hit.media) || null;
+}
+
+// ===== 添付ファイル =====
+// 保存先はstorage.jsに閉じ込めてある。ここは受け取りと配信だけを担当する。
+storage.init({
+  getAccessToken: () => getGoogleAccessToken('https://www.googleapis.com/auth/drive'),
+});
+
+// eBayが受け付ける上限（公式仕様）。ここを唯一の基準にする
+const MEDIA_MAX_COUNT = 5;          // 1メッセージあたりの添付数
+const MEDIA_MAX_TEXT = 2000;        // 本文の文字数
+const MEDIA_MAX_BYTES = 20 * 1024 * 1024;   // 1ファイルの上限（eBayは非公表のため自衛値）
+
+// アプリの公開URL。eBayがここへファイルを取りに来る
+function publicBaseUrl(req) {
+  if (process.env.PUBLIC_BASE_URL) return String(process.env.PUBLIC_BASE_URL).replace(/\/+$/, '');
+  const host = req.get('x-forwarded-host') || req.get('host');
+  return 'https://' + host;
+}
+
+// 添付をアップロードする。送信はまだ行わない
+app.post('/api/media/upload', async (req, res) => {
+  try {
+    const { filename, mimeType, dataBase64 } = req.body || {};
+    if (!dataBase64) return res.json({ ok: false, error: 'ファイルの中身が空です' });
+    const buffer = Buffer.from(String(dataBase64), 'base64');
+    if (!buffer.length) return res.json({ ok: false, error: 'ファイルの中身が空です' });
+    if (buffer.length > MEDIA_MAX_BYTES) {
+      return res.json({
+        ok: false,
+        error: 'ファイルが大きすぎます（' + Math.round(buffer.length / 1048576) + 'MB）。20MB以下にしてください',
+      });
+    }
+    const mediaType = storage.toEbayMediaType(mimeType, filename);
+    if (!mediaType) {
+      return res.json({
+        ok: false,
+        error: 'この形式はeBayに添付できません。画像・PDF・Word・テキストのみ対応しています',
+      });
+    }
+    const saved = await storage.put({ buffer, filename, mimeType });
+    res.json({
+      ok: true,
+      media: {
+        id: saved.id,
+        name: saved.name,
+        size: saved.size,
+        mimeType: saved.mimeType,
+        mediaType,
+        url: publicBaseUrl(req) + '/media/' + encodeURIComponent(saved.id),
+      },
+    });
+  } catch (e) {
+    console.error('[media] upload error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 添付の配信。eBayとバイヤーがここから読む（ログイン不要である必要がある）
+app.get('/media/:id', async (req, res) => {
+  try {
+    const f = await storage.get(req.params.id);
+    if (!f) return res.status(404).send('not found');
+    res.setHeader('Content-Type', f.mimeType || 'application/octet-stream');
+    res.setHeader('Content-Length', f.buffer.length);
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    if (f.name) {
+      res.setHeader('Content-Disposition',
+        'inline; filename*=UTF-8\'\'' + encodeURIComponent(f.name));
+    }
+    res.send(f.buffer);
+  } catch (e) {
+    console.error('[media] serve error:', e.message);
+    res.status(500).send('error');
+  }
+});
+
+app.delete('/api/media/:id', async (req, res) => {
+  try {
+    const ok = await storage.remove(req.params.id);
+    res.json({ ok });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 古い添付の削除。容量が無限に増えないようにする
+app.get('/api/media/cleanup', async (req, res) => {
+  try {
+    const days = parseInt(req.query.days) || 90;
+    const r = await storage.cleanupOlderThan(days);
+    res.json(Object.assign({ days, backend: storage.backendName() }, r));
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 保存層の疎通確認。デプロイ後にここを開けば設定の可否が分かる
+app.get('/api/media/selftest', async (req, res) => {
+  const out = { backend: storage.backendName(), base: publicBaseUrl(req) };
+  try {
+    const buf = Buffer.from('ReplAI storage selftest ' + new Date().toISOString(), 'utf8');
+    const saved = await storage.put({ buffer: buf, filename: 'replai-selftest.txt', mimeType: 'text/plain' });
+    out.upload = 'OK (' + saved.id + ')';
+    const back = await storage.get(saved.id);
+    out.readBack = back && back.buffer.length === buf.length ? 'OK' : 'NG（読み出した中身が一致しません）';
+    out.publicUrl = out.base + '/media/' + saved.id;
+    out.removed = await storage.remove(saved.id) ? 'OK' : 'NG';
+    out.ok = out.upload.startsWith('OK') && out.readBack === 'OK';
+  } catch (e) {
+    out.ok = false;
+    out.error = e.message;
+  }
+  res.json(out);
+});
+
 // ===== eBay API: 返信を送信 =====
 app.post('/api/ebay/reply', async (req, res) => {
   try {
     const { conversationId, messageText, itemId, buyer } = req.body;
-    if (!messageText) return res.json({ ok: false, error: 'messageText が必要です' });
+    const media = Array.isArray(req.body.media) ? req.body.media : [];
+
+    // ---- 送信前の検査。eBayの公式上限をここで弾く ----
+    if (!messageText && media.length === 0) {
+      return res.json({ ok: false, error: '本文か添付のどちらかが必要です' });
+    }
+    if (messageText && String(messageText).length > MEDIA_MAX_TEXT) {
+      return res.json({
+        ok: false,
+        error: '本文が' + String(messageText).length + '文字です。eBayの上限は'
+          + MEDIA_MAX_TEXT + '文字なので、短くしてください',
+      });
+    }
+    if (media.length > MEDIA_MAX_COUNT) {
+      return res.json({
+        ok: false,
+        error: '添付は1件のメッセージにつき' + MEDIA_MAX_COUNT + '個までです（今回は'
+          + media.length + '個）。減らして送り直してください',
+      });
+    }
+    for (const m of media) {
+      if (!m || !m.id || !m.name || !m.mediaType) {
+        return res.json({ ok: false, error: '添付の情報が不足しています。付け直してください' });
+      }
+      if (storage.EBAY_MEDIA_TYPES.indexOf(m.mediaType) < 0) {
+        return res.json({ ok: false, error: 'eBayが受け付けない形式が含まれています: ' + m.name });
+      }
+    }
+
+    // eBayに渡すのは自前のURL。eBayがここへ取りに来る
+    const base = publicBaseUrl(req);
+    const messageMedia = media.map(m => ({
+      mediaName: m.name,
+      mediaType: m.mediaType,
+      mediaUrl: base + '/media/' + encodeURIComponent(m.id),
+    }));
+
     const result = await ebayApi.sendMessage({
-      conversationId, otherPartyUsername: buyer, messageText, itemId
+      conversationId, otherPartyUsername: buyer, messageText, itemId,
+      messageMedia: messageMedia.length ? messageMedia : undefined,
     });
+
+    // ---- 送信後の照合。ここを通らないと「送信済み」にしない ----
+    // eBayは成功時に添付を返してくるので、送った個数と一致するかを必ず確かめる。
+    // 一致しなければ、画面上は送れたように見えても実際には付いていない。
+    if (messageMedia.length > 0) {
+      const echoed = (result && Array.isArray(result.messageMedia)) ? result.messageMedia.length : 0;
+      if (echoed !== messageMedia.length) {
+        return res.json({
+          ok: false,
+          error: '添付がeBayに登録されませんでした（送信' + messageMedia.length + '個 / eBayの記録'
+            + echoed + '個）。本文は送信された可能性があるため、eBayの画面で確認してください',
+          result,
+        });
+      }
+    }
 
     // 送信した返信をシートのhistoryに追記して永続化（結果を待って返す）
     let saved = null;
@@ -1486,6 +1671,9 @@ app.post('/api/ebay/reply', async (req, res) => {
           from: 'me',
           text: messageText,
           time: new Date().toISOString(),
+          media: media.length ? media.map(m => ({
+            name: m.name, mediaType: m.mediaType, url: base + '/media/' + encodeURIComponent(m.id),
+          })) : undefined,
         });
         // シートに行が無い場合は新規追加する
         if (saved && saved.ok === false && /見つかりません|not found/i.test(saved.error || '')) {
@@ -1570,6 +1758,8 @@ async function getSheetConvState() {
       const ts = new Date(rows[i][iTs] || 0).getTime() || 0;
       let hist = [];
       if (iHist >= 0) { try { hist = JSON.parse(rows[i][iHist] || '[]') || []; } catch (e) { hist = []; } }
+      // 添付の印は履歴ではないので、署名の計算から外す
+      hist = historyOnly(hist);
       const from = (iFrom >= 0 ? rows[i][iFrom] : '') || 'buyer';
       // 同じ会話が複数行ある場合は「一番下の行」を採用する。
       // 書き込み側(refreshRowInSheet)も一番下の行を更新するため、
@@ -1687,7 +1877,7 @@ async function refreshRowInSheet(em, forceUnread) {
     get('replied') || 'false',
     get('memo'),
     em.conversationId,
-    JSON.stringify(em.history || []),
+    JSON.stringify(historyWithBodyMedia(em.history, em.bodyMedia)),
     em.msgFrom || 'buyer',
     (em.imgUrl || get('imgUrl') || ''),
   ]];
@@ -1788,7 +1978,7 @@ app.post('/api/ebay/notification', async (req, res) => {
         subject: em.subject || '',
         message: em.body || '',
         msg: em.body || '',
-        history: em.history || [],
+        history: historyWithBodyMedia(em.history, em.bodyMedia),
         msgFrom: em.msgFrom || 'buyer',
         item: em.itemId ? '' : extractItemFromSubject(em.subject || ''),
         orderId: '', itemId: em.itemId || '', imgUrl: '',
@@ -2094,30 +2284,41 @@ app.get('/api/messages', async (req, res) => {
       });
 
       const allHistory = [];
+      let latestMedia = null;   // 一番新しいメッセージに付いていた添付
       uniqueRows.forEach((m, idx) => {
         if (m.history && m.history.length > 0) {
-          m.history.forEach(h => {
+          // 添付の印は吹き出しではないので、ここで取り出して履歴から外す
+          const bm = bodyMediaOf(m.history);
+          if (bm && idx === uniqueRows.length - 1) latestMedia = bm;
+          historyOnly(m.history).forEach(h => {
             // fromが欠けている古いデータは表示しない（誤った向きで出るのを防ぐ）
             if (h.from !== 'me' && h.from !== 'buyer') return;
-            allHistory.push({ from: h.from, text: h.text, time: h.time || m.timestamp });
+            allHistory.push({
+              from: h.from, text: h.text, time: h.time || m.timestamp,
+              media: (h.media && h.media.length) ? h.media : undefined,
+            });
           });
         }
         // 最後の行のmsgは latest として別途表示されるので、それ以外だけ履歴に入れる
         if (idx < uniqueRows.length - 1 && m.msg) {
-          allHistory.push({ from: m.msgFrom === 'me' ? 'me' : 'buyer', text: m.msg, time: m.timestamp });
+          allHistory.push({
+            from: m.msgFrom === 'me' ? 'me' : 'buyer', text: m.msg, time: m.timestamp,
+            media: bodyMediaOf(m.history) || undefined,
+          });
         }
       });
       // 【重要】メッセージは一切間引かない。eBayにあるものは全てそのまま表示する。
       // （同じ文面を2回送ることは実際にあり、勝手に消すと事実と食い違う）
       // 空テキストだけ除外し、時系列に並べる。
       const dedupedHistory = allHistory
-        .filter(h => h.text)
+        .filter(h => h.text || (h.media && h.media.length))
         .sort((a, b) => {
           const ta = new Date(a.time || 0).getTime() || 0;
           const tb = new Date(b.time || 0).getTime() || 0;
           return ta - tb;
         });
       return {
+        msgMedia: latestMedia || undefined,
         id: latest.id,
         conversationId: thread.conversationId || latest.conversationId || '',
         buyer: thread.buyer,
@@ -2345,7 +2546,7 @@ async function autoSyncFromEbay() {
         message: em.body || '',
         msg: em.body || '',
         msgFrom: em.msgFrom || 'buyer',
-        history: em.history || [],
+        history: historyWithBodyMedia(em.history, em.bodyMedia),
         item: aInfo ? aInfo.title : extractItemFromSubject(em.subject || ''),
         orderId: '', itemId: em.itemId || '', imgUrl: aInfo ? aInfo.imageUrl : '',
         sold: false,
