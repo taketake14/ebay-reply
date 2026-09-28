@@ -619,6 +619,30 @@ app.get('/api/sheet/headers', async (req, res) => {
 });
 
 // ===== conversationId 単体の取得テスト =====
+// eBayが返す添付情報を、加工せずそのまま確認するための窓口。
+// 受信した添付が取れているのか、送った添付をeBayがどう保管しているのかを見る
+app.get('/api/ebay/media-raw/:cid', async (req, res) => {
+  try {
+    const d = await ebayApi.getConversation(req.params.cid);
+    const msgs = (d && d.messages) || [];
+    res.json({
+      ok: true,
+      count: msgs.length,
+      // メッセージ1件ごとに、eBayが返してきたキーと添付の中身を並べる
+      messages: msgs.map(m => ({
+        from: m.senderUsername || '(空)',
+        time: m.createdDate || '',
+        body: (m.messageBody || '').substring(0, 30),
+        返ってきたキー: Object.keys(m),
+        添付の件数: Array.isArray(m.messageMedia) ? m.messageMedia.length : 0,
+        添付の中身: Array.isArray(m.messageMedia) ? m.messageMedia : null,
+      })),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/ebay/conv-raw/:cid', async (req, res) => {
   try {
     const d = await ebayApi.getConversation(req.params.cid);
