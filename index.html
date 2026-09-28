@@ -467,7 +467,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .status-done{background:#d1fae5;color:#065f46;}
 .status-error{background:#fee2e2;color:var(--danger);}
 .reply-history-select{font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;color:var(--text2);outline:none;margin-left:auto;cursor:pointer;}
-.reply-split{display:grid;grid-template-columns:1fr 46px 1fr;padding:8px 18px;gap:8px;flex:1;min-height:0;}
+/* grid-template-rows を minmax(0,1fr) にしないと、行の高さが中身基準のままになり、
+   返信欄が狭くなったときに入力欄や送信ボタンが枠からはみ出して隠れる。
+   添付の行が増えたときに下が埋もれていた原因がこれ */
+.reply-split{display:grid;grid-template-columns:1fr 46px 1fr;grid-template-rows:minmax(0,1fr);padding:8px 18px;gap:8px;flex:1;min-height:0;}
 
 /* 中央の変換ボタン列 */
 .reply-mid{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px;padding-top:22px;}
