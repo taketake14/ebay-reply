@@ -439,19 +439,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .att-img img{display:block;max-width:220px;max-height:220px;object-fit:cover;}
 .att-file{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;max-width:100%;word-break:break-all;}
 .att-file:hover{border-color:var(--teal);color:var(--teal);}
-/* 返信欄の添付 */
-.att-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 10px;border-top:1px solid var(--border);background:var(--bg2);}
-.att-bar.empty{display:none;}
-.att-chip{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:4px 6px 4px 10px;max-width:240px;}
+/* 返信欄の添付。専用の行を作らず、ボタン列の中に並べる */
+.att-inline{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;min-width:0;}
+.att-chip{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:2px 3px 2px 8px;max-width:120px;line-height:1.5;}
 .att-chip .an{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.att-chip .as{color:var(--text3);font-size:10.5px;flex-shrink:0;}
-.att-chip .ax{border:none;background:#eef2f6;color:#64748b;border-radius:50%;width:18px;height:18px;line-height:1;cursor:pointer;flex-shrink:0;font-size:11px;}
+.att-chip .as{color:var(--text3);font-size:10px;flex-shrink:0;}
+.att-chip .ax{border:none;background:#eef2f6;color:#64748b;border-radius:50%;width:15px;height:15px;line-height:1;cursor:pointer;flex-shrink:0;font-size:9px;padding:0;}
 .att-chip .ax:hover{background:#fee2e2;color:#b91c1c;}
 .att-chip.uploading{opacity:0.6;}
-.att-add{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:#475569;background:#fff;border:1px solid var(--border);border-radius:14px;padding:5px 12px;cursor:pointer;}
-.att-add:hover{border-color:var(--teal);color:var(--teal);}
-.att-add:disabled{opacity:0.5;cursor:not-allowed;}
-.att-note{font-size:10.5px;color:var(--text3);}
+.att-count{font-size:10.5px;color:var(--text3);white-space:nowrap;}
+#att-add:disabled{opacity:0.5;cursor:not-allowed;}
 
 /* 返信エリア */
 .reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
@@ -1094,6 +1091,14 @@ a.kv-v:hover{text-decoration:underline;}
           <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AIにおまかせ</button>
           <button class="btn btn-ai2" onclick="openAiHint()" id="btn-ai-hint">&#10024; AIに情報を渡す</button>
           <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">&#128221; 定型文</button>
+          <!-- 添付。専用の行を作ると返信欄の高さが削られるので、ボタン列に入れている -->
+          <button class="btn btn-ghost" id="att-add" onclick="document.getElementById('att-input').click()" title="画像のみ／5枚まで">&#128247; 画像</button>
+          <!-- eBayの画面で実際に選べる拡張子と同じものだけを並べている。
+               PDFやWordはeBay側で選択肢に出ないため入れない -->
+          <input type="file" id="att-input" multiple style="display:none"
+            accept=".pjp,.jfif,.jpe,.pjpeg,.jpeg,.jpg,.png,.gif,.bmp,.tiff,.tif"
+            onchange="onAttachPick(this.files); this.value='';">
+          <span class="att-inline" id="att-bar"></span>
           <span class="reply-status" id="d-status"></span>
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
             <option value="-1">最新の返信案</option>
@@ -1142,16 +1147,6 @@ a.kv-v:hover{text-decoration:underline;}
           </div>
         </div>
         <div class="reply-actions"></div>
-        <!-- 添付ファイル。eBayの上限は1メッセージ5個まで -->
-        <div class="att-bar" id="att-bar">
-          <button class="att-add" id="att-add" onclick="document.getElementById('att-input').click()">&#128247; 画像を添付</button>
-          <span class="att-note" id="att-note">画像のみ／5枚まで</span>
-          <!-- eBayの画面で実際に選べる拡張子と同じものだけを並べている。
-               PDFやWordはeBay側で選択肢に出ないため入れない -->
-          <input type="file" id="att-input" multiple style="display:none"
-            accept=".pjp,.jfif,.jpe,.pjpeg,.jpeg,.jpg,.png,.gif,.bmp,.tiff,.tif"
-            onchange="onAttachPick(this.files); this.value='';">
-        </div>
       </div>
     </div>
   </div>
@@ -1498,12 +1493,18 @@ function clearChatSelection(){
   if(rp) rp.classList.add('panel-idle');
   var nm=document.getElementById('d-name');
   if(nm) nm.textContent='—';
+  // バイヤー名の右のラベル（要対応・配送など）も消す。
+  // 残すと、選択していない相手のラベルが出たままになる
+  var ht=document.getElementById('d-header-tags');
+  if(ht) ht.innerHTML='';
 
   // 返信欄もクリアする（前の相手への文面が残ると誤送信につながる）
   var ja=document.getElementById('d-input-ja');
   var en=document.getElementById('d-reply');
   if(ja) ja.value='';
   if(en) en.value='';
+  // 添付も破棄する。残したまま別の相手を開くと、意図しない相手に送ってしまう
+  if(typeof clearAttachments==='function') clearAttachments();
   clearedBackup=null;
   var ub=document.getElementById('btn-undo-reply');
   if(ub) ub.disabled=true;
@@ -3054,24 +3055,20 @@ function fmtSize(n){
 function renderAttachments(){
   var bar=document.getElementById('att-bar');
   if(!bar) return;
-  // 既存のチップだけ消す（ボタンと注意書きは残す）
-  Array.prototype.slice.call(bar.querySelectorAll('.att-chip')).forEach(function(c){c.remove();});
-  var addBtn=document.getElementById('att-add');
+  var html='';
   pendingAttachments.forEach(function(a,i){
-    var chip=document.createElement('span');
-    chip.className='att-chip'+(a.uploading?' uploading':'');
-    chip.innerHTML='<span class="an">'+esc(a.name)+'</span>'
-      +'<span class="as">'+(a.uploading?'送信準備中':fmtSize(a.size||0))+'</span>'
-      +(a.uploading?'':'<button class="ax" title="外す" onclick="removeAttachment('+i+')">&#10005;</button>');
-    bar.insertBefore(chip, addBtn);
+    // ファイル名だけを出す。サイズはツールチップに回して幅を詰める
+    html+='<span class="att-chip'+(a.uploading?' uploading':'')+'" title="'+esc(a.name)+' ('+fmtSize(a.size||0)+')">'
+      +'<span class="an">'+esc(a.name)+'</span>'
+      +(a.uploading?'<span class="as">準備中</span>':'<button class="ax" title="外す" onclick="removeAttachment('+i+')">&#10005;</button>')
+      +'</span>';
   });
-  if(addBtn) addBtn.disabled = pendingAttachments.length >= ATT_MAX_COUNT;
-  var note=document.getElementById('att-note');
-  if(note){
-    note.textContent = pendingAttachments.length
-      ? (pendingAttachments.length+' / '+ATT_MAX_COUNT+' 枚')
-      : '画像のみ／'+ATT_MAX_COUNT+'枚まで';
+  if(pendingAttachments.length){
+    html+='<span class="att-count">'+pendingAttachments.length+'/'+ATT_MAX_COUNT+'</span>';
   }
+  bar.innerHTML=html;
+  var addBtn=document.getElementById('att-add');
+  if(addBtn) addBtn.disabled = pendingAttachments.length >= ATT_MAX_COUNT;
 }
 
 function removeAttachment(i){
