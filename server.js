@@ -1466,9 +1466,7 @@ function bodyMediaOf(arr) {
 
 // ===== 添付ファイル =====
 // 保存先はstorage.jsに閉じ込めてある。ここは受け取りと配信だけを担当する。
-storage.init({
-  getAccessToken: () => getGoogleAccessToken('https://www.googleapis.com/auth/drive'),
-});
+// 保存先はstorage.js側で自己完結している（Renderの永続ディスク）
 
 // eBayが受け付ける上限（公式仕様）。ここを唯一の基準にする
 const MEDIA_MAX_COUNT = 5;          // 1メッセージあたりの添付数
@@ -1559,10 +1557,23 @@ app.get('/api/media/cleanup', async (req, res) => {
   }
 });
 
+// 添付の使用量。容量が増えすぎていないか確認する
+app.get('/api/media/usage', (req, res) => {
+  res.json(Object.assign({ backend: storage.backendName() }, storage.usage()));
+});
+
 // 保存層の疎通確認。デプロイ後にここを開けば設定の可否が分かる
 app.get('/api/media/selftest', async (req, res) => {
   const out = { backend: storage.backendName(), base: publicBaseUrl(req) };
   try {
+    const ready = storage.checkReady();
+    out.saveDir = ready.dir;
+    if (!ready.ok) {
+      out.ok = false;
+      out.error = '保存先に書き込めません: ' + ready.error
+        + ' / Renderの管理画面でディスクを追加し、Mount Pathを /var/data にしてください';
+      return res.json(out);
+    }
     const buf = Buffer.from('ReplAI storage selftest ' + new Date().toISOString(), 'utf8');
     const saved = await storage.put({ buffer: buf, filename: 'replai-selftest.txt', mimeType: 'text/plain' });
     out.upload = 'OK (' + saved.id + ')';
