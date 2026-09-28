@@ -208,6 +208,59 @@ async function getConversation(conversationId) {
   return await callMessageAPI('/conversation/' + encodeURIComponent(conversationId) + '?' + q.toString());
 }
 
+// ===== 画像をeBayの画像サーバー（EPS）に取り込ませる =====
+//
+// eBayのメッセージは、eBay自身が保管している画像（i.ebayimg.com）しか表示しない。
+// 自前のURLをそのまま添付しても、件数は記録されるが画像は出ない（検証済み）。
+// そのため送信前に、Media APIでこちらのURLをeBayに取り込ませ、
+// 返ってきたEPSのURLを添付する。
+//
+// 手順は2段階：
+//   1. create_image_from_url にこちらのURLを渡す → Locationヘッダーで画像IDが返る
+//   2. その画像IDで getImage を呼ぶ → EPSのURLが返る
+const EBAY_MEDIA_BASE = 'https://apim.ebay.com/commerce/media/v1_beta';
+
+async function uploadImageToEps(selfHostedUrl) {
+  if (!selfHostedUrl) throw new Error('画像のURLが空です');
+  const token = await getAccessToken();
+
+  // 1. eBayに取り込ませる
+  const createRes = await fetch(EBAY_MEDIA_BASE + '/image/create_image_from_url', {
+    method: 'POST',
+    headers: {
+      'Authorization': 'Bearer ' + token,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ imageUrl: selfHostedUrl }),
+  });
+  if (createRes.status !== 201) {
+    let detail = '';
+    try {
+      const err = await createRes.json();
+      detail = (err.errors && err.errors[0] && (err.errors[0].longMessage || err.errors[0].message)) || '';
+    } catch (e) { detail = await createRes.text().catch(() => ''); }
+    throw new Error('eBayが画像を取り込めませんでした（HTTP ' + createRes.status + '）'
+      + (detail ? ': ' + String(detail).substring(0, 200) : ''));
+  }
+
+  // 画像IDはLocationヘッダーで返る（本文ではない）
+  const loc = createRes.headers.get('location') || createRes.headers.get('Location') || '';
+  const imageId = String(loc).split('/').filter(Boolean).pop();
+  if (!imageId) throw new Error('eBayから画像IDが返りませんでした');
+
+  // 2. EPSのURLを受け取る
+  const getRes = await fetch(EBAY_MEDIA_BASE + '/image/' + encodeURIComponent(imageId), {
+    headers: { 'Authorization': 'Bearer ' + token },
+  });
+  if (!getRes.ok) {
+    throw new Error('eBayから画像URLを取得できませんでした（HTTP ' + getRes.status + '）');
+  }
+  const data = await getRes.json();
+  const epsUrl = data && data.imageUrl;
+  if (!epsUrl) throw new Error('eBayの応答に画像URLが含まれていません');
+  return { imageId, epsUrl, expirationDate: (data && data.expirationDate) || '' };
+}
+
 async function sendMessage(opts) {
   const body = {};
   if (opts.messageText) body.messageText = opts.messageText;
@@ -1573,6 +1626,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 }
 
 module.exports = {
+  uploadImageToEps: uploadImageToEps,
   getItemInfo: getItemInfo,
   getCachedItem: getCachedItem,
   getSellerSku: getSellerSku,
