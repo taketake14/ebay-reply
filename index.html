@@ -439,8 +439,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
    読み込みが終わるまで高さが0のままだと、あとから高さが増えて
    チャットの表示位置が下へずれる（一番下が表示されない原因になる）。
    先に場所を確保しておけば、いつ読み込まれても位置が動かない */
-.att-img{display:block;width:96px;height:96px;flex-shrink:0;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f1f5f9;cursor:zoom-in;}
-.att-img img{display:block;width:100%;height:100%;object-fit:cover;}
+/* 添付画像の枠は必ず固定サイズにする（読み込み前後で高さが変わらないように）。
+   中身は切り抜かずに全体を収める。eBayは画像を長辺400pxに縮小するため、
+   横長の画像を切り抜くとほとんど何も見えなくなる（100V.pngで横の8%しか見えなかった） */
+.att-img{display:flex;align-items:center;justify-content:center;width:150px;height:96px;flex-shrink:0;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f1f5f9;cursor:zoom-in;}
+.att-img img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;}
 .att-file{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;max-width:100%;word-break:break-all;}
 .att-file:hover{border-color:var(--teal);color:var(--teal);}
 /* 添付画像の拡大表示 */
@@ -2107,12 +2110,30 @@ function updateStarBtn(){
 // 別のメッセージの画像が混ざらないよう、組ごとに番号を振って持たせる
 var attachGroups = [];
 
+// eBayは同じ画像を複数の大きさで保管していて、URL内の $_数字 がその区別になっている。
+// APIが返してくるのは一番小さい $_1（長辺400px）だけなので、
+// そのまま使うとeBayの画面より小さく表示されてしまう。
+// 拡大表示では大きい版を指すように差し替える。
+//   $_1 = 400px / $_12 = 500px / $_3 = 800px / $_86 = 1024px / $_57 = 原寸
+function ebayMediaSize(url, variant){
+  if(!url) return '';
+  // $_数字 を持つeBayの画像URLのときだけ差し替える（他の形式のURLは触らない）
+  if(!/\$_\d+\./.test(url)) return url;
+  return url.replace(/\$_\d+\./, variant + '.');
+}
+
 function attachHtml(media){
   if(!media || !media.length) return '';
   // 画像だけを拡大表示の対象にする
   var imgs=media.filter(function(a){ return a.mediaType==='IMAGE'; });
   var gid=attachGroups.length;
-  attachGroups.push(imgs.map(function(a){ return {url:a.url, name:a.name||'添付ファイル'}; }));
+  attachGroups.push(imgs.map(function(a){
+    return {
+      url: ebayMediaSize(a.url, '$_57'),   // 拡大表示は原寸
+      thumb: a.url,                         // 一覧は軽い小さい版のまま
+      name: a.name||'添付ファイル'
+    };
+  }));
 
   var n=-1;
   var items=media.map(function(a){
@@ -2149,7 +2170,7 @@ function renderImgViewer(){
   document.getElementById('imgv-img').alt=a.name;
   document.getElementById('imgv-name').textContent=a.name;
   document.getElementById('imgv-pos').textContent=(imgvIdx+1)+' / '+imgvGroup.length;
-  document.getElementById('imgv-dl').href=a.url;
+  document.getElementById('imgv-dl').href=a.url;   // すでに原寸を指している
   // この吹き出しの中だけを送り見する。端まで来たら止まる
   document.getElementById('imgv-prev').disabled = (imgvIdx<=0);
   document.getElementById('imgv-next').disabled = (imgvIdx>=imgvGroup.length-1);
