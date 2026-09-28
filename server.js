@@ -1497,7 +1497,8 @@ app.post('/api/media/upload', async (req, res) => {
     if (!mediaType) {
       return res.json({
         ok: false,
-        error: 'この形式はeBayに添付できません。画像・PDF・Word・テキストのみ対応しています',
+        error: 'この形式はeBayに添付できません。添付できるのは画像のみです（'
+          + storage.ALLOWED_EXTENSIONS.join(' / ') + '）',
       });
     }
     const saved = await storage.put({ buffer, filename, mimeType });
@@ -1555,6 +1556,17 @@ app.get('/api/media/cleanup', async (req, res) => {
   } catch (e) {
     res.json({ ok: false, error: e.message });
   }
+});
+
+// 添付できる形式を画面に伝える。一覧の管理場所をstorage.jsの1か所だけにするため
+app.get('/api/media/limits', (req, res) => {
+  res.json({
+    maxCount: MEDIA_MAX_COUNT,
+    maxText: MEDIA_MAX_TEXT,
+    maxBytes: MEDIA_MAX_BYTES,
+    extensions: storage.ALLOWED_EXTENSIONS,
+    accept: storage.ACCEPT_ATTR,
+  });
 });
 
 // 添付の使用量。容量が増えすぎていないか確認する
