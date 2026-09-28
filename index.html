@@ -439,10 +439,25 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
    読み込みが終わるまで高さが0のままだと、あとから高さが増えて
    チャットの表示位置が下へずれる（一番下が表示されない原因になる）。
    先に場所を確保しておけば、いつ読み込まれても位置が動かない */
-.att-img{display:block;width:150px;height:150px;flex-shrink:0;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f1f5f9;}
+.att-img{display:block;width:96px;height:96px;flex-shrink:0;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f1f5f9;cursor:zoom-in;}
 .att-img img{display:block;width:100%;height:100%;object-fit:cover;}
 .att-file{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;max-width:100%;word-break:break-all;}
 .att-file:hover{border-color:var(--teal);color:var(--teal);}
+/* 添付画像の拡大表示 */
+.imgv{position:fixed;inset:0;background:rgba(15,23,42,0.88);z-index:3000;display:none;align-items:center;justify-content:center;}
+.imgv.on{display:flex;}
+.imgv-img{max-width:88vw;max-height:80vh;object-fit:contain;border-radius:6px;background:#fff;}
+.imgv-close{position:absolute;top:16px;right:20px;width:38px;height:38px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:20px;cursor:pointer;line-height:1;}
+.imgv-close:hover{background:rgba(255,255,255,0.3);}
+.imgv-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:50%;border:none;background:rgba(255,255,255,0.15);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.imgv-nav:hover{background:rgba(255,255,255,0.3);}
+.imgv-nav:disabled{opacity:0.25;cursor:default;}
+.imgv-prev{left:20px;}
+.imgv-next{right:20px;}
+.imgv-bar{position:absolute;bottom:22px;left:0;right:0;text-align:center;color:#fff;font-size:12.5px;}
+.imgv-name{opacity:0.85;margin-right:10px;word-break:break-all;}
+.imgv-dl{color:#fff;text-decoration:underline;font-size:12px;}
+
 /* 返信欄の添付。ファイル名はボタン列の上の専用行に出す。
    ファイル名が長くても、枚数が上限でも、絶対に折り返さない。
    折り返すとボタン列まで巻き込んでレイアウトが崩れるため、
@@ -1165,6 +1180,19 @@ a.kv-v:hover{text-decoration:underline;}
         <div class="reply-actions"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- 添付画像の拡大表示。同じ吹き出しの中だけを送り見する -->
+<div class="imgv" id="imgv" onclick="if(event.target===this)closeImgViewer()">
+  <button class="imgv-close" onclick="closeImgViewer()" title="閉じる">&#10005;</button>
+  <button class="imgv-nav imgv-prev" id="imgv-prev" onclick="stepImgViewer(-1)" title="前の画像">&#8249;</button>
+  <img class="imgv-img" id="imgv-img" alt="">
+  <button class="imgv-nav imgv-next" id="imgv-next" onclick="stepImgViewer(1)" title="次の画像">&#8250;</button>
+  <div class="imgv-bar">
+    <span class="imgv-name" id="imgv-name"></span>
+    <span id="imgv-pos"></span>
+    <a class="imgv-dl" id="imgv-dl" href="#" target="_blank" rel="noopener">元のサイズで開く</a>
   </div>
 </div>
 
@@ -2075,19 +2103,76 @@ function updateStarBtn(){
 
 // ===== 添付ファイルの表示 =====
 // 画像はそのまま見せ、それ以外はファイル名のリンクにする
+// 吹き出しごとの添付の組。拡大表示はこの組の中だけを送り見する。
+// 別のメッセージの画像が混ざらないよう、組ごとに番号を振って持たせる
+var attachGroups = [];
+
 function attachHtml(media){
   if(!media || !media.length) return '';
+  // 画像だけを拡大表示の対象にする
+  var imgs=media.filter(function(a){ return a.mediaType==='IMAGE'; });
+  var gid=attachGroups.length;
+  attachGroups.push(imgs.map(function(a){ return {url:a.url, name:a.name||'添付ファイル'}; }));
+
+  var n=-1;
   var items=media.map(function(a){
     var name=a.name||'添付ファイル';
     if(a.mediaType==='IMAGE'){
-      return '<a class="att-img" href="'+esc(a.url)+'" target="_blank" rel="noopener" title="'+esc(name)+'">'
+      n++;
+      return '<a class="att-img" href="'+esc(a.url)+'" title="'+esc(name)+'" '
+        +'onclick="openImgViewer('+gid+','+n+');return false;">'
         +'<img src="'+esc(a.url)+'" alt="'+esc(name)+'" loading="lazy" '
-        +'onerror="this.parentElement.className=\'att-file\';this.parentElement.textContent=\'&#128206; \'+this.alt;"></a>';
+        +'onerror="this.parentElement.className=\'att-file\';this.parentElement.removeAttribute(\'onclick\');this.parentElement.textContent=\'&#128206; \'+this.alt;"></a>';
     }
     var icon = a.mediaType==='PDF' ? '&#128196;' : (a.mediaType==='DOC' ? '&#128221;' : '&#128196;');
     return '<a class="att-file" href="'+esc(a.url)+'" target="_blank" rel="noopener">'+icon+' '+esc(name)+'</a>';
   }).join('');
   return '<div class="bbl-att">'+items+'</div>';
+}
+
+// ===== 添付画像の拡大表示 =====
+var imgvGroup=null, imgvIdx=0;
+
+function openImgViewer(gid, idx){
+  var g=attachGroups[gid];
+  if(!g || !g.length) return;
+  imgvGroup=g; imgvIdx=Math.max(0, Math.min(idx, g.length-1));
+  document.getElementById('imgv').classList.add('on');
+  document.addEventListener('keydown', imgvKey);
+  renderImgViewer();
+}
+
+function renderImgViewer(){
+  if(!imgvGroup) return;
+  var a=imgvGroup[imgvIdx];
+  document.getElementById('imgv-img').src=a.url;
+  document.getElementById('imgv-img').alt=a.name;
+  document.getElementById('imgv-name').textContent=a.name;
+  document.getElementById('imgv-pos').textContent=(imgvIdx+1)+' / '+imgvGroup.length;
+  document.getElementById('imgv-dl').href=a.url;
+  // この吹き出しの中だけを送り見する。端まで来たら止まる
+  document.getElementById('imgv-prev').disabled = (imgvIdx<=0);
+  document.getElementById('imgv-next').disabled = (imgvIdx>=imgvGroup.length-1);
+}
+
+function stepImgViewer(d){
+  if(!imgvGroup) return;
+  var next=imgvIdx+d;
+  if(next<0 || next>=imgvGroup.length) return;
+  imgvIdx=next;
+  renderImgViewer();
+}
+
+function closeImgViewer(){
+  document.getElementById('imgv').classList.remove('on');
+  document.removeEventListener('keydown', imgvKey);
+  imgvGroup=null;
+}
+
+function imgvKey(e){
+  if(e.key==='Escape') closeImgViewer();
+  else if(e.key==='ArrowRight') stepImgViewer(1);
+  else if(e.key==='ArrowLeft') stepImgViewer(-1);
 }
 
 // ===== チャット翻訳（Claude API・吹き出し単位） =====
@@ -2155,7 +2240,8 @@ async function translateBubble(idx, btn){
       var div=document.createElement('div');
       div.className='bbl-ja';
       div.textContent=ja;
-      bbl.parentElement.insertBefore(div, btn.parentElement);
+      // 英文のすぐ下、添付画像の上に入れる
+      bbl.parentElement.insertBefore(div, bbl.nextSibling);
       btn.textContent='原文に戻す';
       btn.classList.add('on');
     } else {
@@ -2203,7 +2289,7 @@ async function toggleChatTranslate(){
         div.className='bbl-ja';
         div.textContent=ja;
         var trBtn=w.querySelector('.bbl-tr-btn');
-        bbl.parentElement.insertBefore(div, trBtn?trBtn.parentElement:null);
+        bbl.parentElement.insertBefore(div, bbl.nextSibling);
         if(trBtn){trBtn.textContent='原文に戻す';trBtn.classList.add('on');}
       }
     }catch(e){}
@@ -2261,6 +2347,8 @@ function renderChatBubbles(){
   var m=messages[currentIdx];
   var el=document.getElementById('chat-area');
   var html='';
+  // 描き直すたびに添付の組を作り直す。残すと古い画像を指したままになる
+  attachGroups=[];
   var allItems=(m.history||[]).map(function(h,i){
     var t=new Date(h.time||0).getTime();
     return {from:h.from, text:h.text, time:h.time||'', media:h.media, isNew:false, ts:(isNaN(t)?0:t), ord:i};
