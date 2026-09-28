@@ -18,23 +18,31 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// eBayが受け付けるメディア種別（これ以外は送信できない）
-const EBAY_MEDIA_TYPES = ['IMAGE', 'PDF', 'DOC', 'TXT'];
+// eBayのメッセージに添付できるのは画像だけ。
+//
+// API仕様書には IMAGE / PDF / DOC / TXT の4種類が載っているが、
+// eBayの画面で実際に選べる拡張子は画像のみで、PDFやWordは選択肢に出ない。
+// 他社のeBay向けツールがPDFをわざわざ画像に変換していることからも、
+// 画像以外は通らないと判断した。仕様書だけを根拠に広げないこと。
+const EBAY_MEDIA_TYPES = ['IMAGE'];
 
-// 拡張子・MIMEタイプからeBayのメディア種別を判定する
+// eBayの画面のファイル選択ダイアログに出る拡張子と完全に同じ一覧。
+// ここを勝手に増やさない。増やすなら必ず実地で送信して確認してから。
+const ALLOWED_EXTENSIONS = [
+  'pjp', 'jfif', 'jpe', 'pjpeg', 'jpeg', 'jpg',   // JPEG系
+  'png', 'gif', 'bmp', 'tiff', 'tif',
+];
+
+// ブラウザのファイル選択で使う accept 属性の値
+const ACCEPT_ATTR = ALLOWED_EXTENSIONS.map(e => '.' + e).join(',');
+
+// 拡張子からeBayのメディア種別を判定する。
+// 判定できないものは空文字を返し、呼び出し側で弾く。
+// ※ MIMEタイプは環境によって空だったり誤っていたりするので、拡張子を基準にする
 function toEbayMediaType(mimeType, filename) {
-  const m = String(mimeType || '').toLowerCase();
   const ext = String(filename || '').toLowerCase().split('.').pop();
-  if (m.startsWith('image/')) return 'IMAGE';
-  if (m === 'application/pdf') return 'PDF';
-  if (m.startsWith('text/')) return 'TXT';
-  if (m.indexOf('word') >= 0 || m.indexOf('officedocument.wordprocessing') >= 0) return 'DOC';
-  // MIMEタイプが取れない場合は拡張子で判定
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'heic'].indexOf(ext) >= 0) return 'IMAGE';
-  if (ext === 'pdf') return 'PDF';
-  if (['doc', 'docx', 'rtf', 'odt'].indexOf(ext) >= 0) return 'DOC';
-  if (['txt', 'csv', 'log', 'md'].indexOf(ext) >= 0) return 'TXT';
-  return '';   // 判定できないものは送信させない
+  if (ALLOWED_EXTENSIONS.indexOf(ext) >= 0) return 'IMAGE';
+  return '';   // 画像以外は送信させない
 }
 
 // 保存先。Renderのディスクのマウント先を指す
@@ -182,4 +190,6 @@ module.exports = {
   cleanupOlderThan,
   toEbayMediaType,
   EBAY_MEDIA_TYPES,
+  ALLOWED_EXTENSIONS,
+  ACCEPT_ATTR,
 };
