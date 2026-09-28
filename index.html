@@ -3208,7 +3208,9 @@ async function sendReplyToEbay(){
       tm.replied=true;
       if(!tm.history) tm.history=[];
       // 送信できた添付を履歴の吹き出しに反映して、添付欄を空にする
-      var sentMedia=atts.map(function(a){return {name:a.name,mediaType:a.mediaType,url:a.url};});
+      // eBayに登録されたURLを使う。自前URLのままだと、あとで表示できなくなる
+      var sentMedia=(d.sentMedia&&d.sentMedia.length)?d.sentMedia
+        :atts.map(function(a){return {name:a.name,mediaType:a.mediaType,url:a.url};});
       clearAttachments();
       var nowTs=new Date();
       var msgTs=new Date(targetTs||0);
