@@ -448,7 +448,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .att-row.on{display:flex;}
 .att-row::-webkit-scrollbar{height:5px;}
 .att-row::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
-.btn-attach{flex-shrink:0;}
+.btn-attach{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;}
+.att-clip{flex-shrink:0;}
 .att-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:3px 4px 3px 9px;max-width:150px;line-height:1.5;flex-shrink:0;}
 .att-chip .an{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .att-chip .as{color:var(--text3);font-size:10px;flex-shrink:0;}
@@ -467,9 +468,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .status-done{background:#d1fae5;color:#065f46;}
 .status-error{background:#fee2e2;color:var(--danger);}
 .reply-history-select{font-size:11px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:2px 8px;color:var(--text2);outline:none;margin-left:auto;cursor:pointer;}
-/* grid-template-rows を minmax(0,1fr) にしないと、行の高さが中身基準のままになり、
-   返信欄が狭くなったときに入力欄や送信ボタンが枠からはみ出して隠れる。
-   添付の行が増えたときに下が埋もれていた原因がこれ */
+/* 行の高さを枠に合わせて縮められるようにする（中身がはみ出さないための保険） */
 .reply-split{display:grid;grid-template-columns:1fr 46px 1fr;grid-template-rows:minmax(0,1fr);padding:8px 18px;gap:8px;flex:1;min-height:0;}
 
 /* 中央の変換ボタン列 */
@@ -1103,7 +1102,7 @@ a.kv-v:hover{text-decoration:underline;}
         <div class="reply-top">
           <!-- 添付。ファイル名はボタン列に混ぜず、この上の専用行に出す。
                混ぜるとファイル名の長さでボタンが折り返して崩れるため -->
-          <button class="btn btn-ghost btn-attach" id="att-add" onclick="document.getElementById('att-input').click()" title="画像のみ／5枚まで">&#128206; 添付</button>
+          <button class="btn btn-ghost btn-attach" id="att-add" onclick="document.getElementById('att-input').click()" title="画像のみ／5枚まで"><svg class="att-clip" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.33 3.33 0 0 1 4.71 4.71l-9.2 9.19a1.67 1.67 0 0 1-2.36-2.36l8.49-8.48"/></svg>添付</button>
           <!-- eBayの画面で実際に選べる拡張子と同じものだけを並べている。
                PDFやWordはeBay側で選択肢に出ないため入れない -->
           <input type="file" id="att-input" multiple style="display:none"
@@ -3084,6 +3083,36 @@ function renderAttachments(){
   bar.classList.toggle('on', pendingAttachments.length > 0);
   var addBtn=document.getElementById('att-add');
   if(addBtn) addBtn.disabled = pendingAttachments.length >= ATT_MAX_COUNT;
+  adjustReplyAreaForAttachments();
+}
+
+// 添付の行が増減した分だけ、返信欄の上端を動かす。
+// 返信欄の中を縮めると入力欄やボタンの位置がずれて分かりにくいので、
+// 「増えた高さの分だけ境界線を上げる」＝上のチャット欄から借りる形にする。
+var attRowTakenPx = 0;   // 添付のために返信欄へ足した高さ
+function adjustReplyAreaForAttachments(){
+  var bar=document.getElementById('att-bar');
+  var ra=document.getElementById('reply-area');
+  var ca=document.getElementById('chat-wrap');
+  if(!bar||!ra||!ca) return;
+  // 画面が非表示のときは測れないので何もしない
+  var raH=ra.getBoundingClientRect().height;
+  if(raH<=0) return;
+
+  var need = bar.classList.contains('on') ? Math.round(bar.getBoundingClientRect().height) : 0;
+  var diff = need - attRowTakenPx;
+  if(diff===0) return;
+
+  var caH=Math.round(ca.getBoundingClientRect().height);
+  // チャット欄が潰れないところまでしか借りない
+  var MIN_CHAT=90;
+  if(diff>0) diff=Math.min(diff, Math.max(0, caH-MIN_CHAT));
+  if(diff===0) return;
+
+  ca.style.flex='none'; ca.style.height=(caH-diff)+'px';
+  ra.style.flex='none'; ra.style.height=(Math.round(raH)+diff)+'px';
+  attRowTakenPx += diff;
+  if(typeof updateScrollBtn==='function') setTimeout(updateScrollBtn,60);
 }
 
 function removeAttachment(i){
@@ -3476,6 +3505,7 @@ function expandReplyArea(){
   var MIN_CHAT=90;
   ca.style.flex='none'; ca.style.height=MIN_CHAT+'px';
   ra.style.flex='none'; ra.style.height=(avail-MIN_CHAT)+'px';
+  attRowTakenPx=0;   // 高さを作り直したので、添付ぶんの基準もリセットする
   if(typeof updateScrollBtn==='function') setTimeout(updateScrollBtn,60);
 }
 function collapseReplyArea(){
@@ -3492,6 +3522,7 @@ function collapseReplyArea(){
   var MIN_REPLY=230;
   ca.style.flex='none'; ca.style.height=(avail-MIN_REPLY)+'px';
   ra.style.flex='none'; ra.style.height=MIN_REPLY+'px';
+  attRowTakenPx=0;   // 高さを作り直したので、添付ぶんの基準もリセットする
   if(typeof updateScrollBtn==='function') setTimeout(updateScrollBtn,60);
 }
 
