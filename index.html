@@ -1144,10 +1144,12 @@ a.kv-v:hover{text-decoration:underline;}
         <div class="reply-actions"></div>
         <!-- 添付ファイル。eBayの上限は1メッセージ5個まで -->
         <div class="att-bar" id="att-bar">
-          <button class="att-add" id="att-add" onclick="document.getElementById('att-input').click()">&#128206; ファイルを添付</button>
-          <span class="att-note" id="att-note">画像・PDF・Word・テキスト／5個まで</span>
+          <button class="att-add" id="att-add" onclick="document.getElementById('att-input').click()">&#128247; 画像を添付</button>
+          <span class="att-note" id="att-note">画像のみ／5枚まで</span>
+          <!-- eBayの画面で実際に選べる拡張子と同じものだけを並べている。
+               PDFやWordはeBay側で選択肢に出ないため入れない -->
           <input type="file" id="att-input" multiple style="display:none"
-            accept="image/*,.pdf,.doc,.docx,.txt,.csv,.rtf,.odt"
+            accept=".pjp,.jfif,.jpe,.pjpeg,.jpeg,.jpg,.png,.gif,.bmp,.tiff,.tif"
             onchange="onAttachPick(this.files); this.value='';">
         </div>
       </div>
@@ -3039,6 +3041,8 @@ async function loadBuyerDetail(buyer, idx){
 var ATT_MAX_COUNT = 5;
 var ATT_MAX_TEXT = 2000;
 var ATT_MAX_BYTES = 20 * 1024 * 1024;
+// eBayの画面で実際に選べる拡張子と同じ一覧。勝手に増やさないこと
+var ATT_ALLOWED_EXT = ['pjp','jfif','jpe','pjpeg','jpeg','jpg','png','gif','bmp','tiff','tif'];
 var pendingAttachments = [];   // アップロード済みで、まだ送信していない添付
 
 function fmtSize(n){
@@ -3065,8 +3069,8 @@ function renderAttachments(){
   var note=document.getElementById('att-note');
   if(note){
     note.textContent = pendingAttachments.length
-      ? (pendingAttachments.length+' / '+ATT_MAX_COUNT+' 個')
-      : '画像・PDF・Word・テキスト／'+ATT_MAX_COUNT+'個まで';
+      ? (pendingAttachments.length+' / '+ATT_MAX_COUNT+' 枚')
+      : '画像のみ／'+ATT_MAX_COUNT+'枚まで';
   }
 }
 
@@ -3087,6 +3091,12 @@ async function onAttachPick(files){
     return;
   }
   for(const f of list){
+    // ファイル選択の絞り込みは「すべてのファイル」を選ばれると外れるので、ここでも検査する
+    var ext=String(f.name||'').toLowerCase().split('.').pop();
+    if(ATT_ALLOWED_EXT.indexOf(ext)<0){
+      alert(f.name+' は添付できません。\neBayのメッセージに添付できるのは画像のみです。\n（'+ATT_ALLOWED_EXT.join(' / ')+'）');
+      continue;
+    }
     if(f.size > ATT_MAX_BYTES){
       alert(f.name+' は '+fmtSize(f.size)+' あります。20MB以下にしてください。');
       continue;
