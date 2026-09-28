@@ -2392,8 +2392,39 @@ function renderChatBubbles(){
   if(!html) html='<div class="chat-empty">メッセージのやり取りはありません</div>';
   el.innerHTML=html;
   el.scrollTop=el.scrollHeight;
+  // 吹き出しの中の画像は、読み込みが終わるまで高さが決まらない。
+  // 先に一番下へ移動しても、あとから画像の高さが加わって途中で止まってしまうので、
+  // 画像が1枚読み込まれるたびに位置を合わせ直す
+  pinChatWhileImagesLoad();
   setTimeout(updateScrollBtn,60);
   setTimeout(updateScrollBtn,300);
+}
+
+// 画像の読み込みに合わせて、チャットを一番下に保つ。
+// 利用者が自分で上へスクロールした場合は、邪魔しないように何もしない
+function pinChatWhileImagesLoad(){
+  var el=document.getElementById('chat-area');
+  if(!el) return;
+  var imgs=el.querySelectorAll('img');
+  if(!imgs.length) return;
+  var pending=0;
+  function repin(){
+    // 下端付近にいるときだけ追従する（上を読んでいる最中に飛ばさない）
+    var gap=el.scrollHeight-el.clientHeight-el.scrollTop;
+    if(gap<=el.clientHeight) el.scrollTop=el.scrollHeight;
+    if(typeof updateScrollBtn==='function') updateScrollBtn();
+  }
+  Array.prototype.forEach.call(imgs, function(img){
+    if(img.complete) return;
+    pending++;
+    var done=function(){ img.removeEventListener('load',done); img.removeEventListener('error',done); repin(); };
+    img.addEventListener('load',done);
+    img.addEventListener('error',done);
+  });
+  if(pending>0){
+    // 読み込みに失敗した画像が混ざっていても最後に必ず合わせ直す
+    setTimeout(repin, 1200);
+  }
 }
 
 
