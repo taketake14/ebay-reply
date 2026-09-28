@@ -372,7 +372,12 @@ async function getMessagesForApp(daysBack) {
       // この会話の最新メッセージに付いていた添付
       bodyMedia: bodyMedia,
       // 履歴の向きの署名。シートの保存内容と比べて、違っていれば書き直す
-      sig: msgFrom + '|' + history.length + '|' + history.map(function(h){ return h.from === 'me' ? '1' : '0'; }).join(''),
+      // 添付の件数も署名に含める。含めないと、添付が抜けている古い行を
+      // 自己修復が「変化なし」と判断して、永久に直せなくなる
+      sig: msgFrom + '|' + history.length
+        + '|' + history.map(function(h){ return h.from === 'me' ? '1' : '0'; }).join('')
+        + '|' + history.map(function(h){ return (h.media || []).length; }).join(',')
+        + '|' + (bodyMedia ? bodyMedia.length : 0),
       conversationId: cid,
       buyer: buyer,
       subject: subject,
