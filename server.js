@@ -1805,7 +1805,9 @@ async function getSheetConvState() {
       const ts = new Date(rows[i][iTs] || 0).getTime() || 0;
       let hist = [];
       if (iHist >= 0) { try { hist = JSON.parse(rows[i][iHist] || '[]') || []; } catch (e) { hist = []; } }
-      // 添付の印は履歴ではないので、署名の計算から外す
+      // 添付の印は履歴ではないので、署名の計算から外す。
+      // ただし本文の添付の件数は署名に含めるため、先に取り出しておく
+      const storedBodyMedia = bodyMediaOf(hist);
       hist = historyOnly(hist);
       const from = (iFrom >= 0 ? rows[i][iFrom] : '') || 'buyer';
       // 同じ会話が複数行ある場合は「一番下の行」を採用する。
@@ -1813,7 +1815,12 @@ async function getSheetConvState() {
       // ここで別の行を見ていると食い違いが永久に解消せず、修復が延々と繰り返される。
       map[cid] = {
         ts,
-        sig: from + '|' + hist.length + '|' + hist.map(x => (x && x.from === 'me') ? '1' : '0').join(''),
+        // 書き込み側(ebay-api.js)とまったく同じ形で計算すること。
+        // 少しでも違うと食い違いが永久に解消せず、修復が繰り返される
+        sig: from + '|' + hist.length
+          + '|' + hist.map(x => (x && x.from === 'me') ? '1' : '0').join('')
+          + '|' + hist.map(x => ((x && x.media) || []).length).join(',')
+          + '|' + (storedBodyMedia ? storedBodyMedia.length : 0),
       };
     }
   } catch (e) {
