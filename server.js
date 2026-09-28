@@ -1658,13 +1658,33 @@ app.post('/api/ebay/reply', async (req, res) => {
       }
     }
 
-    // eBayに渡すのは自前のURL。eBayがここへ取りに来る
+    // eBayのメッセージは、eBay自身が保管している画像しか表示しない。
+    // 自前のURLをそのまま渡すと、件数だけ記録されて画像は出ない（検証済み）。
+    // そのため、まずeBayに取り込ませてEPSのURLをもらう。
     const base = publicBaseUrl(req);
-    const messageMedia = media.map(m => ({
-      mediaName: m.name,
-      mediaType: m.mediaType,
-      mediaUrl: base + '/media/' + encodeURIComponent(m.id),
-    }));
+    const messageMedia = [];
+    const uploadErrors = [];
+    for (const m of media) {
+      const selfUrl = base + '/media/' + encodeURIComponent(m.id);
+      try {
+        const eps = await ebayApi.uploadImageToEps(selfUrl);
+        messageMedia.push({
+          mediaName: m.name,
+          mediaType: m.mediaType,
+          mediaUrl: eps.epsUrl,   // i.ebayimg.com のURL
+        });
+      } catch (e) {
+        uploadErrors.push(m.name + '：' + e.message);
+      }
+    }
+    // 1枚でも取り込めなければ送らない。
+    // 欠けたまま送ると、相手側で壊れた画像が並ぶことになる
+    if (uploadErrors.length > 0) {
+      return res.json({
+        ok: false,
+        error: '画像をeBayに登録できませんでした。送信は行っていません。\n' + uploadErrors.join('\n'),
+      });
+    }
 
     const result = await ebayApi.sendMessage({
       conversationId, otherPartyUsername: buyer, messageText, itemId,
@@ -1718,8 +1738,10 @@ app.post('/api/ebay/reply', async (req, res) => {
           from: 'me',
           text: messageText,
           time: new Date().toISOString(),
-          media: media.length ? media.map(m => ({
-            name: m.name, mediaType: m.mediaType, url: base + '/media/' + encodeURIComponent(m.id),
+          // 履歴にはeBayに登録されたURLを残す。自前URLだとディスクの
+          // 掃除で消えたときに、過去の吹き出しから画像が消えてしまう
+          media: messageMedia.length ? messageMedia.map(m => ({
+            name: m.mediaName, mediaType: m.mediaType, url: m.mediaUrl,
           })) : undefined,
         });
         // シートに行が無い場合は新規追加する
@@ -1737,7 +1759,11 @@ app.post('/api/ebay/reply', async (req, res) => {
       saved = { ok: true, note: '会話IDが未確定のため、次回の同期時に履歴へ反映されます' };
     }
 
-    res.json({ ok: true, result, saved });
+    res.json({
+      ok: true, result, saved,
+      // 実際にeBayへ登録された添付（画面の吹き出しはこれを使う）
+      sentMedia: messageMedia.map(m => ({ name: m.mediaName, mediaType: m.mediaType, url: m.mediaUrl })),
+    });
   } catch (e) {
     console.error('eBay reply error:', e.message);
     res.json({ ok: false, error: e.message });
