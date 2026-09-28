@@ -435,8 +435,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 添付ファイル */
 .bbl-att{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-width:74%;}
 .bbl-wrap.mine .bbl-att{justify-content:flex-end;margin-left:auto;}
-.att-img{display:block;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#fff;}
-.att-img img{display:block;max-width:220px;max-height:220px;object-fit:cover;}
+/* 添付画像の枠は必ず固定サイズにする。
+   読み込みが終わるまで高さが0のままだと、あとから高さが増えて
+   チャットの表示位置が下へずれる（一番下が表示されない原因になる）。
+   先に場所を確保しておけば、いつ読み込まれても位置が動かない */
+.att-img{display:block;width:150px;height:150px;flex-shrink:0;line-height:0;border-radius:8px;overflow:hidden;border:1px solid var(--border);background:#f1f5f9;}
+.att-img img{display:block;width:100%;height:100%;object-fit:cover;}
 .att-file{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#334155;background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 10px;text-decoration:none;max-width:100%;word-break:break-all;}
 .att-file:hover{border-color:var(--teal);color:var(--teal);}
 /* 返信欄の添付。ファイル名はボタン列の上の専用行に出す。
