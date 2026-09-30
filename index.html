@@ -461,6 +461,28 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .imgv-name{opacity:0.85;margin-right:10px;word-break:break-all;}
 .imgv-dl{color:#fff;text-decoration:underline;font-size:12px;}
 
+/* 分類ごとの操作ボタン（すべて既読にする等） */
+.sf-more{
+  margin-left:4px; width:20px; height:20px; border-radius:5px; flex-shrink:0;
+  display:none; align-items:center; justify-content:center;
+  font-size:13px; color:var(--text3); line-height:1;
+}
+.side-filter:hover .sf-more{ display:flex; }
+.sf-more:hover{ background:rgba(15,23,42,0.08); color:var(--text); }
+.fmenu{
+  position:fixed; z-index:4000; background:#fff; border:1px solid var(--border);
+  border-radius:9px; box-shadow:0 6px 24px rgba(15,23,42,.14); padding:5px; min-width:190px;
+}
+.fmenu button{
+  display:block; width:100%; text-align:left; border:none; background:transparent;
+  padding:9px 12px; font-size:12.5px; color:var(--text); border-radius:6px; cursor:pointer;
+  font-family:inherit;
+}
+.fmenu button:hover{ background:var(--bg2); }
+.fmenu button:disabled{ color:var(--text3); cursor:default; }
+.fmenu button:disabled:hover{ background:transparent; }
+.fmenu .fm-note{ padding:6px 12px 8px; font-size:11px; color:var(--text3); line-height:1.6; }
+
 /* 返信欄の添付。ファイル名はボタン列の上の専用行に出す。
    ファイル名が長くても、枚数が上限でも、絶対に折り返さない。
    折り返すとボタン列まで巻き込んでレイアウトが崩れるため、
@@ -951,14 +973,14 @@ a.kv-v:hover{text-decoration:underline;}
     </div>
     <div class="s1-main">
       <div class="s1-side" id="s1-side">
-        <button class="side-filter on" onclick="setFilter('all',this)"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-all">0</span></button>
-        <button class="side-filter" onclick="setFilter('unread',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="cnt-unread">0</span></button>
-        <button class="side-filter" onclick="setFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="cnt-urgent">0</span></button>
-        <button class="side-filter" onclick="setFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="cnt-starred">0</span></button>
-        <button class="side-filter" onclick="setFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="cnt-sold">0</span></button>
-        <button class="side-filter" onclick="setFilter('cancel',this)"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="cnt-cancel">0</span></button>
-        <button class="side-filter" onclick="setFilter('memo',this)"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="cnt-memo">0</span></button>
-        <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span></button>
+        <button class="side-filter on" onclick="setFilter('all',this)"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-all">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('all',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('unread',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="cnt-unread">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('unread',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('urgent',this)"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="cnt-urgent">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('urgent',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="cnt-starred">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('starred',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('sold',this)"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="cnt-sold">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('sold',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('cancel',this)"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="cnt-cancel">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('cancel',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('memo',this)"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="cnt-memo">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('memo',this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('replied',this)">&#8943;</span></button>
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
       <div class="s1-listwrap">
@@ -1019,7 +1041,7 @@ a.kv-v:hover{text-decoration:underline;}
       <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグを付ける</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
       <button class="btn-sync s2-sync" onclick="syncFromEbay()" id="btn-ebay-sync2"><span class="sync-icon"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v5h-5"/><path d="M16.3 12a7 7 0 1 1-1.3-7.3L17 8"/></svg></span>eBayから取得</button>
-      <button class="s2-btn" onclick="resetLayout()" title="チャットと返信欄の高さを初期状態に戻す">&#8635; 表示リセット</button>
+      <button class="s2-btn" onclick="copyWholeChat(this)" title="やり取りを時系列でまとめてコピーします">&#128203; 全文コピー</button><button class="s2-btn" onclick="resetLayout()" title="チャットと返信欄の高さを初期状態に戻す">&#8635; 表示リセット</button>
       <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()" style="display:none;"></button>
 
     </div>
@@ -1050,7 +1072,7 @@ a.kv-v:hover{text-decoration:underline;}
     <button class="mini-expand" id="mini-expand" onclick="toggleMiniList()" title="受信リストを表示">&#10095;</button>
 
     <!-- 左パネル：商品・バイヤー・メモ情報 -->
-    <div class="s2-right-panel" id="right-panel" style="width:240px;">
+    <div class="s2-right-panel" id="right-panel" style="width:290px;">
         <!-- メモバー（常に一番上に固定表示・スクロール不要） -->
         <div class="memo-bar" id="memo-bar" onclick="jumpToMemo()">
           <span class="memo-badge-inline" id="memo-badge-inline">&#128221; メモあり</span>
@@ -2019,6 +2041,23 @@ function selectMsg(i){
   showChat();
   renderChatDetail();
   renderMiniList();   // 最左のミニリストも更新（選択状態・既読を反映）
+  // 描画のあとにもう一度戻す。
+  // 表示される前や中身が入る前にスクロール位置を変えても効かないため、
+  // 描画後と、商品情報などが後から読み込まれたあとにも合わせ直す
+  resetRightPanelScroll();
+}
+
+// 右パネルを一番上に戻す。中身が後から入るので数回に分けて実行する
+function resetRightPanelScroll(){
+  var rp=document.getElementById('right-panel');
+  if(!rp) return;
+  rp.scrollTop=0;
+  [30,150,400,900].forEach(function(t){
+    setTimeout(function(){
+      var el=document.getElementById('right-panel');
+      if(el) el.scrollTop=0;
+    },t);
+  });
 }
 
 function renderChatDetail(){
@@ -2169,6 +2208,142 @@ function updateStarBtn(){
   var btn=document.getElementById('btn-star');
   btn.textContent=m.starred?'★ フラグ解除':'☆ フラグを付ける';
   btn.classList.toggle('on',m.starred);
+}
+
+// ===== やり取りを全文コピー =====
+// ChatGPTなどに貼って状況を見てもらうための機能。
+// いつ・誰が・何を言ったかが時系列で分かる形にする
+function buildWholeChatText(){
+  if(currentIdx===null) return '';
+  var m=messages[currentIdx];
+  var lines=[];
+  lines.push('【eBay メッセージのやり取り】');
+  lines.push('バイヤー: '+(m.buyer||'不明'));
+  if(m.item) lines.push('商品: '+m.item);
+  if(m.itemId) lines.push('Item ID: '+m.itemId);
+  if(m.orderId) lines.push('注文番号: '+m.orderId);
+  if(m.sold) lines.push('購入: あり');
+  if(m.cancel && m.cancel.short) lines.push('キャンセル: '+m.cancel.short);
+  lines.push('書き出し日時: '+fmtTime(new Date().toISOString()));
+  lines.push('');
+  lines.push('----------------------------------------');
+
+  // 吹き出しと同じ順番・同じ中身で並べる
+  var items=(m.history||[]).map(function(h){
+    var t=new Date(h.time||0).getTime();
+    return {from:h.from, text:h.text, time:h.time||'', media:h.media, ts:(isNaN(t)?0:t)};
+  });
+  if(!m.orderOnly){
+    var nt=new Date(m.timestamp||0).getTime();
+    items.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''),
+                media:m.msgMedia, ts:(isNaN(nt)?0:nt)});
+  }
+  items.sort(function(a,b){ return a.ts-b.ts; });
+
+  items.forEach(function(it){
+    var who=(it.from==='me')?'自分（セラー）':'バイヤー';
+    lines.push('');
+    lines.push('['+fmtTime(it.time)+'] '+who);
+    lines.push(String(it.text||'').trim() || '（本文なし）');
+    if(it.media && it.media.length){
+      lines.push('（添付: '+it.media.map(function(a){return a.name||'画像';}).join(', ')+'）');
+    }
+  });
+
+  if(m.memo && String(m.memo).trim()){
+    lines.push('');
+    lines.push('----------------------------------------');
+    lines.push('【メモ】');
+    lines.push(String(m.memo).trim());
+  }
+  return lines.join('\n');
+}
+
+async function copyWholeChat(btn){
+  if(currentIdx===null){ alert('メッセージを開いてから押してください。'); return; }
+  var text=buildWholeChatText();
+  if(!text){ alert('コピーする内容がありません。'); return; }
+  var orig=btn.innerHTML;
+  try{
+    await navigator.clipboard.writeText(text);
+  }catch(e){
+    // 権限で失敗する環境向けの保険
+    var ta=document.createElement('textarea');
+    ta.value=text; ta.style.position='fixed'; ta.style.left='-9999px';
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); }catch(e2){}
+    ta.remove();
+  }
+  var n=(text.match(/^\[/gm)||[]).length;
+  btn.innerHTML='&#10003; '+n+'件コピー';
+  setTimeout(function(){ btn.innerHTML=orig; },1600);
+}
+
+// ===== 分類ごとの一括操作 =====
+// 左の分類の「…」から開く。今その分類に入っているメッセージ全部が対象
+var fmenuEl=null;
+
+function filterLabelOf(key){
+  var m={all:'すべて',unread:'未読',urgent:'要対応',starred:'フラグ',
+         sold:'購入者',cancel:'キャンセル',memo:'メモあり',replied:'返信済み'};
+  return m[key]||key;
+}
+
+// その分類に入っているメッセージを集める。
+// 条件を書き写すと一覧とずれるので、一覧が使っている getFiltered() をそのまま使う。
+// 検索欄の文字も効くので、絞り込んだ結果に対してだけ操作できる
+function messagesInFilter(key){
+  var prevFilter=currentFilter;
+  currentFilter=key;
+  var list;
+  try{ list=getFiltered(); }
+  finally{ currentFilter=prevFilter; }
+  return (list||[]).filter(function(m){ return !m.orderOnly; });
+}
+
+function closeFilterMenu(){
+  if(fmenuEl){ fmenuEl.remove(); fmenuEl=null; }
+  document.removeEventListener('mousedown', onFmenuOutside, true);
+}
+function onFmenuOutside(e){
+  if(fmenuEl && !fmenuEl.contains(e.target)) closeFilterMenu();
+}
+
+function openFilterMenu(key, btn){
+  closeFilterMenu();
+  var list=messagesInFilter(key);
+  var unread=list.filter(function(m){return !m.read;}).length;
+  var el=document.createElement('div');
+  el.className='fmenu';
+  el.innerHTML='<button onclick="markFilterRead(\''+key+'\')"'+(unread?'':' disabled')+'>'
+      +'&#10003; すべて既読にする（'+unread+'件）</button>'
+    +'<div class="fm-note">「'+esc(filterLabelOf(key))+'」に入っている '+list.length+' 件が対象です</div>';
+  document.body.appendChild(el);
+  var r=btn.getBoundingClientRect();
+  el.style.left=Math.min(r.left, window.innerWidth-el.offsetWidth-10)+'px';
+  el.style.top=Math.min(r.bottom+4, window.innerHeight-el.offsetHeight-10)+'px';
+  fmenuEl=el;
+  setTimeout(function(){ document.addEventListener('mousedown', onFmenuOutside, true); },0);
+}
+
+async function markFilterRead(key){
+  closeFilterMenu();
+  var targets=messagesInFilter(key).filter(function(m){return !m.read;});
+  if(!targets.length) return;
+  if(!confirm('「'+filterLabelOf(key)+'」の未読 '+targets.length+' 件を既読にします。\nよろしいですか？')) return;
+
+  targets.forEach(function(m){ m.read=true; m.unreadCount=0; });
+  renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
+  if(typeof updateCounts==='function') updateCounts();
+
+  // 保存は1件ずつサーバーに送る。多い場合に備えて少しずつ流す
+  var done=0;
+  for(const m of targets){
+    try{ await saveState(m); }catch(e){}
+    done++;
+  }
+  console.log('[一括既読] '+done+'件を既読にしました');
 }
 
 // ===== 添付ファイルの表示 =====
@@ -2763,7 +2938,8 @@ function resetLayout(){
   if(ca){ ca.style.height=''; ca.style.flex=''; }
   if(ra){ ra.style.flex='1'; ra.style.height='auto'; }
   if(cc){ cc.style.flex='1'; cc.style.width='auto'; }
-  if(rp){ rp.style.flex='none'; rp.style.width='240px'; }
+  // 240pxだと納税者番号などが2行に折り返す。実測で270pxあれば収まるので余裕を見て290px
+  if(rp){ rp.style.flex='none'; rp.style.width='290px'; }
 }
 
 function jumpToMemo(){
