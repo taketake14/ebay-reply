@@ -2054,7 +2054,7 @@ function selectMsg(i){
   if(rp0) rp0.classList.remove('panel-idle');
   // 別のメッセージに切り替えたら、右パネルは必ず一番上から表示する。
   // 前の相手でスクロールした位置が残ると、商品名が見えない状態で始まってしまう
-  if(rp0) rp0.scrollTop=0;
+  resetRightPanelScroll();
   currentIdx=i;
   var m=messages[i];
   // 並び順に左右されない値で、開いている会話を覚えておく
@@ -2072,17 +2072,33 @@ function selectMsg(i){
   resetRightPanelScroll();
 }
 
-// 右パネルを一番上に戻す。中身が後から入るので数回に分けて実行する
+// 右パネルを一番上に戻す。
+// 右パネルの中にもスクロールする要素（panel-body）があり、
+// 実際に動いているのはそちらなので、中の要素もまとめて戻す。
+// 中身は後から読み込まれるため、数回に分けて実行する
 function resetRightPanelScroll(){
-  var rp=document.getElementById('right-panel');
-  if(!rp) return;
-  rp.scrollTop=0;
-  [30,150,400,900].forEach(function(t){
-    setTimeout(function(){
-      var el=document.getElementById('right-panel');
-      if(el) el.scrollTop=0;
-    },t);
-  });
+  function toTop(label){
+    var rp=document.getElementById('right-panel');
+    if(!rp) return;
+    var moved=[];
+    if(rp.scrollTop){ moved.push('right-panel='+Math.round(rp.scrollTop)); rp.scrollTop=0; }
+    // 中にあるスクロールする要素も全部戻す
+    rp.querySelectorAll('*').forEach(function(el){
+      if(el.scrollTop){
+        moved.push((el.id||el.className||el.tagName)+'='+Math.round(el.scrollTop));
+        el.scrollTop=0;
+      }
+    });
+    // 右パネルを含む親側が動いている場合もあるので、そちらも戻す
+    var n=rp.parentElement;
+    while(n && n!==document.body){
+      if(n.scrollTop){ moved.push('(親)'+(n.id||n.className||n.tagName)+'='+Math.round(n.scrollTop)); n.scrollTop=0; }
+      n=n.parentElement;
+    }
+    if(moved.length) console.log('[右パネル戻し]', label, moved.join(' / '));
+  }
+  toTop('即時');
+  [30,150,400,900,1500].forEach(function(t){ setTimeout(function(){ toTop(t+'ms'); },t); });
 }
 
 function renderChatDetail(){
