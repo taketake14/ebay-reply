@@ -630,6 +630,78 @@ app.get('/api/sheet/headers', async (req, res) => {
 });
 
 // ===== conversationId 単体の取得テスト =====
+// シート全体を検証して、送信者情報が食い違っている行をまとめて直す。
+// 自動同期が届かない古い会話をまとめて直すために使う。
+// 会話1件につきeBayへ1回問い合わせるので、件数を指定できるようにしてある。
+app.get('/api/ebay/verify-all', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const state = await getSheetConvState();
+    const cids = Object.keys(state);
+    let checked = 0, fixed = 0;
+    const failed = [];
+
+    for (const cid of cids) {
+      if (checked >= limit) break;
+      checked++;
+      try {
+        const em = await ebayApi.getOneConversationForApp(cid);
+        if (!em) continue;
+        if (state[cid].sig === em.sig) continue;
+        await refreshRowInSheet(em, false);
+        fixed++;
+        console.log('[verify-all] 修復:', cid, state[cid].sig, '→', em.sig);
+      } catch (e) {
+        failed.push(cid);
+      }
+    }
+    res.json({
+      ok: true, 対象の会話数: cids.length, 調べた件数: checked,
+      修復した件数: fixed, 失敗: failed.length,
+      続きがあるか: checked < cids.length,
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 会話を1件だけ検証して、食い違っていれば直す。
+// 自動同期は直近の期間しか見ないため、それより古い会話が壊れたままになる。
+// メッセージを開いたときに呼ばれ、その会話だけを最新の内容に直す。
+app.get('/api/ebay/verify/:cid', async (req, res) => {
+  const cid = String(req.params.cid || '');
+  try {
+    if (!cid) return res.json({ ok: false, error: 'conversationIdがありません' });
+
+    const em = await ebayApi.getOneConversationForApp(cid);
+    if (!em) return res.json({ ok: true, changed: false, reason: 'eBayに会話が見つかりません' });
+
+    const state = await getSheetConvState();
+    const st = state[cid];
+    if (!st) return res.json({ ok: true, changed: false, reason: 'シートにこの会話がありません' });
+
+    if (st.sig === em.sig) {
+      return res.json({ ok: true, changed: false });
+    }
+
+    // 食い違っているので直す（未読には戻さない）
+    await refreshRowInSheet(em, false);
+    const mm = messages.find(m => m.conversationId === cid);
+    if (mm) {
+      mm.msgFrom = em.msgFrom || 'buyer';
+      mm.history = em.history || mm.history;
+      mm.msg = em.body || mm.msg;
+      mm.message = em.body || mm.message;
+      mm.timestamp = em.timestamp || mm.timestamp;
+    }
+    console.log('[verify] 送信者情報を修復:', cid, st.sig, '→', em.sig);
+    res.json({ ok: true, changed: true, before: st.sig, after: em.sig });
+  } catch (e) {
+    console.error('[verify] error:', cid, e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // eBayが返す添付情報を、加工せずそのまま確認するための窓口。
 // 受信した添付が取れているのか、送った添付をeBayがどう保管しているのかを見る
 app.get('/api/ebay/media-raw/:cid', async (req, res) => {
