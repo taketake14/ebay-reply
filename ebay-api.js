@@ -881,6 +881,50 @@ function clearItemCache(itemId) {
 }
 
 // ===== Trading API GetItem でセラー自身のSKUを取得 =====
+// SKUが取れない原因を調べるための関数。Trading APIの応答をそのまま返す
+async function getItemRaw(itemId) {
+  const key = String(itemId || '');
+  if (!key) return { ok: false, error: 'itemIdが空です' };
+  const token = await getAccessToken();
+  const xml = '<?xml version="1.0" encoding="utf-8"?>'
+    + '<GetItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+    + '<ItemID>' + key + '</ItemID>'
+    + '<DetailLevel>ReturnAll</DetailLevel>'
+    + '</GetItemRequest>';
+  const res = await fetch('https://api.ebay.com/ws/api.dll', {
+    method: 'POST',
+    headers: {
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+      'X-EBAY-API-CALL-NAME': 'GetItem',
+      'X-EBAY-API-IAF-TOKEN': token,
+      'Content-Type': 'text/xml',
+    },
+    body: xml,
+  });
+  const t = await res.text();
+  const pick = (tag) => {
+    const m = t.match(new RegExp('<' + tag + '>([\\s\\S]*?)</' + tag + '>'));
+    return m ? m[1].trim() : null;
+  };
+  const errors = (t.match(/<LongMessage>([\s\S]*?)<\/LongMessage>/g) || [])
+    .map(x => x.replace(/<\/?LongMessage>/g, ''));
+  return {
+    ok: true,
+    httpStatus: res.status,
+    Ack: pick('Ack'),
+    エラー: errors,
+    SKUタグの有無: /<SKU>/.test(t),
+    SKUの値: pick('SKU'),
+    ApplicationDeliveryPreferences: null,
+    バリエーション商品か: /<Variations>/.test(t),
+    SellerSKUが使われているか: /<SellerSKU>/.test(t),
+    CustomLabelの有無: /<CustomLabel>/.test(t),
+    応答の長さ: t.length,
+    xml: t.substring(0, 6000),
+  };
+}
+
 const skuCache = {};
 async function getSellerSku(itemId) {
   if (!itemId) return '';
@@ -1626,6 +1670,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 }
 
 module.exports = {
+  getItemRaw: getItemRaw,
   uploadImageToEps: uploadImageToEps,
   getItemInfo: getItemInfo,
   getCachedItem: getCachedItem,
