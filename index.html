@@ -2367,13 +2367,34 @@ async function markFilterRead(key){
   if(typeof updateFilterCounts==='function') updateFilterCounts();
   if(typeof updateMiniCounts==='function') updateMiniCounts();
 
-  // 保存は1件ずつサーバーに送る。多い場合に備えて少しずつ流す
-  var done=0;
-  for(const m of targets){
-    try{ await saveState(m); }catch(e){}
-    done++;
+  // 保存はまとめて1回で送る。
+  // 1件ずつ送るとスプレッドシートの書き込み上限に当たり、
+  // 画面では既読になったのに保存されず、再読み込みで未読へ戻ってしまう
+  try{
+    var res=await fetch('/api/state/bulk',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({items:targets.map(function(m){
+        return {id:m.id, read:true, starred:!!m.starred, replied:!!m.replied, memo:m.memo||''};
+      })})
+    });
+    var d=await res.json();
+    if(!d.ok){
+      // 保存できていないのに既読のまま見せると事実と食い違うので、元に戻す
+      targets.forEach(function(m){ m.read=false; });
+      renderList();
+      if(typeof renderMiniList==='function') renderMiniList();
+      if(typeof updateFilterCounts==='function') updateFilterCounts();
+      if(typeof updateMiniCounts==='function') updateMiniCounts();
+      alert('既読の保存に失敗しました。\n'+(d.error||'原因不明')+'\n\n画面を元に戻しました。');
+      return;
+    }
+    console.log('[一括既読] '+d.updated+'件を保存しました');
+  }catch(e){
+    targets.forEach(function(m){ m.read=false; });
+    renderList();
+    if(typeof updateFilterCounts==='function') updateFilterCounts();
+    alert('既読の保存に失敗しました。\n'+e.message+'\n\n画面を元に戻しました。');
   }
-  console.log('[一括既読] '+done+'件を既読にしました');
 }
 
 // ===== 添付ファイルの表示 =====
