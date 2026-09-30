@@ -1106,6 +1106,17 @@ app.post('/api/ebay/update-listing', async (req, res) => {
 
 // ===== 商品情報を取得 =====
 // SKUが取れない原因を調べるための窓口。Trading APIの生の応答を確認する
+// eBay APIの使用状況を確認する窓口。
+// 上限に達すると商品情報や納税者番号が取れなくなるため、残り回数を見られるようにする
+app.get('/api/ebay/rate-limit', async (req, res) => {
+  try {
+    const r = await ebayApi.getRateLimits(req.query.api || '');
+    res.json(r);
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/ebay/item-raw/:itemId', async (req, res) => {
   try {
     const r = await ebayApi.getItemRaw(req.params.itemId);
