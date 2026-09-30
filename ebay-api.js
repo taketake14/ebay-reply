@@ -881,6 +881,54 @@ function clearItemCache(itemId) {
 }
 
 // ===== Trading API GetItem でセラー自身のSKUを取得 =====
+// eBay APIの使用状況を取得する。
+// 1日の上限・使用済み・残り・リセット時刻が分かる。
+// 上限に達するとSKUや納税者番号が取れなくなるので、まずここを見る
+async function getRateLimits(apiName) {
+  const token = await getAccessToken();
+  let url = 'https://api.ebay.com/developer/analytics/v1_beta/rate_limit/';
+  if (apiName) url += '?api_name=' + encodeURIComponent(apiName);
+  const r = await fetch(url, {
+    headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) {
+    return { ok: false, httpStatus: r.status, error: JSON.stringify(data).substring(0, 400) };
+  }
+
+  // 見やすい形に整える。残りが少ないものを上に並べる
+  const rows = [];
+  (data.rateLimits || []).forEach(function (rl) {
+    (rl.resources || []).forEach(function (rs) {
+      (rs.rates || []).forEach(function (rate) {
+        const limit = Number(rate.limit || 0);
+        const remaining = Number(rate.remaining || 0);
+        const used = limit - remaining;
+        rows.push({
+          API: rl.apiName || rl.apiContext || '',
+          呼び出し名: rs.name || '',
+          '1日の上限': limit,
+          使用済み: used,
+          残り: remaining,
+          使用率: limit ? Math.round(used / limit * 100) + '%' : '-',
+          リセット時刻: rate.reset || '',
+        });
+      });
+    });
+  });
+  rows.sort(function (a, b) { return a['残り'] - b['残り']; });
+
+  const exhausted = rows.filter(function (x) { return x['残り'] <= 0; });
+  return {
+    ok: true,
+    取得時刻: new Date().toISOString(),
+    上限に達している数: exhausted.length,
+    上限に達しているもの: exhausted.slice(0, 20),
+    残りが少ない順: rows.slice(0, 40),
+    全件数: rows.length,
+  };
+}
+
 // SKUが取れない原因を調べるための関数。Trading APIの応答をそのまま返す
 async function getItemRaw(itemId) {
   const key = String(itemId || '');
@@ -925,11 +973,49 @@ async function getItemRaw(itemId) {
   };
 }
 
-const skuCache = {};
+// ===== SKUの取得 =====
+//
+// SKUはTrading APIの GetItem でしか取れず、Trading APIは
+// アプリ全体で1日5,000回という上限を他の処理と共有している。
+// そのため、同じ商品を二度問い合わせない仕組みが要る。
+//
+// 直した点：
+//   1. 取得結果をディスクに保存する。以前はメモリだけだったので、
+//      デプロイや再起動のたびに全部取り直して上限を食いつぶしていた
+//   2. 上限超過(エラー518)などの失敗を「SKUなし」として覚えない。
+//      以前は失敗を記録してしまい、上限が回復しても空欄のままだった
+
+const fsSku = require('fs');
+const pathSku = require('path');
+const SKU_CACHE_FILE = pathSku.join(process.env.DISK_PATH || '/var/data', 'sku-cache.json');
+
+let skuCache = {};
+let skuCacheDirty = false;
+try {
+  if (fsSku.existsSync(SKU_CACHE_FILE)) {
+    skuCache = JSON.parse(fsSku.readFileSync(SKU_CACHE_FILE, 'utf8')) || {};
+    console.log('[sku] 保存済みのSKUを読み込みました:', Object.keys(skuCache).length + '件');
+  }
+} catch (e) { skuCache = {}; }
+
+function saveSkuCache() {
+  if (!skuCacheDirty) return;
+  try {
+    fsSku.mkdirSync(pathSku.dirname(SKU_CACHE_FILE), { recursive: true });
+    fsSku.writeFileSync(SKU_CACHE_FILE, JSON.stringify(skuCache));
+    skuCacheDirty = false;
+  } catch (e) { console.error('[sku] 保存に失敗:', e.message); }
+}
+setInterval(saveSkuCache, 30000);   // まとめて書き出す
+
+// 上限に達したら、しばらく問い合わせない（無駄に枠を消費しないため）
+let skuCooldownUntil = 0;
+
 async function getSellerSku(itemId) {
   if (!itemId) return '';
   const key = String(itemId);
   if (skuCache[key] !== undefined) return skuCache[key];
+  if (Date.now() < skuCooldownUntil) return '';   // 上限超過の直後は問い合わせない
   try {
     const token = await getAccessToken();
     const xml = '<?xml version="1.0" encoding="utf-8"?>'
@@ -949,15 +1035,28 @@ async function getSellerSku(itemId) {
       body: xml,
     });
     const t = await res.text();
+
+    // 失敗は覚えない。覚えると上限が回復しても空欄のままになる
+    if (/<Ack>Failure<\/Ack>/.test(t)) {
+      const msg = (t.match(/<LongMessage>([\s\S]*?)<\/LongMessage>/) || [])[1] || '';
+      if (/usage limit|518/.test(msg) || /<ErrorCode>518<\/ErrorCode>/.test(t)) {
+        skuCooldownUntil = Date.now() + 30 * 60 * 1000;   // 30分待つ
+        console.error('[sku] eBay APIの1日の上限に達しています。30分待機します');
+      } else {
+        console.error('[sku] 取得に失敗:', msg.substring(0, 120));
+      }
+      return '';
+    }
+
     const m = t.match(/<SKU>([\s\S]*?)<\/SKU>/);
     const sku = m ? m[1].trim() : '';
+    // 成功した場合だけ覚える（SKU未設定の商品も「空」として覚えてよい）
     skuCache[key] = sku;
-    if (!sku) console.log('[getSellerSku] SKUなし item=' + key + ' resp=' + t.substring(0, 200));
+    skuCacheDirty = true;
     return sku;
   } catch (e) {
     console.error('getSellerSku error:', e.message);
-    skuCache[key] = '';
-    return '';
+    return '';   // 通信エラーも覚えない
   }
 }
 
@@ -1670,6 +1769,8 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 }
 
 module.exports = {
+  saveSkuCache: saveSkuCache,
+  getRateLimits: getRateLimits,
   getItemRaw: getItemRaw,
   uploadImageToEps: uploadImageToEps,
   getItemInfo: getItemInfo,
