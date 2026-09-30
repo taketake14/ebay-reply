@@ -670,13 +670,17 @@ async function getItemInfo(legacyItemId) {
         : (ea && typeof ea.estimatedSoldQuantity === 'number' ? ea.estimatedSoldQuantity : null),
     };
     // Browse APIはSKUを返さないので、セラー向けAPIから補完
+    let skuKnown = true;
     if (!info.sku) {
       try {
-        const sku = await getSellerSku(key);
-        if (sku) info.sku = sku;
-      } catch (e) { /* ignore */ }
+        const r = await getSellerSkuDetailed(key);
+        info.sku = r.sku;
+        skuKnown = r.known;   // API上限などで取れなかった場合は false
+      } catch (e) { skuKnown = false; }
     }
-    itemCache[key] = info;
+    // SKUが取れなかった商品は覚えない。
+    // 覚えるとAPIの上限が回復しても「SKUなし」のまま表示され続ける
+    if (skuKnown) itemCache[key] = info;
     return info;
   } catch (e) {
     console.error('getItemInfo error:', e.message);
@@ -1010,6 +1014,18 @@ setInterval(saveSkuCache, 30000);   // まとめて書き出す
 
 // 上限に達したら、しばらく問い合わせない（無駄に枠を消費しないため）
 let skuCooldownUntil = 0;
+
+// SKUと、それが確定した値かどうかを返す。
+// 上限超過や通信エラーで取れなかった場合は known:false を返し、
+// 呼び出し側が結果を覚えないようにする
+async function getSellerSkuDetailed(itemId) {
+  const key = String(itemId || '');
+  if (!key) return { sku: '', known: true };
+  if (skuCache[key] !== undefined) return { sku: skuCache[key], known: true };
+  const sku = await getSellerSku(key);
+  // getSellerSku は成功時だけ skuCache に入れるので、入っていれば確定した値
+  return { sku, known: skuCache[key] !== undefined };
+}
 
 async function getSellerSku(itemId) {
   if (!itemId) return '';
