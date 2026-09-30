@@ -2058,10 +2058,43 @@ function selectMsg(i){
   showChat();
   renderChatDetail();
   renderMiniList();   // 最左のミニリストも更新（選択状態・既読を反映）
+  // この会話の送信者情報が正しいかをeBayに確認する。
+  // 自動同期は直近しか見ないため、古い会話は壊れたまま残ることがある
+  verifyOpenedConversation(m);
   // 描画のあとにもう一度戻す。
   // 表示される前や中身が入る前にスクロール位置を変えても効かないため、
   // 描画後と、商品情報などが後から読み込まれたあとにも合わせ直す
   resetRightPanelScroll();
+}
+
+// 開いた会話をeBayの内容と突き合わせ、食い違っていれば直してから表示し直す。
+// 同じ会話を何度も確認しないよう、1回開いたら覚えておく
+var verifiedConvIds={};
+async function verifyOpenedConversation(m){
+  if(!m || !m.conversationId) return;
+  var cid=String(m.conversationId);
+  if(verifiedConvIds[cid]) return;
+  verifiedConvIds[cid]=true;
+  try{
+    var r=await fetch('/api/ebay/verify/'+encodeURIComponent(cid)).then(function(x){return x.json();});
+    if(r && r.ok && r.changed){
+      // 直ったので、この会話だけ最新の内容を読み直して表示し直す
+      var d=await fetch('/api/messages').then(function(x){return x.json();});
+      var fresh=(d.messages||[]).find(function(x){return String(x.conversationId)===cid;});
+      if(fresh && currentConvId===cid){
+        var idx=messages.findIndex(function(x){return String(x.conversationId)===cid;});
+        if(idx>=0){
+          messages[idx].history=fresh.history||[];
+          messages[idx].msg=fresh.msg||messages[idx].msg;
+          messages[idx].msgFrom=fresh.msgFrom||messages[idx].msgFrom;
+          messages[idx].msgMedia=fresh.msgMedia||null;
+          messages[idx].timestamp=fresh.timestamp||messages[idx].timestamp;
+          if(currentIdx===idx) renderChatBubbles();
+        }
+      }
+      console.log('[検証] 送信者情報を修復しました:', cid);
+    }
+  }catch(e){}
 }
 
 // 右パネルを一番上に戻す。
