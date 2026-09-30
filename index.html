@@ -1570,6 +1570,9 @@ function hideOrderResult(){
   var before=messages.length;
   messages=messages.filter(function(m){return !m.orderOnly;});
   if(messages.length!==before){
+    // 一覧を作り直したので、開いている会話の位置を取り直す
+    noteListRebuilt('hideOrderResult');
+    resyncCurrentIdx('hideOrderResult');
     renderList();
     if(typeof renderMiniList==='function') renderMiniList();
   }
@@ -1941,11 +1944,75 @@ function toggleMiniList(){
 })();
 
 // ===== メッセージ選択 =====
+// 一覧が作り直された記録。誤送信の原因になった経路を後から追えるようにする。
+// ブラウザの開発者ツールで listRebuildLog と入力すれば履歴が見られる
+var listRebuildLog=[];
+function noteListRebuilt(reason){
+  var chatOpen=false;
+  try{ chatOpen=document.getElementById('screen-chat').style.display!=='none'; }catch(e){}
+  listRebuildLog.push({
+    時刻:new Date().toLocaleTimeString('ja-JP'),
+    経路:reason,
+    チャットを開いていたか:chatOpen,
+    開いていた相手:currentBuyerName||'(なし)',
+    番号:currentIdx
+  });
+  if(listRebuildLog.length>50) listRebuildLog.shift();
+  // チャットを開いたまま一覧が作り直されるのが危ない場面なので、そこだけ印を出す
+  if(chatOpen) console.warn('[listRebuilt] チャットを開いたまま一覧が作り直されました:', reason, currentBuyerName);
+}
+
+// 今開いている会話を、並び順に左右されない値で覚えておく。
+// 一覧は新着のたびに並び替わるため、「何番目か」だけで管理すると
+// 別のバイヤーを指してしまう（誤送信の原因になる）
+var currentConvId='';
+var currentBuyerName='';
+
+// 会話IDから、今の一覧での位置を取り直す。
+// 一覧が作り直されたあとでも、開いている会話を正しく追いかけられる
+function findIdxByConv(convId, buyerName){
+  if(!messages || !messages.length) return -1;
+  if(convId){
+    for(var i=0;i<messages.length;i++){
+      if(String(messages[i].conversationId||'')===String(convId)) return i;
+    }
+  }
+  // 会話IDを持たない古いデータ向けの保険（バイヤー名で探す）
+  if(buyerName){
+    for(var j=0;j<messages.length;j++){
+      if(String(messages[j].buyer||'')===String(buyerName) && !messages[j].conversationId) return j;
+    }
+  }
+  return -1;
+}
+
+// 一覧を作り直したあとに呼ぶ。開いている会話の位置を取り直す
+function resyncCurrentIdx(reason){
+  if(currentIdx===null) return true;
+  var ni=findIdxByConv(currentConvId, currentBuyerName);
+  if(ni>=0){
+    if(ni!==currentIdx){
+      console.log('[resync] 一覧が並び替わったため位置を取り直しました', reason||'', currentIdx, '→', ni);
+      currentIdx=ni;
+    }
+    return true;
+  }
+  // 見つからない＝会話が一覧から消えた。誤って別の相手を指さないよう切り離す
+  console.warn('[resync] 開いている会話が一覧から消えました', reason||'', currentConvId, currentBuyerName);
+  return false;
+}
+
 function selectMsg(i){
   var rp0=document.getElementById('right-panel');
   if(rp0) rp0.classList.remove('panel-idle');
+  // 別のメッセージに切り替えたら、右パネルは必ず一番上から表示する。
+  // 前の相手でスクロールした位置が残ると、商品名が見えない状態で始まってしまう
+  if(rp0) rp0.scrollTop=0;
   currentIdx=i;
   var m=messages[i];
+  // 並び順に左右されない値で、開いている会話を覚えておく
+  currentConvId=String(m.conversationId||'');
+  currentBuyerName=String(m.buyer||'');
   m.read=true;
   m.unreadCount=0;   // 開いたら未読件数をリセット
   saveState(m);
@@ -3324,6 +3391,12 @@ function clearAttachments(){
 
 async function sendReplyToEbay(){
   if(currentIdx===null) return;
+  // 送る直前に、開いている会話の位置を取り直す。
+  // 一覧は新着のたびに並び替わるため、番号だけを信じると別の相手を指すことがある
+  if(!resyncCurrentIdx('send')){
+    alert('開いていた会話が一覧から見つかりません。\n安全のため送信を中止しました。\nもう一度メッセージを開き直してください。');
+    return;
+  }
   var m=messages[currentIdx];
   if(!m){ alert('送信対象が見つかりません。もう一度メッセージを開いてください。'); return; }
   // 送信対象を固定（配列がずれても影響を受けないようにスナップショットを取る）
@@ -3635,6 +3708,19 @@ function undoReplyClear(){
 }
 
 // ===== 返信欄の高さを自動調整 =====
+// 利用者が自分で調整した返信欄の高さ。送信後はこの高さに戻す。
+// 覚えていない間は既定の230pxを使う
+var userReplyHeight = null;
+try{
+  var _urh=localStorage.getItem('ebay_reply_height');
+  if(_urh) userReplyHeight=parseInt(_urh,10)||null;
+}catch(e){}
+function rememberReplyHeight(px){
+  if(!px || px<160) return;
+  userReplyHeight=Math.round(px);
+  try{ localStorage.setItem('ebay_reply_height', String(userReplyHeight)); }catch(e){}
+}
+
 function expandReplyArea(){
   var col=document.getElementById('chat-col');
   var ca=document.getElementById('chat-wrap');
@@ -3663,7 +3749,9 @@ function collapseReplyArea(){
   var resH=res?res.offsetHeight:7;
   var avail=colBottom-chatTop-resH;
   if(avail<200) return;
-  var MIN_REPLY=230;
+  // 利用者が自分で決めた高さがあればそこへ、無ければ既定の230pxへ戻す
+  var MIN_REPLY=userReplyHeight || 230;
+  if(MIN_REPLY>avail-90) MIN_REPLY=Math.max(230, avail-90);   // 画面に収まる範囲に丸める
   ca.style.flex='none'; ca.style.height=(avail-MIN_REPLY)+'px';
   ra.style.flex='none'; ra.style.height=MIN_REPLY+'px';
   attRowTakenPx=0;   // 高さを作り直したので、添付ぶんの基準もリセットする
@@ -4207,6 +4295,11 @@ document.addEventListener('mousedown',function(e){
     if(vDragging){
       vDragging=false;vRes.classList.remove('dragging');
       document.body.style.cursor='';document.body.style.userSelect='';
+      // 自分で罫線を動かした高さを覚えておく。送信後はこの高さに戻る
+      var raNow=document.getElementById('reply-area');
+      if(raNow && typeof rememberReplyHeight==='function'){
+        rememberReplyHeight(raNow.getBoundingClientRect().height - attRowTakenPx);
+      }
       saveResize();
     }
   });
@@ -4259,7 +4352,11 @@ window.addEventListener('load',function(){
           var jst=toJST(m.timestamp);
           return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',msgMedia:m.msgMedia||null,timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
         });
+        // 一覧を作り直したので、開いている会話の位置を取り直す
+        noteListRebuilt('loadFromSheet');
+        resyncCurrentIdx('loadFromSheet');
         renderList();
+        if(typeof renderMiniList==='function') renderMiniList();
       }
     }catch(e){console.error('loadFromSheet error:',e);}
   }
@@ -4296,6 +4393,9 @@ window.addEventListener('load',function(){
         var jst=toJST(m.timestamp);
         return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',msgMedia:m.msgMedia||null,timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
       });
+      // 一覧を作り直したので、開いている会話の位置を取り直す
+      noteListRebuilt('autoRefresh');
+      resyncCurrentIdx('autoRefresh');
       renderList();
     }catch(e){}
     autoRefreshBusy=false;
