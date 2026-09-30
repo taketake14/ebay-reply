@@ -243,8 +243,19 @@ app.get('/api/ebay/test', async (req, res) => {
 });
 
 // ===== シートの重複行を削除 =====
+// 重複行を削除する。
+// 【注意】この処理はシート全体を書き直すため、行の位置がすべて変わる。
+// 既読・フラグ・メモは行の位置を目印に保存しているので、
+// 実行するとそれらが別のメッセージに付く。安全のため確認を必須にした。
 app.get('/api/sheet/dedupe', async (req, res) => {
   try {
+    if (req.query.confirm !== 'yes') {
+      return res.json({
+        ok: false,
+        error: 'この処理はシート全体を書き直すため、既読・フラグ・メモが別のメッセージに付く可能性があります。'
+             + '実行する場合は URL の末尾に ?confirm=yes を付けてください。',
+      });
+    }
     const sheetId = process.env.SHEET_ID;
     if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
       return res.json({ ok: false, error: 'シート設定がありません' });
@@ -2205,6 +2216,77 @@ async function appendToSheet(msg) {
 }
 
 // ===== 状態更新API（スプレッドシートに永続保存） =====
+// まとめて既読にする。
+// 1件ずつ書くとGoogleスプレッドシートの書き込み回数の上限（1分60回）に当たり、
+// 大半が失敗して既読が保存されない。284件を一括で既読にしたのに
+// 再読み込みで未読へ戻るのはこれが原因だった。
+// 1回のリクエストでまとめて書き込むことで、回数を1回に抑える。
+app.post('/api/state/bulk', async (req, res) => {
+  try {
+    const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
+    if (!items.length) return res.json({ ok: true, updated: 0 });
+
+    const sheetId = process.env.SHEET_ID;
+    if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
+      return res.json({ ok: false, error: 'スプレッドシートの設定がありません' });
+    }
+
+    // メモリと表示用のデータにも反映
+    const data = [];
+    items.forEach(it => {
+      const id = Number(it.id);
+      if (!id) return;
+      const prev = stateStore[id] || {};
+      stateStore[id] = {
+        read: it.read, starred: it.starred, replied: it.replied, memo: it.memo,
+        readAt: it.read ? new Date().toISOString() : (prev.readAt || null),
+      };
+      const msg = messages.find(m => m.id == id);
+      if (msg) {
+        if (it.read !== undefined) msg.read = it.read;
+        if (it.starred !== undefined) msg.starred = it.starred;
+        if (it.replied !== undefined) msg.replied = it.replied;
+        if (it.memo !== undefined) msg.memo = it.memo;
+      }
+      const dataRow = id + 1;   // ヘッダー行の分
+      data.push({
+        range: `シート1!H${dataRow}:K${dataRow}`,
+        majorDimension: 'ROWS',
+        values: [[
+          it.read ? 'true' : 'false',
+          it.starred ? 'true' : 'false',
+          it.replied ? 'true' : 'false',
+          it.memo || '',
+        ]],
+      });
+    });
+
+    const token = await getGoogleAccessToken();
+    // 1回のリクエストが大きくなりすぎないよう分割する（それでも回数は数回で済む）
+    const CHUNK = 500;
+    let written = 0;
+    for (let i = 0; i < data.length; i += CHUNK) {
+      const part = data.slice(i, i + CHUNK);
+      const r = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values:batchUpdate`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ valueInputOption: 'RAW', data: part }),
+      });
+      if (!r.ok) {
+        const t = await r.text().catch(() => '');
+        console.error('[state/bulk] 書き込み失敗:', r.status, t.substring(0, 200));
+        return res.json({ ok: false, updated: written, error: `保存に失敗しました（HTTP ${r.status}）` });
+      }
+      written += part.length;
+    }
+    console.log('[state/bulk] ' + written + '件を保存しました');
+    res.json({ ok: true, updated: written });
+  } catch (e) {
+    console.error('[state/bulk] error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/state', async (req, res) => {
   const { id, read, starred, replied, memo } = req.body;
   if (!id) return res.json({ ok: false });
