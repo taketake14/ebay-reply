@@ -317,6 +317,74 @@ function mediaOf(mm) {
   return out.length ? out : undefined;
 }
 
+// 会話1件だけを取り直して、表示用の形に変換する。
+// 自動同期は直近の期間しか見ないため、それより古い会話が壊れたままになる。
+// メッセージを開いたときにこれで検証し、食い違っていれば直す
+async function getOneConversationForApp(conversationId) {
+  const cid = String(conversationId || '');
+  if (!cid) return null;
+  const sellerName = await getSellerUsername().catch(() => '');
+  const SELF = String(sellerName || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
+  if (!SELF) throw new Error('セラー名を特定できないため検証を中止しました');
+
+  const detail = await getConversation(cid);
+  const msgs = (detail && detail.messages) || [];
+  if (!msgs.length) return null;
+
+  const isSelf = (u) => {
+    const x = String(u || '').toLowerCase();
+    return !!x && x === SELF;
+  };
+  const sorted = msgs.slice().sort((a, b) =>
+    new Date(a.createdDate || 0) - new Date(b.createdDate || 0));
+
+  // 相手の名前（自分以外の登場人物）
+  let buyer = '';
+  for (const m of sorted) {
+    if (!isSelf(m.senderUsername)) { buyer = m.senderUsername || ''; break; }
+    if (m.recipientUsername && !isSelf(m.recipientUsername)) { buyer = m.recipientUsername; break; }
+  }
+
+  // 本文として表示する1件＝最後にバイヤーから来たもの
+  let lastBuyerIdx = -1;
+  for (let k = sorted.length - 1; k >= 0; k--) {
+    if (!isSelf(sorted[k].senderUsername)) { lastBuyerIdx = k; break; }
+  }
+  let body, ts, msgFrom, bodyMedia;
+  if (lastBuyerIdx >= 0) {
+    body = sorted[lastBuyerIdx].messageBody || '';
+    ts = sorted[lastBuyerIdx].createdDate || '';
+    msgFrom = 'buyer';
+    bodyMedia = mediaOf(sorted[lastBuyerIdx]);
+  } else {
+    const latest = sorted[sorted.length - 1];
+    body = latest.messageBody || '';
+    ts = latest.createdDate || '';
+    msgFrom = 'me';
+    bodyMedia = mediaOf(latest);
+  }
+  const history = sorted.filter((_, k) => k !== lastBuyerIdx).map(mm => ({
+    from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
+    text: mm.messageBody || '',
+    time: mm.createdDate || '',
+    media: mediaOf(mm),
+  }));
+
+  return {
+    conversationId: cid,
+    buyer,
+    body,
+    timestamp: ts,
+    msgFrom,
+    history,
+    bodyMedia,
+    sig: msgFrom + '|' + history.length
+      + '|' + history.map(h => (h.from === 'me' ? '1' : '0')).join('')
+      + '|' + history.map(h => (h.media || []).length).join(',')
+      + '|' + (bodyMedia ? bodyMedia.length : 0),
+  };
+}
+
 async function getMessagesForApp(daysBack) {
   daysBack = daysBack || 7;
   const convs = await getConversations(daysBack, 50);
@@ -1785,6 +1853,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 }
 
 module.exports = {
+  getOneConversationForApp: getOneConversationForApp,
   saveSkuCache: saveSkuCache,
   getRateLimits: getRateLimits,
   getItemRaw: getItemRaw,
