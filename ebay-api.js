@@ -1,5 +1,9 @@
 // ===== eBay Message API (REST) 連携 =====
 const fetch = require('node-fetch');
+// ファイル内で使う fs / path。
+// 以前は途中で定義していたため、前方で参照した箇所で読み込みに失敗していた
+const fsSku = require('fs');
+const pathSku = require('path');
 
 const EBAY_OAUTH_URL = 'https://api.ebay.com/identity/v1/oauth2/token';
 const EBAY_MSG_BASE = 'https://api.ebay.com/commerce/message/v1';
@@ -1103,8 +1107,6 @@ async function getItemRaw(itemId) {
 //   2. 上限超過(エラー518)などの失敗を「SKUなし」として覚えない。
 //      以前は失敗を記録してしまい、上限が回復しても空欄のままだった
 
-const fsSku = require('fs');
-const pathSku = require('path');
 const SKU_CACHE_FILE = pathSku.join(process.env.DISK_PATH || '/var/data', 'sku-cache.json');
 
 let skuCache = {};
