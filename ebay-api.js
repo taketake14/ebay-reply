@@ -289,7 +289,12 @@ async function updateConversationRead(conversationId, isRead) {
 // GetUser が一時的に失敗しても、送信者の向きを誤ったままシートに書かないための保険。
 // セラーは全ての会話に登場するので、全会話に共通して現れるユーザー名がセラー。
 function guessSellerFromConversations(list) {
-  if (!list || list.length < 2) return '';
+  // 会話が少ないと誤判定する。
+  // 例：同じバイヤーとの会話が2件だけだと、そのバイヤーが全会話に出るため
+  // セラーと区別がつかず、バイヤーをセラーと誤認して全員の向きが逆になる。
+  // 安全のため、別々の相手との会話が5件以上あるときだけ推定する。
+  if (!list || list.length < 5) return '';
+
   const count = {};
   list.forEach(c => {
     const lm = c.latestMessage || {};
@@ -298,9 +303,19 @@ function guessSellerFromConversations(list) {
     if (lm.recipientUsername) names.add(String(lm.recipientUsername).toLowerCase());
     names.forEach(n => { count[n] = (count[n] || 0) + 1; });
   });
-  let best = '', bestN = 0;
-  Object.keys(count).forEach(n => { if (count[n] > bestN) { bestN = count[n]; best = n; } });
-  return bestN >= list.length ? best : '';
+
+  // 全会話に出てくる名前だけを候補にする
+  const names = Object.keys(count);
+  const candidates = names.filter(n => count[n] >= list.length);
+  // 候補が1つに絞れないときは推定しない（誤ると全員の向きが逆になるため）
+  if (candidates.length !== 1) return '';
+
+  // 相手側の名前が十分にばらけているかも確認する。
+  // 同じ相手ばかりだと、その相手も全会話に出てしまう
+  const others = names.filter(n => n !== candidates[0]);
+  if (others.length < 3) return '';
+
+  return candidates[0];
 }
 
 // eBayから届いたメッセージに添付されているファイルを取り出す。
@@ -764,8 +779,38 @@ function escXml(s) {
 
 // ===== ログイン中のセラー名を取得（誰が使っても正しく判定するため） =====
 let cachedSellerName = null;
+// セラー名の保存先。
+// セラー名はTrading APIのGetUserで取るが、1日5,000回の上限に当たると失敗する。
+// 失敗したまま同期を続けると、全メッセージがバイヤー扱いで保存されてしまう。
+// 一度取れたら保存しておき、再起動後もそれを使う。
+const SELLER_FILE = pathSku.join(process.env.DISK_PATH || '/var/data', 'seller.json');
+
+function loadSavedSellerName() {
+  try {
+    if (fsSku.existsSync(SELLER_FILE)) {
+      const d = JSON.parse(fsSku.readFileSync(SELLER_FILE, 'utf8'));
+      if (d && d.username) return String(d.username);
+    }
+  } catch (e) {}
+  return '';
+}
+
+function saveSellerName(name) {
+  try {
+    fsSku.mkdirSync(pathSku.dirname(SELLER_FILE), { recursive: true });
+    fsSku.writeFileSync(SELLER_FILE, JSON.stringify({ username: name, savedAt: new Date().toISOString() }));
+  } catch (e) { console.error('[seller] 保存に失敗:', e.message); }
+}
+
 async function getSellerUsername() {
   if (cachedSellerName) return cachedSellerName;
+  // 保存済みがあればそれを使う（GetUserを呼ばずに済む）
+  const saved = loadSavedSellerName();
+  if (saved) {
+    cachedSellerName = saved;
+    console.log('[seller] 保存済みのセラー名を使用:', saved);
+    return saved;
+  }
   try {
     const token = await getAccessToken();
     const xml = '<?xml version="1.0" encoding="utf-8"?>'
@@ -787,6 +832,7 @@ async function getSellerUsername() {
     const u = (t.match(/<UserID>([^<]+)<\/UserID>/) || [])[1];
     if (u) {
       cachedSellerName = u;
+      saveSellerName(u);   // 次回の起動で使えるよう保存する
       console.log('[seller] ログイン中のセラー:', u);
       return u;
     }
