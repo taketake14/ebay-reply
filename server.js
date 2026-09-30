@@ -1105,6 +1105,17 @@ app.post('/api/ebay/update-listing', async (req, res) => {
 });
 
 // ===== 商品情報を取得 =====
+// SKUが取れない原因を調べるための窓口。Trading APIの生の応答を確認する
+app.get('/api/ebay/item-raw/:itemId', async (req, res) => {
+  try {
+    const r = await ebayApi.getItemRaw(req.params.itemId);
+    if (req.query.raw === '1') return res.type('text/plain').send(r.xml || '(空)');
+    res.json(r);
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/ebay/item/:itemId', async (req, res) => {
   try {
     const info = await ebayApi.getItemInfo(req.params.itemId);
