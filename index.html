@@ -72,10 +72,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .search-clear:hover{background:#f1f5f9;color:#334155;}
 .header-search:focus{border-color:var(--orange);}
 .header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
-.h-badge-wrap{display:flex;align-items:center;gap:5px;font-size:12px;color:#94a3b8;}
-.h-badge{font-size:10px;padding:1px 6px;border-radius:20px;font-weight:700;}
-.h-badge-orange{background:var(--orange);color:#fff;}
-.h-badge-red{background:var(--danger);color:#fff;}
 .h-avatar{width:30px;height:30px;border-radius:50%;background:var(--navy3);display:flex;align-items:center;justify-content:center;font-size:12px;color:#cbd5e1;font-weight:500;}
 
 /* ===== SCREEN 1: 受信者一覧 ===== */
@@ -926,8 +922,6 @@ a.kv-v:hover{text-decoration:underline;}
     <button class="search-clear" id="search-clear" onclick="clearSearch()" title="検索をクリア" style="display:none;">&#10005;</button>
   </div>
   <div class="header-right">
-    <div class="h-badge-wrap">未読 <span class="h-badge h-badge-orange" id="h-unread-count">0</span></div>
-    <div class="h-badge-wrap">要対応 <span class="h-badge h-badge-red" id="h-urgent-count">0</span></div>
     <button class="demo-btn" onclick="loadDemo()">デモデータ</button>
     <div class="h-avatar">K</div>
   </div>
@@ -1704,8 +1698,6 @@ function renderList(){
   var unread=messages.filter(function(m){return !m.read;}).length;
   var urgent=messages.filter(function(m){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(tagSourceText(m));}).length;
   document.getElementById('msg-count').textContent=messages.length+'件 / 未読'+unread;
-  document.getElementById('h-unread-count').textContent=unread;
-  document.getElementById('h-urgent-count').textContent=urgent;
 
   var filtered=messages.filter(function(m){
     if(currentFilter==='unread') return !m.read;
