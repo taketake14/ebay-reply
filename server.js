@@ -636,8 +636,9 @@ app.get('/api/sheet/headers', async (req, res) => {
 app.get('/api/ebay/verify-all', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 100, 500);
+    const skip = Math.max(parseInt(req.query.skip) || 0, 0);   // 続きから実行する用
     const state = await getSheetConvState();
-    const cids = Object.keys(state);
+    const cids = Object.keys(state).slice(skip);
     let checked = 0, fixed = 0;
     const failed = [];
 
@@ -655,10 +656,19 @@ app.get('/api/ebay/verify-all', async (req, res) => {
         failed.push(cid);
       }
     }
+    const total = Object.keys(state).length;
+    const done = skip + checked;
     res.json({
-      ok: true, 対象の会話数: cids.length, 調べた件数: checked,
-      修復した件数: fixed, 失敗: failed.length,
-      続きがあるか: checked < cids.length,
+      ok: true,
+      対象の会話数: total,
+      今回調べた件数: checked,
+      修復した件数: fixed,
+      失敗: failed.length,
+      ここまで完了: done + ' / ' + total,
+      続きがあるか: done < total,
+      続きのURL: done < total
+        ? `/api/ebay/verify-all?limit=${limit}&skip=${done}`
+        : '（すべて完了しました）',
     });
   } catch (e) {
     res.json({ ok: false, error: e.message });
