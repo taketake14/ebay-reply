@@ -1051,14 +1051,14 @@ a.kv-v:hover{text-decoration:underline;}
     <!-- 最左：フィルター（受信トレイと同じ位置・同じ見た目） -->
     <div class="s1-side s2-side" id="s2-side">
       <button class="side-collapse" onclick="toggleSideCollapse()" id="btn-side-collapse" title="フィルターを折りたたむ">&#10094;</button>
-      <button class="side-filter on" onclick="setMiniFilter('all',this)" title="すべて"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-all">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('unread',this)" title="未読"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-unread">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('urgent',this)" title="要対応"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="mcnt-urgent">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('starred',this)" title="フラグ"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('sold',this)" title="購入者"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('cancel',this)" title="キャンセル"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="mcnt-cancel">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('memo',this)" title="メモあり"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="mcnt-memo">0</span></button>
-      <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span></button>
+      <button class="side-filter on" onclick="setMiniFilter('all',this)" title="すべて"><span class="sf-icon">&#128234;</span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-all">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('all',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('unread',this)" title="未読"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-unread">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('unread',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('urgent',this)" title="要対応"><span class="sf-icon">&#9888;</span><span class="sf-label">要対応</span><span class="sf-count" id="mcnt-urgent">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('urgent',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('starred',this)" title="フラグ"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-starred">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('starred',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('sold',this)" title="購入者"><span class="sf-icon">&#128176;</span><span class="sf-label">購入者</span><span class="sf-count" id="mcnt-sold">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('sold',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('cancel',this)" title="キャンセル"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="mcnt-cancel">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('cancel',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('memo',this)" title="メモあり"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="mcnt-memo">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('memo',this)">&#8943;</span></button>
+      <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('replied',this)">&#8943;</span></button>
     </div>
 
     <!-- ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
@@ -1496,17 +1496,41 @@ function setFilter(f,btn){
   renderList();
 }
 
+// 分類ごとの「未読数」を数える。
+// 総件数ではなく未読数に統一する。全部読めば数字が消えて、
+// どこに手つかずのメッセージが残っているかが一目で分かるようにするため。
+// メモだけ件数にすると分かりにくくなるので、すべて未読数で揃える
+function unreadCountOf(key){
+  return messages.filter(function(m){
+    if(m.orderOnly) return false;
+    if(m.read) return false;   // 既読は数えない
+    switch(key){
+      case 'all':     return true;
+      case 'unread':  return true;
+      case 'urgent':  return getTags(tagSourceText(m)).some(function(t){return t.key==='urgent';});
+      case 'starred': return !!m.starred;
+      case 'sold':    return !!m.sold;
+      case 'cancel':  return !!(m.cancel && m.cancel.short);
+      case 'memo':    return !!(m.memo && String(m.memo).trim());
+      case 'replied': return !!m.replied;
+      default:        return false;
+    }
+  }).length;
+}
+
+// 未読が0の分類は数字を出さない（画面をすっきりさせるため）
+function setUnreadBadge(id, n){
+  var e=document.getElementById(id);
+  if(!e) return;
+  e.textContent = n > 0 ? n : '';
+  e.style.display = n > 0 ? '' : 'none';
+}
+
 // サイドバーの件数を更新
 function updateFilterCounts(){
-  function set(id,n){ var e=document.getElementById(id); if(e) e.textContent=n; }
-  set('cnt-all', messages.length);
-  set('cnt-unread', messages.filter(function(m){return !m.read;}).length);
-  set('cnt-urgent', messages.filter(function(m){return getTags(tagSourceText(m)).some(function(t){return t.key==='urgent';});}).length);
-  set('cnt-starred', messages.filter(function(m){return m.starred;}).length);
-  set('cnt-sold', messages.filter(function(m){return m.sold;}).length);
-  set('cnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
-  set('cnt-memo', messages.filter(function(m){return m.memo&&m.memo.trim();}).length);
-  set('cnt-replied', messages.filter(function(m){return m.replied;}).length);
+  ['all','unread','urgent','starred','sold','cancel','memo','replied'].forEach(function(k){
+    setUnreadBadge('cnt-'+k, unreadCountOf(k));
+  });
 }
 var orderSearchTimer=null;
 // 注文番号 → バイヤー名 の対応（検索欄の文字は変えずに絞り込むため）
@@ -1840,15 +1864,10 @@ function getMiniFiltered(){
   });
 }
 function updateMiniCounts(){
-  function set(id,n){var e=document.getElementById(id); if(e) e.textContent=n;}
-  set('mcnt-all', messages.length);
-  set('mcnt-unread', messages.filter(function(m){return !m.read;}).length);
-  set('mcnt-urgent', messages.filter(function(m){return getTags(tagSourceText(m)).some(function(t){return t.key==='urgent';});}).length);
-  set('mcnt-starred', messages.filter(function(m){return m.starred;}).length);
-  set('mcnt-sold', messages.filter(function(m){return m.sold;}).length);
-  set('mcnt-cancel', messages.filter(function(m){return m.cancel&&m.cancel.short;}).length);
-  set('mcnt-memo', messages.filter(function(m){return m.memo&&m.memo.trim();}).length);
-  set('mcnt-replied', messages.filter(function(m){return m.replied;}).length);
+  // 受信トレイ側と同じく未読数で揃える
+  ['all','unread','urgent','starred','sold','cancel','memo','replied'].forEach(function(k){
+    setUnreadBadge('mcnt-'+k, unreadCountOf(k));
+  });
 }
 
 function renderMiniList(){
@@ -1904,9 +1923,15 @@ function renderMiniList(){
     +'</div>';
   }).join('');
 
-  // 選択中の項目が見えるようスクロール
+  // 選択中の項目が見えるようスクロール。
+  // scrollIntoView は親をさかのぼって全部スクロールするため、
+  // 右パネルまで一緒に動いてしまう。ミニリストの中だけを動かす
   var act=el.querySelector('.mini-item.active');
-  if(act) act.scrollIntoView({block:'nearest'});
+  if(act){
+    var top=act.offsetTop, bottom=top+act.offsetHeight;
+    if(top < el.scrollTop) el.scrollTop=top;
+    else if(bottom > el.scrollTop+el.clientHeight) el.scrollTop=bottom-el.clientHeight;
+  }
 }
 
 // フィルターサイドバーの折りたたみ
@@ -2333,9 +2358,10 @@ async function markFilterRead(key){
   if(!confirm('「'+filterLabelOf(key)+'」の未読 '+targets.length+' 件を既読にします。\nよろしいですか？')) return;
 
   targets.forEach(function(m){ m.read=true; m.unreadCount=0; });
-  renderList();
-  if(typeof renderMiniList==='function') renderMiniList();
-  if(typeof updateCounts==='function') updateCounts();
+  renderList();   // 受信トレイ側（件数の更新も含む）
+  if(typeof renderMiniList==='function') renderMiniList();   // メッセージ画面側
+  if(typeof updateFilterCounts==='function') updateFilterCounts();
+  if(typeof updateMiniCounts==='function') updateMiniCounts();
 
   // 保存は1件ずつサーバーに送る。多い場合に備えて少しずつ流す
   var done=0;
