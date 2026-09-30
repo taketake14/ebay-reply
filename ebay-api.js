@@ -369,25 +369,41 @@ async function getOneConversationForApp(conversationId) {
   for (let k = sorted.length - 1; k >= 0; k--) {
     if (!isSelf(sorted[k].senderUsername)) { lastBuyerIdx = k; break; }
   }
-  let body, ts, msgFrom, bodyMedia;
+  // ※ 履歴の作り方は getMessagesForApp と完全に同じにすること。
+  //    違うと、検証で直した直後に同期が元へ戻す（あるいはその逆）という
+  //    押し合いが起きて、シートに無駄な書き込みが延々と続く。
+  let body, ts, msgFrom, bodyMedia, history;
   if (lastBuyerIdx >= 0) {
     body = sorted[lastBuyerIdx].messageBody || '';
     ts = sorted[lastBuyerIdx].createdDate || '';
     msgFrom = 'buyer';
     bodyMedia = mediaOf(sorted[lastBuyerIdx]);
+    // 本文にした1件を除いた残り全部
+    history = sorted.filter((_, k) => k !== lastBuyerIdx).map(mm => {
+      let isMine = isSelf(mm.senderUsername);
+      if (!mm.senderUsername && mm.recipientUsername) isMine = !isSelf(mm.recipientUsername);
+      return {
+        from: isMine ? 'me' : 'buyer',
+        text: mm.messageBody || '',
+        time: mm.createdDate || '',
+        media: mediaOf(mm),
+      };
+    });
   } else {
+    // 相手からのメッセージが無い（自分だけ）ケース。
+    // 最後の1件を本文にするので、履歴はそれを除いた分
     const latest = sorted[sorted.length - 1];
     body = latest.messageBody || '';
     ts = latest.createdDate || '';
     msgFrom = 'me';
     bodyMedia = mediaOf(latest);
+    history = sorted.slice(0, -1).map(mm => ({
+      from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
+      text: mm.messageBody || '',
+      time: mm.createdDate || '',
+      media: mediaOf(mm),
+    }));
   }
-  const history = sorted.filter((_, k) => k !== lastBuyerIdx).map(mm => ({
-    from: isSelf(mm.senderUsername) ? 'me' : 'buyer',
-    text: mm.messageBody || '',
-    time: mm.createdDate || '',
-    media: mediaOf(mm),
-  }));
 
   return {
     conversationId: cid,
