@@ -2077,28 +2077,24 @@ function selectMsg(i){
 // 実際に動いているのはそちらなので、中の要素もまとめて戻す。
 // 中身は後から読み込まれるため、数回に分けて実行する
 function resetRightPanelScroll(){
-  function toTop(label){
+  function toTop(){
     var rp=document.getElementById('right-panel');
     if(!rp) return;
-    var moved=[];
-    if(rp.scrollTop){ moved.push('right-panel='+Math.round(rp.scrollTop)); rp.scrollTop=0; }
-    // 中にあるスクロールする要素も全部戻す
+    rp.scrollTop=0;
+    // 右パネルの中にもスクロールする要素（panel-body など）があるので全部戻す
     rp.querySelectorAll('*').forEach(function(el){
-      if(el.scrollTop){
-        moved.push((el.id||el.className||el.tagName)+'='+Math.round(el.scrollTop));
-        el.scrollTop=0;
-      }
+      if(el.scrollTop) el.scrollTop=0;
     });
     // 右パネルを含む親側が動いている場合もあるので、そちらも戻す
     var n=rp.parentElement;
-    while(n && n!==document.body){
-      if(n.scrollTop){ moved.push('(親)'+(n.id||n.className||n.tagName)+'='+Math.round(n.scrollTop)); n.scrollTop=0; }
+    while(n && n !== document.body){
+      if(n.scrollTop) n.scrollTop=0;
       n=n.parentElement;
     }
-    if(moved.length) console.log('[右パネル戻し]', label, moved.join(' / '));
   }
-  toTop('即時');
-  [30,150,400,900,1500].forEach(function(t){ setTimeout(function(){ toTop(t+'ms'); },t); });
+  // 中身は後から読み込まれるため、時間をおいて数回実行する
+  toTop();
+  [30,150,400,900,1500].forEach(function(t){ setTimeout(toTop,t); });
 }
 
 function renderChatDetail(){
