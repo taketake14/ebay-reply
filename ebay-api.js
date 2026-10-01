@@ -100,6 +100,97 @@ async function callMessageAPI(pathAndQuery, options) {
 const PAGE_LIMIT = 50;   // eBay APIの1リクエスト上限
 
 // 指定期間の会話を1回だけ取得
+// ===== eBayからの連絡（FROM_EBAY） =====
+//
+// バイヤーとのやり取り（FROM_MEMBERS）とは別枠。
+// 返品・キャンセル・入金・サポートからの返信などが届く。
+//
+// 保存の方針：
+//   一覧（タイトル・日時・未読）だけをシートに保存し、
+//   本文は開いたときにeBayから直接取る。
+//   本文はHTMLメールそのもので1件あたり数十KBあり、
+//   スプレッドシートの1セルの上限を超えるおそれがあるため。
+
+// 一覧を取得する。期間を区切って取りこぼしを防ぐ
+async function getEbayNotices(daysBack) {
+  const days = daysBack || 30;
+  const end = new Date();
+  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+
+  const seen = {};
+  let calls = 0;
+  let incomplete = false;
+  const BLOCK_MS = 24 * 60 * 60 * 1000;      // 1日ずつ区切る（件数が少ないので十分）
+  const MIN_SPAN_MS = 60 * 60 * 1000;
+  const MAX_CALLS = Math.max(60, Math.ceil(days) * 3);
+
+  async function fetchRange(st, en) {
+    if (calls >= MAX_CALLS) { incomplete = true; return; }
+    calls++;
+    let res;
+    try {
+      const q = new URLSearchParams({
+        conversation_type: 'FROM_EBAY',
+        limit: String(PAGE_LIMIT),
+        start_time: st.toISOString(),
+        end_time: en.toISOString(),
+      });
+      res = await callMessageAPI('/conversation?' + q.toString());
+    } catch (e) {
+      console.error('[notices] 取得に失敗:', e.message);
+      incomplete = true;
+      return;
+    }
+    const batch = (res && res.conversations) || [];
+    batch.forEach(c => { if (c && c.conversationId) seen[c.conversationId] = c; });
+    if (batch.length < PAGE_LIMIT) return;
+
+    // 上限まで埋まったら期間を半分にして取り直す
+    const span = en.getTime() - st.getTime();
+    if (span <= MIN_SPAN_MS) { incomplete = true; return; }
+    const mid = st.getTime() + Math.floor(span / 2);
+    await fetchRange(new Date(mid + 1), en);
+    await fetchRange(st, new Date(mid));
+  }
+
+  let upper = end.getTime();
+  while (upper > start.getTime()) {
+    const lower = Math.max(start.getTime(), upper - BLOCK_MS);
+    await fetchRange(new Date(lower), new Date(upper));
+    upper = lower - 1;
+  }
+
+  const list = Object.values(seen).map(c => ({
+    conversationId: String(c.conversationId),
+    title: (c.conversationTitle || '').trim() || '(件名なし)',
+    createdDate: c.createdDate || '',
+    unreadCount: Number(c.unreadCount || 0),
+    referenceId: c.referenceId || '',
+    status: c.conversationStatus || '',
+    // 「Re:」で始まるものは、こちらから問い合わせた件への返信＝やり取りがある
+    isReply: /^\s*re\s*:/i.test(c.conversationTitle || ''),
+  })).sort((a, b) => new Date(b.createdDate || 0) - new Date(a.createdDate || 0));
+
+  return { notices: list, complete: !incomplete, _calls: calls };
+}
+
+// 1件の本文を取得する（保存しないので開くたびに取りに行く）
+async function getEbayNoticeBody(conversationId) {
+  const d = await getConversation(conversationId, 'FROM_EBAY');
+  const msgs = (d && d.messages) || [];
+  return {
+    title: (d && d.conversationTitle) || '',
+    messages: msgs.map(m => ({
+      messageId: m.messageId || '',
+      from: m.senderUsername || 'eBay',
+      subject: m.subject || '',
+      time: m.createdDate || '',
+      html: m.messageBody || '',
+      read: m.readStatus === 'READ',
+    })),
+  };
+}
+
 // eBayからの連絡（FROM_EBAY）を確認するための関数。
 // バイヤーとのやり取り（FROM_MEMBERS）とは別枠で、同じAPIの種別違い。
 // どんな内容が届くのかを見てから画面の作りを決めたいので、まず取得だけ行う
@@ -1974,6 +2065,8 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 }
 
 module.exports = {
+  getEbayNotices: getEbayNotices,
+  getEbayNoticeBody: getEbayNoticeBody,
   peekEbayNotices: peekEbayNotices,
   getOneConversationForApp: getOneConversationForApp,
   saveSkuCache: saveSkuCache,
