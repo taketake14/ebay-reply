@@ -100,6 +100,57 @@ async function callMessageAPI(pathAndQuery, options) {
 const PAGE_LIMIT = 50;   // eBay APIの1リクエスト上限
 
 // 指定期間の会話を1回だけ取得
+// eBayからの連絡（FROM_EBAY）を確認するための関数。
+// バイヤーとのやり取り（FROM_MEMBERS）とは別枠で、同じAPIの種別違い。
+// どんな内容が届くのかを見てから画面の作りを決めたいので、まず取得だけ行う
+async function peekEbayNotices(daysBack) {
+  const days = daysBack || 30;
+  const end = new Date();
+  const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
+  const q = new URLSearchParams({
+    conversation_type: 'FROM_EBAY',
+    limit: String(PAGE_LIMIT),
+    start_time: start.toISOString(),
+    end_time: end.toISOString(),
+  });
+  const res = await callMessageAPI('/conversation?' + q.toString());
+  const list = (res && res.conversations) || [];
+
+  // 中身が分かるよう、先頭の数件だけ本文も取ってみる
+  const samples = [];
+  for (const c of list.slice(0, 5)) {
+    let detail = null;
+    try { detail = await getConversation(c.conversationId); } catch (e) {}
+    const msgs = (detail && detail.messages) || [];
+    samples.push({
+      conversationId: c.conversationId,
+      タイトル: (detail && detail.conversationTitle) || '',
+      種別: c.conversationType,
+      参照: c.referenceType + (c.referenceId ? ' / ' + c.referenceId : ''),
+      未読数: c.unreadCount,
+      メッセージ数: msgs.length,
+      送信者: msgs.map(m => m.senderUsername || '(なし)'),
+      本文の先頭: msgs.map(m => String(m.messageBody || '').replace(/<[^>]*>/g, ' ').substring(0, 120)),
+      添付: msgs.map(m => (m.messageMedia || []).length),
+      メッセージのキー: msgs[0] ? Object.keys(msgs[0]) : [],
+    });
+  }
+
+  return {
+    期間: days + '日分',
+    総件数: res ? res.total : null,
+    取得できた件数: list.length,
+    一覧: list.slice(0, 20).map(c => ({
+      日時: (c.latestMessage && c.latestMessage.createdDate) || c.createdDate,
+      未読: c.unreadCount,
+      参照: c.referenceType || '',
+      先頭: String((c.latestMessage && c.latestMessage.messageBody) || '')
+        .replace(/<[^>]*>/g, ' ').substring(0, 100),
+    })),
+    中身の例: samples,
+  };
+}
+
 async function fetchConversationRange(startDate, endDate) {
   const q = new URLSearchParams({
     conversation_type: 'FROM_MEMBERS',
@@ -1917,6 +1968,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
 }
 
 module.exports = {
+  peekEbayNotices: peekEbayNotices,
   getOneConversationForApp: getOneConversationForApp,
   saveSkuCache: saveSkuCache,
   getRateLimits: getRateLimits,
