@@ -1516,7 +1516,8 @@ app.get('/api/ebay/sync', async (req, res) => {
         // （eBay APIの送信者情報が唯一の正しい情報源なので、常にAPI側で上書きする）
         if (force || newTs > savedTs || mismatched) {
           try {
-            const isNew = newTs > savedTs;
+            // 未読に戻すのはバイヤーから届いたときだけ（自分の返信では戻さない）
+            const isNew = (newTs > savedTs) && (em.msgFrom !== 'me');
             const r = await refreshRowInSheet(em, isNew);
             updated++;
             if (r === false) console.log('[sync] refreshRow no-op for', cid);
@@ -2751,10 +2752,14 @@ async function autoSyncFromEbay() {
       const newTs = new Date(em.timestamp || 0).getTime() || 0;
 
       if (savedTs > 0) {
-        // 既存会話に新着があれば更新して未読に
+        // 既存会話に新着があれば更新して未読に。
+        // ただし未読に戻すのは「バイヤーから届いた」場合だけ。
+        // 自分が返信した会話（最後が自分の発言）も時刻が新しくなるため、
+        // 条件を分けないと、返信するたびに自分で未読を作ってしまう
         if (newTs > savedTs) {
+          const fromBuyer = (em.msgFrom !== 'me');
           try {
-            await refreshRowInSheet(em, true);
+            await refreshRowInSheet(em, fromBuyer);
             refreshed++;
             const mm = messages.find(m => m.conversationId === cid);
             if (mm) {
@@ -2763,9 +2768,12 @@ async function autoSyncFromEbay() {
               mm.msgFrom = em.msgFrom || 'buyer';
               mm.history = em.history || mm.history;
               mm.timestamp = em.timestamp || mm.timestamp;
-              mm.read = false;
-              mm.unreadCount = (mm.unreadCount || 0) + 1;
-              if (stateStore[mm.id]) { stateStore[mm.id].read = false; stateStore[mm.id].readAt = null; }
+              // 自分の返信では未読に戻さない
+              if (fromBuyer) {
+                mm.read = false;
+                mm.unreadCount = (mm.unreadCount || 0) + 1;
+                if (stateStore[mm.id]) { stateStore[mm.id].read = false; stateStore[mm.id].readAt = null; }
+              }
             }
           } catch (e) { console.error('[autoSync] refresh:', e.message); }
           continue;
