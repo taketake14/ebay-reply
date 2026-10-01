@@ -505,7 +505,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   display:flex;flex-direction:column;overflow:hidden;}
 .nt-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);}
 .nt-head-t{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.nt-head-d{font-size:14px;color:var(--text2);font-weight:600;white-space:nowrap;}
 .nt-close{border:none;background:#eef2f6;color:#475569;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:15px;}
 .nt-close:hover{background:#e2e8f0;}
 .nt-body{flex:1;min-height:0;border:none;width:100%;}
@@ -1254,7 +1253,6 @@ a.kv-v:hover{text-decoration:underline;}
   <div class="nt-box">
     <div class="nt-head">
       <div class="nt-head-t" id="nt-title">　</div>
-      <div class="nt-head-d" id="nt-date"></div>
       <button class="nt-close" onclick="closeNotice()" title="閉じる">&#10005;</button>
     </div>
     <iframe class="nt-body" id="nt-frame" sandbox referrerpolicy="no-referrer"></iframe>
@@ -2590,8 +2588,32 @@ function noticeWhen(iso){
 
 async function openNotice(cid){
   var n=noticeList.find(function(x){return String(x.conversationId)===String(cid);});
+
+  // 既読にするのは本文の読み込みを待たず、開いた瞬間に行う。
+  // 読み込み後にしていたため、数秒たたないと一覧に反映されなかった
+  if(n && !n.read){
+    n.read=true;
+    updateNoticeCounts();
+    renderNoticeList(currentFilter==='notice-unread');   // 分類に関わらず見た目を更新する
+    fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ids:[String(cid)],read:true})})
+      .then(function(x){return x.json();})
+      .then(function(r){
+        if(!r || !r.ok){
+          // 保存できていないのに既読に見せると事実と食い違うので戻す
+          n.read=false;
+          updateNoticeCounts();
+          renderNoticeList(currentFilter==='notice-unread');
+        }
+      })
+      .catch(function(){
+        n.read=false;
+        updateNoticeCounts();
+        renderNoticeList(currentFilter==='notice-unread');
+      });
+  }
+
   document.getElementById('nt-title').textContent=n?n.title:'読み込み中...';
-  document.getElementById('nt-date').textContent=n?noticeWhen(n.createdDate):'';
   var frame=document.getElementById('nt-frame');
   frame.srcdoc='<div style="font-family:sans-serif;color:#64748b;padding:24px">読み込んでいます...</div>';
   document.getElementById('nt-view').classList.add('on');
@@ -2625,14 +2647,6 @@ async function openNotice(cid){
     frame.srcdoc='<div style="font-family:sans-serif;color:#b91c1c;padding:24px">通信エラー: '+esc(e.message)+'</div>';
   }
 
-  // 開いたら既読にする
-  if(n && !n.read){
-    n.read=true;
-    updateNoticeCounts();
-    if(currentFilter==='notice-unread') renderNoticeList(true);
-    fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ids:[String(cid)],read:true})}).catch(function(){});
-  }
 }
 
 function closeNotice(){
