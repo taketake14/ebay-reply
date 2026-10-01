@@ -249,13 +249,18 @@ app.get('/api/ebay/test', async (req, res) => {
 // 実行するとそれらが別のメッセージに付く。安全のため確認を必須にした。
 app.get('/api/sheet/dedupe', async (req, res) => {
   try {
+    // シート全体を書き直すため、行番号がすべて入れ替わる。
+    // 既読・フラグ・返信済み・メモは会話IDでも保存するようにしたが、
+    // それでも行が消えた会話は取り込み直しになるため、原則として使わない。
     if (req.query.confirm !== 'yes') {
       return res.json({
         ok: false,
-        error: 'この処理はシート全体を書き直すため、既読・フラグ・メモが別のメッセージに付く可能性があります。'
-             + '実行する場合は URL の末尾に ?confirm=yes を付けてください。',
+        error: 'この処理はシート全体を書き直し、行番号がすべて変わります。'
+             + '会話が取り込み直しになるため、通常は実行しないでください。'
+             + 'どうしても実行する場合は URL の末尾に ?confirm=yes を付けてください。',
       });
     }
+    console.warn('[dedupe] シート全体の書き直しを実行します。行番号がすべて変わります');
     const sheetId = process.env.SHEET_ID;
     if (!sheetId || !process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
       return res.json({ ok: false, error: 'シート設定がありません' });
@@ -1678,7 +1683,21 @@ app.get('/api/ebay/sync', async (req, res) => {
         imgUrl: itemInfo ? itemInfo.imageUrl : '',
         sold: false,
         timestamp: em.timestamp || new Date().toISOString(),
-        read: em.read || false, starred: false, replied: false, memo: '',
+        // 過去にこの会話を既読にしていれば、その記録を引き継ぐ。
+        // 行が消えて取り込み直されたときに、未読へ戻さないため
+        ...(function(){
+          const cs = em.conversationId ? convState[String(em.conversationId)] : null;
+          if (!cs) return { read: em.read || false, starred: false, replied: false, memo: '' };
+          const msgTime = new Date(em.timestamp || 0).getTime() || 0;
+          const readTime = cs.readAt ? (new Date(cs.readAt).getTime() || 0) : 0;
+          const stillRead = !!cs.read && !(readTime && msgTime > readTime);
+          return {
+            read: stillRead,
+            starred: !!cs.starred,
+            replied: !!cs.replied,
+            memo: cs.memo || '',
+          };
+        })(),
         replyHistory: [], reply: '', status: 'pending'
       };
       messages.unshift(msg);
@@ -2442,6 +2461,7 @@ app.post('/api/state/bulk', async (req, res) => {
         read: it.read, starred: it.starred, replied: it.replied, memo: it.memo,
         readAt: it.read ? new Date().toISOString() : (prev.readAt || null),
       };
+      rememberConvState(convIdOfMessageId(id), it);
       const msg = messages.find(m => m.id == id);
       if (msg) {
         if (it.read !== undefined) msg.read = it.read;
@@ -2488,6 +2508,58 @@ app.post('/api/state/bulk', async (req, res) => {
   }
 });
 
+// ===== 既読・フラグ・返信済み・メモの保存（会話ID単位） =====
+//
+// これらは今まで「シートの行番号」を目印に保存していた。
+// そのため行が動く処理（重複削除など）が走ると目印がずれ、
+// 別のバイヤーに付いたり、消えて未読に戻ったりしていた。
+// 行番号ではなく会話IDで保存し、行が動いても失われないようにする。
+
+const CONV_STATE_FILE = require('path').join(process.env.DISK_PATH || '/var/data', 'conv-state.json');
+let convState = {};
+let convStateDirty = false;
+try {
+  const fs = require('fs');
+  if (fs.existsSync(CONV_STATE_FILE)) {
+    convState = JSON.parse(fs.readFileSync(CONV_STATE_FILE, 'utf8')) || {};
+    console.log('[convState] 読み込み:', Object.keys(convState).length + '件');
+  }
+} catch (e) { convState = {}; }
+
+function saveConvState() {
+  if (!convStateDirty) return;
+  try {
+    const fs = require('fs');
+    fs.mkdirSync(require('path').dirname(CONV_STATE_FILE), { recursive: true });
+    fs.writeFileSync(CONV_STATE_FILE, JSON.stringify(convState));
+    convStateDirty = false;
+  } catch (e) { console.error('[convState] 保存に失敗:', e.message); }
+}
+setInterval(saveConvState, 15000);
+
+// 会話IDを見つける（idは行番号なので、messagesから引く）
+function convIdOfMessageId(id) {
+  const m = messages.find(x => x.id == id);
+  return m && m.conversationId ? String(m.conversationId) : '';
+}
+
+// 状態を記録する。既読にした時刻も残し、
+// あとから届いた新着は未読に戻せるようにする
+function rememberConvState(cid, st) {
+  if (!cid) return;
+  const prev = convState[cid] || {};
+  convState[cid] = {
+    read: st.read !== undefined ? !!st.read : prev.read,
+    starred: st.starred !== undefined ? !!st.starred : prev.starred,
+    replied: st.replied !== undefined ? !!st.replied : prev.replied,
+    memo: st.memo !== undefined ? st.memo : prev.memo,
+    // 既読にした時刻。これより新しいメッセージが来たら未読に戻す
+    readAt: st.read ? new Date().toISOString() : (prev.readAt || null),
+    at: new Date().toISOString(),
+  };
+  convStateDirty = true;
+}
+
 app.post('/api/state', async (req, res) => {
   const { id, read, starred, replied, memo } = req.body;
   if (!id) return res.json({ ok: false });
@@ -2498,6 +2570,9 @@ app.post('/api/state', async (req, res) => {
     read, starred, replied, memo,
     readAt: read ? new Date().toISOString() : (prev.readAt || null),
   };
+
+  // 会話IDでも残す（行が動いても失われないように）
+  rememberConvState(convIdOfMessageId(id), { read, starred, replied, memo });
 
   // messagesにも反映
   const msg = messages.find(m => m.id == id);
@@ -2577,10 +2652,27 @@ app.get('/api/messages', async (req, res) => {
       const savedState = stateStore[id] || {};
 
       // シートの値を優先、なければメモリのstateStore
-      const readVal = savedState.read !== undefined ? savedState.read : (obj.read === 'true');
-      const starredVal = savedState.starred !== undefined ? savedState.starred : (obj.starred === 'true');
-      const repliedVal = savedState.replied !== undefined ? savedState.replied : (obj.replied === 'true');
-      const memoVal = savedState.memo !== undefined ? savedState.memo : (obj.memo || '');
+      let readVal = savedState.read !== undefined ? savedState.read : (obj.read === 'true');
+      let starredVal = savedState.starred !== undefined ? savedState.starred : (obj.starred === 'true');
+      let repliedVal = savedState.replied !== undefined ? savedState.replied : (obj.replied === 'true');
+      let memoVal = savedState.memo !== undefined ? savedState.memo : (obj.memo || '');
+
+      // 会話IDで保存した内容があれば、そちらを優先する。
+      // 行番号は重複削除などで動くため、行の値だけに頼ると
+      // 既読・フラグ・返信済み・メモが失われてしまう
+      const cs = convId ? convState[String(convId)] : null;
+      if (cs) {
+        if (cs.starred !== undefined) starredVal = !!cs.starred;
+        if (cs.replied !== undefined) repliedVal = !!cs.replied;
+        if (cs.memo !== undefined && cs.memo !== '') memoVal = cs.memo;
+        if (cs.read !== undefined) {
+          // 既読にしたあとに新しいメッセージが来ていれば未読のまま
+          const msgTime = new Date(obj.timestamp || 0).getTime() || 0;
+          const readTime = cs.readAt ? (new Date(cs.readAt).getTime() || 0) : 0;
+          readVal = (cs.read && !(readTime && msgTime > readTime)) ? true : (cs.read ? false : readVal);
+          if (!cs.read) readVal = false;
+        }
+      }
 
       return {
         id,
@@ -2943,7 +3035,21 @@ async function autoSyncFromEbay() {
         orderId: '', itemId: em.itemId || '', imgUrl: aInfo ? aInfo.imageUrl : '',
         sold: false,
         timestamp: em.timestamp || new Date().toISOString(),
-        read: em.read || false, starred: false, replied: false, memo: '',
+        // 過去にこの会話を既読にしていれば、その記録を引き継ぐ。
+        // 行が消えて取り込み直されたときに、未読へ戻さないため
+        ...(function(){
+          const cs = em.conversationId ? convState[String(em.conversationId)] : null;
+          if (!cs) return { read: em.read || false, starred: false, replied: false, memo: '' };
+          const msgTime = new Date(em.timestamp || 0).getTime() || 0;
+          const readTime = cs.readAt ? (new Date(cs.readAt).getTime() || 0) : 0;
+          const stillRead = !!cs.read && !(readTime && msgTime > readTime);
+          return {
+            read: stillRead,
+            starred: !!cs.starred,
+            replied: !!cs.replied,
+            memo: cs.memo || '',
+          };
+        })(),
         replyHistory: [], reply: '', status: 'pending'
       };
       messages.unshift(msg);
