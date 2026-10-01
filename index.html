@@ -485,20 +485,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   padding:14px 12px 5px; margin-top:6px; border-top:1px solid var(--border);
 }
 /* eBayからの連絡の一覧 */
-.nt-row{display:grid;grid-template-columns:36px 18px 1fr 110px;gap:10px;align-items:center;
-  padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;}
+/* 行の作りはバイヤー側（.s1-row）と揃える。見た目が変わると迷うため */
+.nt-row{position:relative;display:grid;grid-template-columns:36px 80px 1fr;gap:0;
+  padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;
+  font-size:14px;transition:background 0.1s;}
 .nt-row:hover{background:var(--bg2);}
-.nt-row.unread{background:#fff;}
 .nt-row.unread .nt-title{font-weight:700;color:var(--text);}
 .nt-row.read .nt-title{color:var(--text2);}
-.nt-cb{cursor:pointer;width:15px;height:15px;accent-color:var(--teal);justify-self:center;}
-.nt-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);justify-self:center;}
-.nt-row.read .nt-dot{background:transparent;}
-.nt-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.nt-reply{display:inline-block;font-size:10px;font-weight:700;color:var(--teal);
-  border:1px solid var(--teal-border,#99f6e4);background:var(--teal-bg,#f0fdfa);
-  border-radius:4px;padding:1px 6px;margin-right:7px;vertical-align:1px;}
-.nt-date{font-size:11.5px;color:var(--text3);text-align:right;white-space:nowrap;}
+.nt-cb-cell{display:flex;align-items:center;justify-content:center;}
+.nt-cb{cursor:pointer;width:15px;height:15px;accent-color:var(--orange);}
+.nt-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:10px;}
+.nt-reply{display:inline-block;font-size:11px;font-weight:700;color:var(--teal);
+  border:1px solid #99f6e4;background:#f0fdfa;
+  border-radius:4px;padding:1px 7px;margin-right:8px;vertical-align:1px;}
 /* 本文の表示 */
 .nt-view{position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:3000;display:none;}
 .nt-view.on{display:flex;align-items:center;justify-content:center;}
@@ -506,12 +505,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   display:flex;flex-direction:column;overflow:hidden;}
 .nt-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);}
 .nt-head-t{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.nt-head-d{font-size:12px;color:var(--text3);white-space:nowrap;}
+.nt-head-d{font-size:14px;color:var(--text2);font-weight:600;white-space:nowrap;}
 .nt-close{border:none;background:#eef2f6;color:#475569;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:15px;}
 .nt-close:hover{background:#e2e8f0;}
 .nt-body{flex:1;min-height:0;border:none;width:100%;}
 .nt-foot{padding:11px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;}
-.nt-foot .note{font-size:11.5px;color:var(--text3);}
+.nt-foot .note{font-size:13px;color:var(--text2);}
 
 /* 返信欄の添付。ファイル名はボタン列の上の専用行に出す。
    ファイル名が長くても、枚数が上限でも、絶対に折り返さない。
@@ -2482,13 +2481,13 @@ function renderNoticeList(onlyUnread){
   var hdr=document.getElementById('s1-table-header-row');
   if(hdr){
     hdr.style.display='grid';
-    hdr.style.gridTemplateColumns='36px 18px 1fr 110px';
+    hdr.style.gridTemplateColumns='36px 80px 1fr';
     hdr.setAttribute('data-mode','notice');
-    hdr.innerHTML='<div class="s1-th" style="text-align:center;">'
+    hdr.innerHTML='<div class="s1-th" style="text-align:center;border-right:none;">'
       +'<input type="checkbox" id="nt-check-all" onchange="toggleNoticeCheckAll(this)" '
       +'style="cursor:pointer;width:15px;height:15px;accent-color:var(--teal);"></div>'
-      +'<div class="s1-th"></div><div class="s1-th">件名</div>'
-      +'<div class="s1-th" style="text-align:right;">日付</div>';
+      +'<div class="s1-th" style="text-align:center;">日付</div>'
+      +'<div class="s1-th" style="border-right:none;">件名</div>';
   }
   var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
   if(!list.length){
@@ -2496,15 +2495,24 @@ function renderNoticeList(onlyUnread){
     return;
   }
   el.innerHTML=list.map(function(n){
-    var t=fmtTime(n.createdDate);
     var id=esc(n.conversationId);
     var ck=noticeChecked.has(String(n.conversationId));
+    // 日付の見せ方はバイヤー側と同じ部品を使う（月/日を大きく、時刻を下に小さく）
+    var md='', hm='';
+    var dt=new Date(n.createdDate||0);
+    if(!isNaN(dt.getTime())){
+      md=(dt.getMonth()+1)+'/'+dt.getDate();
+      hm=String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+    }
     return '<div class="nt-row '+(n.read?'read':'unread')+'" onclick="openNotice(\''+id+'\')">'
-      +'<input type="checkbox" class="nt-cb"'+(ck?' checked':'')
-        +' onclick="toggleNoticeCheck(\''+id+'\',event)">'
-      +'<span class="nt-dot"></span>'
+      +'<div class="nt-cb-cell"><input type="checkbox" class="nt-cb"'+(ck?' checked':'')
+        +' onclick="toggleNoticeCheck(\''+id+'\',event)"></div>'
+      +'<div class="s1-time-cell">'
+        +((!n.read)?'<span class="s1-unread-dot"></span>':'<span class="s1-read-dot"></span>')
+        +'<span class="s1-date">'+esc(md)+'</span>'
+        +'<span class="s1-time">'+esc(hm)+'</span>'
+      +'</div>'
       +'<span class="nt-title">'+(n.isReply?'<span class="nt-reply">やり取り</span>':'')+esc(n.title)+'</span>'
-      +'<span class="nt-date">'+esc(t)+'</span>'
       +'</div>';
   }).join('');
   var ca=document.getElementById('nt-check-all');
@@ -2572,10 +2580,18 @@ async function bulkNoticeRead(readVal){
   }
 }
 
+// 日時を読みやすい形にする
+function noticeWhen(iso){
+  var dt=new Date(iso||0);
+  if(isNaN(dt.getTime())) return String(iso||'');
+  return (dt.getMonth()+1)+'月'+dt.getDate()+'日 '
+    +String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+}
+
 async function openNotice(cid){
   var n=noticeList.find(function(x){return String(x.conversationId)===String(cid);});
   document.getElementById('nt-title').textContent=n?n.title:'読み込み中...';
-  document.getElementById('nt-date').textContent=n?fmtTime(n.createdDate):'';
+  document.getElementById('nt-date').textContent=n?noticeWhen(n.createdDate):'';
   var frame=document.getElementById('nt-frame');
   frame.srcdoc='<div style="font-family:sans-serif;color:#64748b;padding:24px">読み込んでいます...</div>';
   document.getElementById('nt-view').classList.add('on');
@@ -2586,9 +2602,18 @@ async function openNotice(cid){
     if(d && d.ok && d.body && d.body.messages && d.body.messages.length){
       // 複数通あるやり取りは、古い順に区切って並べる
       var html=d.body.messages.map(function(m){
+        // 日時はそのままだと読みにくいので、日本時間の分かりやすい形に直す
+        var when=m.time||'';
+        var dt=new Date(m.time||0);
+        if(!isNaN(dt.getTime())){
+          when=(dt.getMonth()+1)+'月'+dt.getDate()+'日 '
+            +String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
+        }
         return '<div style="border-bottom:8px solid #f1f5f9;padding:0 0 18px">'
-          +'<div style="font-family:sans-serif;font-size:12px;color:#64748b;padding:10px 14px;background:#f8fafc">'
-          + (m.from||'eBay') + ' ・ ' + (m.time||'') + '</div>'
+          +'<div style="font-family:system-ui,sans-serif;font-size:15px;font-weight:700;color:#0f172a;'
+          +'padding:13px 16px;background:#f8fafc;border-bottom:1px solid #e2e8f0">'
+          + esc(m.from||'eBay')
+          + '<span style="font-weight:500;color:#475569;margin-left:12px">' + esc(when) + '</span></div>'
           + m.html + '</div>';
       }).join('');
       frame.srcdoc=html;
@@ -4559,7 +4584,7 @@ async function syncFromEbay(){
 // ===== 列管理（一本化版）=====
 // 列定義: key, デフォルト幅(px), frかpxか
 var COL_DEFS = [
-  {key:'time',   label:'時刻',     w:80,  fr:false, align:'center'},
+  {key:'time',   label:'日付',     w:80,  fr:false, align:'center'},
   {key:'sold',   label:'販売',     w:86,  fr:false, align:'center'},
   {key:'status', label:'未読',     w:50,  fr:false, align:'center'},
   {key:'replied', label:'返信',    w:52,  fr:false, align:'center'},
