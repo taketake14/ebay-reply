@@ -630,6 +630,20 @@ app.get('/api/sheet/headers', async (req, res) => {
 });
 
 // ===== conversationId 単体の取得テスト =====
+// eBayからの連絡（FROM_EBAY）を確認するための窓口。
+// どんな内容が届くのかを見てから画面の作りを決めるために用意した。
+// 取得するだけで、シートには一切書き込まない。
+app.get('/api/ebay/notices-peek', async (req, res) => {
+  try {
+    const days = Math.min(parseInt(req.query.days) || 30, 180);
+    const r = await ebayApi.peekEbayNotices(days);
+    res.json(Object.assign({ ok: true }, r));
+  } catch (e) {
+    console.error('[notices-peek] error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // シート全体を検証して、送信者情報が食い違っている行をまとめて直す。
 // 自動同期が届かない古い会話をまとめて直すために使う。
 // 会話1件につきeBayへ1回問い合わせるので、件数を指定できるようにしてある。
