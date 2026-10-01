@@ -479,6 +479,39 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .fmenu button:disabled:hover{ background:transparent; }
 .fmenu .fm-note{ padding:6px 12px 8px; font-size:11px; color:var(--text3); line-height:1.6; }
 
+/* 左の分類の大見出し（バイヤー / eBayからの連絡） */
+.sf-group{
+  font-size:10px; font-weight:700; color:var(--text3); letter-spacing:0.08em;
+  padding:14px 12px 5px; margin-top:6px; border-top:1px solid var(--border);
+}
+/* eBayからの連絡の一覧 */
+.nt-row{display:grid;grid-template-columns:18px 1fr 92px;gap:10px;align-items:center;
+  padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;}
+.nt-row:hover{background:var(--bg2);}
+.nt-row.unread{background:#fff;}
+.nt-row.unread .nt-title{font-weight:700;color:var(--text);}
+.nt-row.read .nt-title{color:var(--text2);}
+.nt-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);justify-self:center;}
+.nt-row.read .nt-dot{background:transparent;}
+.nt-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nt-reply{display:inline-block;font-size:10px;font-weight:700;color:var(--teal);
+  border:1px solid var(--teal-border,#99f6e4);background:var(--teal-bg,#f0fdfa);
+  border-radius:4px;padding:1px 6px;margin-right:7px;vertical-align:1px;}
+.nt-date{font-size:11.5px;color:var(--text3);text-align:right;white-space:nowrap;}
+/* 本文の表示 */
+.nt-view{position:fixed;inset:0;background:rgba(15,23,42,0.5);z-index:3000;display:none;}
+.nt-view.on{display:flex;align-items:center;justify-content:center;}
+.nt-box{background:#fff;border-radius:12px;width:min(900px,92vw);height:min(80vh,780px);
+  display:flex;flex-direction:column;overflow:hidden;}
+.nt-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);}
+.nt-head-t{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.nt-head-d{font-size:12px;color:var(--text3);white-space:nowrap;}
+.nt-close{border:none;background:#eef2f6;color:#475569;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:15px;}
+.nt-close:hover{background:#e2e8f0;}
+.nt-body{flex:1;min-height:0;border:none;width:100%;}
+.nt-foot{padding:11px 18px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;}
+.nt-foot .note{font-size:11.5px;color:var(--text3);}
+
 /* 返信欄の添付。ファイル名はボタン列の上の専用行に出す。
    ファイル名が長くても、枚数が上限でも、絶対に折り返さない。
    折り返すとボタン列まで巻き込んでレイアウトが崩れるため、
@@ -975,6 +1008,10 @@ a.kv-v:hover{text-decoration:underline;}
         <button class="side-filter" onclick="setFilter('cancel',this)"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="cnt-cancel">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('cancel',this)">&#8943;</span></button>
         <button class="side-filter" onclick="setFilter('memo',this)"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="cnt-memo">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('memo',this)">&#8943;</span></button>
         <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('replied',this)">&#8943;</span></button>
+        <!-- eBayからの連絡。バイヤーとのやり取りとは別枠 -->
+        <div class="sf-group">eBayからの連絡</div>
+        <button class="side-filter" onclick="setFilter('notice-all',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-notice-all">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openNoticeMenu(this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('notice-unread',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="cnt-notice-unread">0</span></button>
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
       <div class="s1-listwrap">
@@ -1198,6 +1235,21 @@ a.kv-v:hover{text-decoration:underline;}
         </div>
         <div class="reply-actions"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- eBayからの連絡の本文。HTMLメールなので枠の中に隔離して表示する -->
+<div class="nt-view" id="nt-view" onclick="if(event.target===this)closeNotice()">
+  <div class="nt-box">
+    <div class="nt-head">
+      <div class="nt-head-t" id="nt-title">　</div>
+      <div class="nt-head-d" id="nt-date"></div>
+      <button class="nt-close" onclick="closeNotice()" title="閉じる">&#10005;</button>
+    </div>
+    <iframe class="nt-body" id="nt-frame" sandbox referrerpolicy="no-referrer"></iframe>
+    <div class="nt-foot">
+      <span class="note">eBayから届いた内容をそのまま表示しています。返信はeBayの画面から行ってください。</span>
     </div>
   </div>
 </div>
@@ -1689,6 +1741,20 @@ function clearSearch(){
 // ===== 一覧レンダリング =====
 function renderList(){
   if(typeof updateFilterCounts==='function') updateFilterCounts();
+  // eBayからの連絡はバイヤーとは別のデータなので、専用の描画に切り替える
+  if(currentFilter==='notice-all' || currentFilter==='notice-unread'){
+    var onlyUnread=(currentFilter==='notice-unread');
+    if(!noticeLoaded){
+      var el0=document.getElementById('msg-list');
+      if(el0) el0.innerHTML='<div class="s1-empty">読み込んでいます...</div>';
+      loadNotices().then(function(){ renderNoticeList(onlyUnread); });
+    }else{
+      renderNoticeList(onlyUnread);
+    }
+    var mc=document.getElementById('msg-count');
+    if(mc) mc.textContent='eBayからの連絡';
+    return;
+  }
   // チャット画面を開いている場合はミニリストも同期
   setTimeout(function(){
     var sc=document.getElementById('screen-chat');
@@ -2339,6 +2405,132 @@ async function copyWholeChat(btn){
   var n=(text.match(/^\[/gm)||[]).length;
   btn.innerHTML='&#10003; '+n+'件コピー';
   setTimeout(function(){ btn.innerHTML=orig; },1600);
+}
+
+// ===== eBayからの連絡 =====
+// 一覧はサーバーに保存されたものを使い、本文は開いたときにeBayから取る。
+// 本文はHTMLメールそのものなので、枠（iframe）の中に隔離して表示する。
+var noticeList=[];
+var noticeLoaded=false;
+
+async function loadNotices(force){
+  if(noticeLoaded && !force) return noticeList;
+  try{
+    var d=await fetch('/api/ebay/notices').then(function(x){return x.json();});
+    if(d && d.ok){
+      noticeList=d.notices||[];
+      noticeLoaded=true;
+      updateNoticeCounts();
+    }
+  }catch(e){}
+  return noticeList;
+}
+
+function updateNoticeCounts(){
+  var unread=noticeList.filter(function(n){return !n.read;}).length;
+  if(typeof setUnreadBadge==='function'){
+    setUnreadBadge('cnt-notice-all', unread);
+    setUnreadBadge('cnt-notice-unread', unread);
+  }
+}
+
+function renderNoticeList(onlyUnread){
+  var el=document.getElementById('msg-list');
+  if(!el) return;
+  var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
+  if(!list.length){
+    el.innerHTML='<div class="s1-empty">eBayからの連絡はありません</div>';
+    return;
+  }
+  el.innerHTML=list.map(function(n,i){
+    var t=fmtTime(n.createdDate);
+    return '<div class="nt-row '+(n.read?'read':'unread')+'" onclick="openNotice(\''+esc(n.conversationId)+'\')">'
+      +'<span class="nt-dot"></span>'
+      +'<span class="nt-title">'+(n.isReply?'<span class="nt-reply">やり取り</span>':'')+esc(n.title)+'</span>'
+      +'<span class="nt-date">'+esc(t)+'</span>'
+      +'</div>';
+  }).join('');
+}
+
+async function openNotice(cid){
+  var n=noticeList.find(function(x){return String(x.conversationId)===String(cid);});
+  document.getElementById('nt-title').textContent=n?n.title:'読み込み中...';
+  document.getElementById('nt-date').textContent=n?fmtTime(n.createdDate):'';
+  var frame=document.getElementById('nt-frame');
+  frame.srcdoc='<div style="font-family:sans-serif;color:#64748b;padding:24px">読み込んでいます...</div>';
+  document.getElementById('nt-view').classList.add('on');
+  document.addEventListener('keydown', noticeKey);
+
+  try{
+    var d=await fetch('/api/ebay/notices/'+encodeURIComponent(cid)).then(function(x){return x.json();});
+    if(d && d.ok && d.body && d.body.messages && d.body.messages.length){
+      // 複数通あるやり取りは、古い順に区切って並べる
+      var html=d.body.messages.map(function(m){
+        return '<div style="border-bottom:8px solid #f1f5f9;padding:0 0 18px">'
+          +'<div style="font-family:sans-serif;font-size:12px;color:#64748b;padding:10px 14px;background:#f8fafc">'
+          + (m.from||'eBay') + ' ・ ' + (m.time||'') + '</div>'
+          + m.html + '</div>';
+      }).join('');
+      frame.srcdoc=html;
+    }else{
+      frame.srcdoc='<div style="font-family:sans-serif;color:#b91c1c;padding:24px">本文を取得できませんでした。'
+        +esc((d&&d.error)||'')+'</div>';
+    }
+  }catch(e){
+    frame.srcdoc='<div style="font-family:sans-serif;color:#b91c1c;padding:24px">通信エラー: '+esc(e.message)+'</div>';
+  }
+
+  // 開いたら既読にする
+  if(n && !n.read){
+    n.read=true;
+    updateNoticeCounts();
+    if(currentFilter==='notice-unread') renderNoticeList(true);
+    fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ids:[String(cid)],read:true})}).catch(function(){});
+  }
+}
+
+function closeNotice(){
+  document.getElementById('nt-view').classList.remove('on');
+  document.getElementById('nt-frame').srcdoc='';
+  document.removeEventListener('keydown', noticeKey);
+}
+function noticeKey(e){ if(e.key==='Escape') closeNotice(); }
+
+// 「…」からまとめて既読にする
+function openNoticeMenu(btn){
+  if(typeof closeFilterMenu==='function') closeFilterMenu();
+  var unread=noticeList.filter(function(n){return !n.read;});
+  var el=document.createElement('div');
+  el.className='fmenu';
+  el.innerHTML='<button onclick="markNoticesRead()"'+(unread.length?'':' disabled')+'>'
+      +'&#10003; すべて既読にする（'+unread.length+'件）</button>'
+    +'<div class="fm-note">eBayからの連絡 '+noticeList.length+' 件が対象です</div>';
+  document.body.appendChild(el);
+  var r=btn.getBoundingClientRect();
+  el.style.left=Math.min(r.left, window.innerWidth-el.offsetWidth-10)+'px';
+  el.style.top=Math.min(r.bottom+4, window.innerHeight-el.offsetHeight-10)+'px';
+  fmenuEl=el;
+  setTimeout(function(){ document.addEventListener('mousedown', onFmenuOutside, true); },0);
+}
+
+async function markNoticesRead(){
+  if(typeof closeFilterMenu==='function') closeFilterMenu();
+  var targets=noticeList.filter(function(n){return !n.read;});
+  if(!targets.length) return;
+  if(!confirm('eBayからの連絡の未読 '+targets.length+' 件を既読にします。\nよろしいですか？')) return;
+  targets.forEach(function(n){ n.read=true; });
+  updateNoticeCounts();
+  renderNoticeList(currentFilter==='notice-unread');
+  try{
+    await fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ids:targets.map(function(n){return n.conversationId;}),read:true})});
+  }catch(e){
+    targets.forEach(function(n){ n.read=false; });
+    updateNoticeCounts();
+    renderNoticeList(currentFilter==='notice-unread');
+    alert('既読の保存に失敗しました。画面を元に戻しました。');
+  }
 }
 
 // ===== 分類ごとの一括操作 =====
@@ -4622,6 +4814,8 @@ window.addEventListener('load',function(){
   }
   window.loadFromSheet = loadFromSheet; // グローバルに公開
   loadFromSheet();
+  // eBayからの連絡の未読数を左の分類に出すため、起動時に一覧だけ読む
+  if(typeof loadNotices==='function') loadNotices();
   // ===== 自動更新（90秒ごと・新着がある時だけ画面を更新） =====
   var autoRefreshBusy=false;
   setInterval(async function(){
