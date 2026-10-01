@@ -630,6 +630,110 @@ app.get('/api/sheet/headers', async (req, res) => {
 });
 
 // ===== conversationId 単体の取得テスト =====
+// ===== eBayからの連絡（FROM_EBAY） =====
+//
+// 一覧だけをディスクに保存し、本文は開いたときにeBayから取る。
+// 本文はHTMLメールそのもので1件数十KBあり、スプレッドシートには入らないため。
+// 既読の状態はこちらで持つ（eBay側の既読とは別に管理する）。
+
+const NOTICES_FILE = require('path').join(process.env.DISK_PATH || '/var/data', 'ebay-notices.json');
+
+function loadNotices() {
+  try {
+    const fs = require('fs');
+    if (fs.existsSync(NOTICES_FILE)) {
+      const d = JSON.parse(fs.readFileSync(NOTICES_FILE, 'utf8'));
+      if (d && Array.isArray(d.notices)) return d;
+    }
+  } catch (e) {}
+  return { notices: [], updatedAt: null };
+}
+
+function saveNotices(data) {
+  try {
+    const fs = require('fs');
+    fs.mkdirSync(require('path').dirname(NOTICES_FILE), { recursive: true });
+    fs.writeFileSync(NOTICES_FILE, JSON.stringify(data));
+  } catch (e) { console.error('[notices] 保存に失敗:', e.message); }
+}
+
+// eBayから一覧を取り込む。既読の状態は保持する
+async function syncEbayNotices(days) {
+  const got = await ebayApi.getEbayNotices(days || 30);
+  const store = loadNotices();
+  const prev = {};
+  store.notices.forEach(n => { prev[n.conversationId] = n; });
+
+  let added = 0;
+  got.notices.forEach(n => {
+    const old = prev[n.conversationId];
+    prev[n.conversationId] = {
+      conversationId: n.conversationId,
+      title: n.title,
+      createdDate: n.createdDate,
+      referenceId: n.referenceId,
+      isReply: n.isReply,
+      // 既読は一度付けたら保持する。eBay側の未読数は初回だけ参考にする
+      read: old ? old.read : (n.unreadCount === 0),
+    };
+    if (!old) added++;
+  });
+
+  const merged = Object.values(prev)
+    .sort((a, b) => new Date(b.createdDate || 0) - new Date(a.createdDate || 0))
+    .slice(0, 3000);   // 増えすぎないよう上限を設ける
+
+  saveNotices({ notices: merged, updatedAt: new Date().toISOString() });
+  return { added, total: merged.length, complete: got.complete };
+}
+
+// 一覧を返す
+app.get('/api/ebay/notices', async (req, res) => {
+  try {
+    if (req.query.sync === '1') {
+      await syncEbayNotices(parseInt(req.query.days) || 30);
+    }
+    const store = loadNotices();
+    res.json({
+      ok: true,
+      updatedAt: store.updatedAt,
+      unread: store.notices.filter(n => !n.read).length,
+      notices: store.notices,
+    });
+  } catch (e) {
+    console.error('[notices] error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 1件の本文を返す（保存していないので毎回eBayから取る）
+app.get('/api/ebay/notices/:cid', async (req, res) => {
+  try {
+    const body = await ebayApi.getEbayNoticeBody(req.params.cid);
+    res.json({ ok: true, body });
+  } catch (e) {
+    console.error('[notices] body error:', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 既読にする（1件 / まとめて）
+app.post('/api/ebay/notices/read', (req, res) => {
+  try {
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(String) : [];
+    const read = req.body && req.body.read !== false;
+    const store = loadNotices();
+    let changed = 0;
+    store.notices.forEach(n => {
+      if (ids.indexOf(n.conversationId) >= 0 && n.read !== read) { n.read = read; changed++; }
+    });
+    if (changed) saveNotices(store);
+    res.json({ ok: true, changed });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // eBayからの連絡（FROM_EBAY）を確認するための窓口。
 // どんな内容が届くのかを見てから画面の作りを決めるために用意した。
 // 取得するだけで、シートには一切書き込まない。
@@ -2860,6 +2964,14 @@ async function autoSyncFromEbay() {
       complete, totalReported: ebayMsgs.totalReported || null,
     });
     if (added > 0 || refreshed > 0 || healed > 0) console.log(`[autoSync] ${days}日分 / 新規${added}件 / 更新${refreshed}件 / 修復${healed}件`);
+
+    // eBayからの連絡も取り込む。件数が少ない（1日数件）ので毎回でも負担は小さい
+    try {
+      const n = await syncEbayNotices(Math.max(days, 3));
+      if (n.added > 0) console.log(`[notices] 新規${n.added}件 / 保存${n.total}件`);
+    } catch (e) {
+      console.error('[notices] 同期に失敗:', e.message);
+    }
   } catch (e) {
     console.error('[autoSync] error:', e.message);
   } finally {
