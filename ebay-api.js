@@ -120,7 +120,7 @@ async function peekEbayNotices(daysBack) {
   const samples = [];
   for (const c of list.slice(0, 5)) {
     let detail = null;
-    try { detail = await getConversation(c.conversationId); } catch (e) {}
+    try { detail = await getConversation(c.conversationId, 'FROM_EBAY'); } catch (e) {}
     const msgs = (detail && detail.messages) || [];
     samples.push({
       conversationId: c.conversationId,
@@ -133,6 +133,7 @@ async function peekEbayNotices(daysBack) {
       本文の先頭: msgs.map(m => String(m.messageBody || '').replace(/<[^>]*>/g, ' ').substring(0, 120)),
       添付: msgs.map(m => (m.messageMedia || []).length),
       メッセージのキー: msgs[0] ? Object.keys(msgs[0]) : [],
+      応答の生データ: detail ? JSON.stringify(detail).substring(0, 500) : '(取得失敗)',
     });
   }
 
@@ -140,10 +141,12 @@ async function peekEbayNotices(daysBack) {
     期間: days + '日分',
     総件数: res ? res.total : null,
     取得できた件数: list.length,
+    一覧の生データ: list.slice(0, 3),
     一覧: list.slice(0, 20).map(c => ({
       日時: (c.latestMessage && c.latestMessage.createdDate) || c.createdDate,
       未読: c.unreadCount,
       参照: c.referenceType || '',
+      latestMessageのキー: c.latestMessage ? Object.keys(c.latestMessage) : [],
       先頭: String((c.latestMessage && c.latestMessage.messageBody) || '')
         .replace(/<[^>]*>/g, ' ').substring(0, 100),
     })),
@@ -255,9 +258,12 @@ async function getConversations(daysBack, want) {
   };
 }
 
-async function getConversation(conversationId) {
+// 会話の中身を取る。
+// 種別（FROM_MEMBERS / FROM_EBAY）を指定しないと中身が返らないので、
+// 呼び出し側から渡せるようにしている。既定はバイヤーとのやり取り。
+async function getConversation(conversationId, conversationType) {
   const q = new URLSearchParams({
-    conversation_type: 'FROM_MEMBERS',
+    conversation_type: conversationType || 'FROM_MEMBERS',
     limit: '50',
   });
   return await callMessageAPI('/conversation/' + encodeURIComponent(conversationId) + '?' + q.toString());
