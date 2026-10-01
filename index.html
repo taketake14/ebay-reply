@@ -485,12 +485,13 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
   padding:14px 12px 5px; margin-top:6px; border-top:1px solid var(--border);
 }
 /* eBayからの連絡の一覧 */
-.nt-row{display:grid;grid-template-columns:18px 1fr 92px;gap:10px;align-items:center;
+.nt-row{display:grid;grid-template-columns:36px 18px 1fr 110px;gap:10px;align-items:center;
   padding:12px 18px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;}
 .nt-row:hover{background:var(--bg2);}
 .nt-row.unread{background:#fff;}
 .nt-row.unread .nt-title{font-weight:700;color:var(--text);}
 .nt-row.read .nt-title{color:var(--text2);}
+.nt-cb{cursor:pointer;width:15px;height:15px;accent-color:var(--teal);justify-self:center;}
 .nt-dot{width:7px;height:7px;border-radius:50%;background:var(--teal);justify-self:center;}
 .nt-row.read .nt-dot{background:transparent;}
 .nt-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -982,6 +983,13 @@ a.kv-v:hover{text-decoration:underline;}
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkSetFlag(false)">☆外す</button>
         <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="clearAllChecks()">×解除</button>
       </div>
+      <!-- eBayからの連絡用の一括操作。バイヤー側と同じ使い勝手にする -->
+      <div id="nt-bulk-bar" style="display:none;align-items:center;gap:6px;margin-left:12px;padding:3px 10px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:7px;">
+        <span id="nt-bulk-count" style="font-size:12px;font-weight:700;color:#115e59;white-space:nowrap;">0件</span>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkNoticeRead(true)">✓既読</button>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="bulkNoticeRead(false)">○未読</button>
+        <button class="s1-filter" style="font-size:11px;padding:3px 8px;" onclick="clearNoticeChecks()">×解除</button>
+      </div>
       <button class="btn-sync" onclick="syncFromEbay()" id="btn-ebay-sync"><span class="sync-icon"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v5h-5"/><path d="M16.3 12a7 7 0 1 1-1.3-7.3L17 8"/></svg></span>eBayから取得</button>
       <div style="position:relative;margin-left:8px;">
         <button class="col-toggle-btn" onclick="toggleColDropdown(event)" id="col-toggle-btn">&#9776; 表示列</button>
@@ -1090,6 +1098,9 @@ a.kv-v:hover{text-decoration:underline;}
       <button class="side-filter" onclick="setMiniFilter('cancel',this)" title="キャンセル"><span class="sf-icon">&#128683;</span><span class="sf-label">キャンセル</span><span class="sf-count" id="mcnt-cancel">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('cancel',this)">&#8943;</span></button>
       <button class="side-filter" onclick="setMiniFilter('memo',this)" title="メモあり"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="mcnt-memo">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('memo',this)">&#8943;</span></button>
       <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('replied',this)">&#8943;</span></button>
+        <div class="sf-group">eBayからの連絡</div>
+        <button class="side-filter" onclick="goNotices('notice-all')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-notice-all">0</span></button>
+        <button class="side-filter" onclick="goNotices('notice-unread')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-notice-unread">0</span></button>
     </div>
 
     <!-- ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
@@ -1741,6 +1752,18 @@ function clearSearch(){
 // ===== 一覧レンダリング =====
 function renderList(){
   if(typeof updateFilterCounts==='function') updateFilterCounts();
+  // eBayの一覧から戻ったときに、見出し行をバイヤー用へ戻す
+  if(currentFilter!=='notice-all' && currentFilter!=='notice-unread'){
+    var hdr0=document.getElementById('s1-table-header-row');
+    if(hdr0 && hdr0.getAttribute('data-mode')==='notice'){
+      hdr0.removeAttribute('data-mode');
+      hdr0.innerHTML=NOTICE_HEADER_BACKUP;
+      hdr0.style.gridTemplateColumns=getGridTemplate();
+      if(typeof applyGrid==='function') applyGrid();
+    }
+    var nb=document.getElementById('nt-bulk-bar');
+    if(nb) nb.style.display='none';
+  }
   // eBayからの連絡はバイヤーとは別のデータなので、専用の描画に切り替える
   if(currentFilter==='notice-all' || currentFilter==='notice-unread'){
     var onlyUnread=(currentFilter==='notice-unread');
@@ -2407,6 +2430,13 @@ async function copyWholeChat(btn){
   setTimeout(function(){ btn.innerHTML=orig; },1600);
 }
 
+// バイヤー用の列見出しを控えておく（eBayの一覧から戻すときに使う）
+var NOTICE_HEADER_BACKUP='';
+(function(){
+  var h=document.getElementById('s1-table-header-row');
+  if(h) NOTICE_HEADER_BACKUP=h.innerHTML;
+})();
+
 // ===== eBayからの連絡 =====
 // 一覧はサーバーに保存されたものを使い、本文は開いたときにeBayから取る。
 // 本文はHTMLメールそのものなので、枠（iframe）の中に隔離して表示する。
@@ -2431,25 +2461,115 @@ function updateNoticeCounts(){
   if(typeof setUnreadBadge==='function'){
     setUnreadBadge('cnt-notice-all', unread);
     setUnreadBadge('cnt-notice-unread', unread);
+    setUnreadBadge('mcnt-notice-all', unread);
+    setUnreadBadge('mcnt-notice-unread', unread);
   }
+}
+
+// メッセージ画面から、受信トレイのeBay一覧へ移動する。
+// eBayからの連絡はチャット形式ではないので、一覧画面で見る
+function goNotices(f){
+  currentFilter=f;
+  if(typeof backToList==='function') backToList();
+  document.querySelectorAll('.side-filter').forEach(function(b){b.classList.remove('on');});
+  renderList();
 }
 
 function renderNoticeList(onlyUnread){
   var el=document.getElementById('msg-list');
   if(!el) return;
+  // 見出し行を差し替える（バイヤー用の列見出しは隠す）
+  var hdr=document.getElementById('s1-table-header-row');
+  if(hdr){
+    hdr.style.display='grid';
+    hdr.style.gridTemplateColumns='36px 18px 1fr 110px';
+    hdr.setAttribute('data-mode','notice');
+    hdr.innerHTML='<div class="s1-th" style="text-align:center;">'
+      +'<input type="checkbox" id="nt-check-all" onchange="toggleNoticeCheckAll(this)" '
+      +'style="cursor:pointer;width:15px;height:15px;accent-color:var(--teal);"></div>'
+      +'<div class="s1-th"></div><div class="s1-th">件名</div>'
+      +'<div class="s1-th" style="text-align:right;">日付</div>';
+  }
   var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
   if(!list.length){
     el.innerHTML='<div class="s1-empty">eBayからの連絡はありません</div>';
     return;
   }
-  el.innerHTML=list.map(function(n,i){
+  el.innerHTML=list.map(function(n){
     var t=fmtTime(n.createdDate);
-    return '<div class="nt-row '+(n.read?'read':'unread')+'" onclick="openNotice(\''+esc(n.conversationId)+'\')">'
+    var id=esc(n.conversationId);
+    var ck=noticeChecked.has(String(n.conversationId));
+    return '<div class="nt-row '+(n.read?'read':'unread')+'" onclick="openNotice(\''+id+'\')">'
+      +'<input type="checkbox" class="nt-cb"'+(ck?' checked':'')
+        +' onclick="toggleNoticeCheck(\''+id+'\',event)">'
       +'<span class="nt-dot"></span>'
       +'<span class="nt-title">'+(n.isReply?'<span class="nt-reply">やり取り</span>':'')+esc(n.title)+'</span>'
       +'<span class="nt-date">'+esc(t)+'</span>'
       +'</div>';
   }).join('');
+  var ca=document.getElementById('nt-check-all');
+  if(ca) ca.checked = list.length>0 && list.every(function(n){ return noticeChecked.has(String(n.conversationId)); });
+}
+
+// 一括操作用のチェック。バイヤー側と同じ使い勝手にする
+var noticeChecked = new Set();
+
+function toggleNoticeCheck(cid, ev){
+  ev.stopPropagation();
+  var key=String(cid);
+  if(noticeChecked.has(key)) noticeChecked.delete(key); else noticeChecked.add(key);
+  updateNoticeBulkBar();
+}
+
+function toggleNoticeCheckAll(cb){
+  var onlyUnread=(currentFilter==='notice-unread');
+  var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
+  list.forEach(function(n){
+    if(cb.checked) noticeChecked.add(String(n.conversationId));
+    else noticeChecked.delete(String(n.conversationId));
+  });
+  updateNoticeBulkBar();
+  renderNoticeList(onlyUnread);
+}
+
+function clearNoticeChecks(){
+  noticeChecked.clear();
+  var ca=document.getElementById('nt-check-all');
+  if(ca) ca.checked=false;
+  updateNoticeBulkBar();
+  renderNoticeList(currentFilter==='notice-unread');
+}
+
+function updateNoticeBulkBar(){
+  var bar=document.getElementById('nt-bulk-bar');
+  var cnt=document.getElementById('nt-bulk-count');
+  if(!bar||!cnt) return;
+  if(noticeChecked.size>0){ bar.style.display='flex'; cnt.textContent=noticeChecked.size+'件'; }
+  else bar.style.display='none';
+}
+
+// チェックしたものを既読／未読にする
+async function bulkNoticeRead(readVal){
+  var ids=Array.from(noticeChecked);
+  if(!ids.length) return;
+  var changed=[];
+  ids.forEach(function(id){
+    var n=noticeList.find(function(x){return String(x.conversationId)===id;});
+    if(n && n.read!==readVal){ n.read=readVal; changed.push(n); }
+  });
+  updateNoticeCounts();
+  clearNoticeChecks();
+  try{
+    var r=await fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ids:ids, read:readVal})}).then(function(x){return x.json();});
+    if(!r.ok) throw new Error(r.error||'保存に失敗しました');
+  }catch(e){
+    // 保存できていないのに画面だけ変えると事実と食い違うので元に戻す
+    changed.forEach(function(n){ n.read=!readVal; });
+    updateNoticeCounts();
+    renderNoticeList(currentFilter==='notice-unread');
+    alert('保存に失敗しました。\n'+e.message+'\n\n画面を元に戻しました。');
+  }
 }
 
 async function openNotice(cid){
