@@ -479,10 +479,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .fmenu button:disabled:hover{ background:transparent; }
 .fmenu .fm-note{ padding:6px 12px 8px; font-size:11px; color:var(--text3); line-height:1.6; }
 
+/* ヘッダーのボタンの区切り（役割ごとにまとめる） */
+.s2-divider{width:1px;height:18px;background:var(--border2);margin:0 3px;flex-shrink:0;}
+.s2-btn-icon{padding-left:9px;padding-right:9px;font-size:15px;line-height:1;}
+
 /* 左の分類の大見出し（バイヤー / eBayからの連絡） */
 .sf-group{
-  font-size:10px; font-weight:700; color:var(--text3); letter-spacing:0.08em;
-  padding:14px 12px 5px; margin-top:6px; border-top:1px solid var(--border);
+  font-size:12.5px; font-weight:700; color:var(--text2); letter-spacing:0.04em;
+  padding:15px 12px 7px; margin-top:7px; border-top:1px solid var(--border);
 }
 /* eBayからの連絡の一覧 */
 /* 行の作りはバイヤー側（.s1-row）と揃える。見た目が変わると迷うため */
@@ -1016,7 +1020,7 @@ a.kv-v:hover{text-decoration:underline;}
         <button class="side-filter" onclick="setFilter('replied',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="cnt-replied">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('replied',this)">&#8943;</span></button>
         <!-- eBayからの連絡。バイヤーとのやり取りとは別枠 -->
         <div class="sf-group">eBayからの連絡</div>
-        <button class="side-filter" onclick="setFilter('notice-all',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-notice-all">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openNoticeMenu(this)">&#8943;</span></button>
+        <button class="side-filter" onclick="setFilter('notice-all',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h14"/><path d="M3 10h14"/><path d="M3 14.5h14"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-notice-all">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openNoticeMenu(this)">&#8943;</span></button>
         <button class="side-filter" onclick="setFilter('notice-unread',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="cnt-notice-unread">0</span></button>
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
@@ -1070,17 +1074,23 @@ a.kv-v:hover{text-decoration:underline;}
 <div id="screen-chat">
   <div class="s2-header">
     <div class="s2-back" onclick="backToList()">&#8592; 受信一覧</div>
+    <!-- 取得ボタンは受信トレイと同じく左側に置く（位置が違うと迷うため） -->
+    <button class="btn-sync s2-sync" onclick="syncFromEbay()" id="btn-ebay-sync2"><span class="sync-icon"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v5h-5"/><path d="M16.3 12a7 7 0 1 1-1.3-7.3L17 8"/></svg></span>eBayから取得</button>
     <div class="s2-sep"></div>
     <div class="s2-buyer-name" id="d-name">—</div>
     <div class="s2-header-tags" id="d-header-tags"></div>
     <div class="s2-header-actions">
-      <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="すべての吹き出しを日本語に翻訳">🇯🇵 全文を日本語に</button>
-      <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグを付ける</button>
+      <!-- このメッセージへの操作 -->
+      <button class="s2-btn" id="btn-translate" onclick="toggleChatTranslate()" title="すべての吹き出しを日本語に翻訳">&#127471;&#127477; 日本語に</button>
+      <button class="s2-btn" onclick="copyWholeChat(this)" title="やり取りを時系列でまとめてコピーします">&#128203; 全文コピー</button>
+      <span class="s2-divider"></span>
+      <!-- このメッセージの状態を変える -->
+      <button class="s2-btn" id="btn-star" onclick="toggleStar()">&#9734; フラグ</button>
       <button class="s2-btn" onclick="markUnread()">&#9679; 未読に戻す</button>
-      <button class="btn-sync s2-sync" onclick="syncFromEbay()" id="btn-ebay-sync2"><span class="sync-icon"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3v5h-5"/><path d="M16.3 12a7 7 0 1 1-1.3-7.3L17 8"/></svg></span>eBayから取得</button>
-      <button class="s2-btn" onclick="copyWholeChat(this)" title="やり取りを時系列でまとめてコピーします">&#128203; 全文コピー</button><button class="s2-btn" onclick="resetLayout()" title="チャットと返信欄の高さを初期状態に戻す">&#8635; 表示リセット</button>
+      <span class="s2-divider"></span>
+      <!-- 画面の見た目 -->
+      <button class="s2-btn s2-btn-icon" onclick="resetLayout()" title="チャットと返信欄の高さを初期状態に戻す">&#8635;</button>
       <button class="s2-btn s2-btn-primary" id="btn-replied" onclick="markReplied()" style="display:none;"></button>
-
     </div>
   </div>
 
@@ -1097,7 +1107,7 @@ a.kv-v:hover{text-decoration:underline;}
       <button class="side-filter" onclick="setMiniFilter('memo',this)" title="メモあり"><span class="sf-icon">&#128221;</span><span class="sf-label">メモあり</span><span class="sf-count" id="mcnt-memo">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('memo',this)">&#8943;</span></button>
       <button class="side-filter" onclick="setMiniFilter('replied',this)" title="返信済み"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8 5L3 9.5l5 4.5"/><path d="M3 9.5h8a5 5 0 0 1 5 5V16"/></svg></span><span class="sf-label">返信済み</span><span class="sf-count" id="mcnt-replied">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openFilterMenu('replied',this)">&#8943;</span></button>
         <div class="sf-group">eBayからの連絡</div>
-        <button class="side-filter" onclick="goNotices('notice-all')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-notice-all">0</span></button>
+        <button class="side-filter" onclick="goNotices('notice-all')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h14"/><path d="M3 10h14"/><path d="M3 14.5h14"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-notice-all">0</span></button>
         <button class="side-filter" onclick="goNotices('notice-unread')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-notice-unread">0</span></button>
     </div>
 
@@ -1255,8 +1265,10 @@ a.kv-v:hover{text-decoration:underline;}
       <div class="nt-head-t" id="nt-title">　</div>
       <button class="nt-close" onclick="closeNotice()" title="閉じる">&#10005;</button>
     </div>
-    <iframe class="nt-body" id="nt-frame" sandbox referrerpolicy="no-referrer"></iframe>
+    <!-- sandbox で script と外部通信を止めつつ、翻訳のため中身を読めるようにする -->
+    <iframe class="nt-body" id="nt-frame" sandbox="allow-same-origin" referrerpolicy="no-referrer"></iframe>
     <div class="nt-foot">
+      <button class="s2-btn" id="nt-tr-btn" onclick="translateNotice(this)">&#127471;&#127477; 日本語に</button>
       <span class="note">eBayから届いた内容をそのまま表示しています。返信はeBayの画面から行ってください。</span>
     </div>
   </div>
@@ -2616,6 +2628,10 @@ async function openNotice(cid){
   document.getElementById('nt-title').textContent=n?n.title:'読み込み中...';
   var frame=document.getElementById('nt-frame');
   frame.srcdoc='<div style="font-family:sans-serif;color:#64748b;padding:24px">読み込んでいます...</div>';
+  // 別の連絡を開いたので、前回の翻訳結果は捨てる
+  noticeSrcHtml=''; noticeJaHtml=''; noticeShowingJa=false;
+  var trb=document.getElementById('nt-tr-btn');
+  if(trb){ trb.innerHTML='\uD83C\uDDEF\uD83C\uDDF5 日本語に'; trb.disabled=false; }
   document.getElementById('nt-view').classList.add('on');
   document.addEventListener('keydown', noticeKey);
 
@@ -2639,6 +2655,7 @@ async function openNotice(cid){
           + m.html + '</div>';
       }).join('');
       frame.srcdoc=html;
+      noticeSrcHtml=html;      // 原文に戻せるよう控えておく
     }else{
       frame.srcdoc='<div style="font-family:sans-serif;color:#b91c1c;padding:24px">本文を取得できませんでした。'
         +esc((d&&d.error)||'')+'</div>';
@@ -2647,6 +2664,52 @@ async function openNotice(cid){
     frame.srcdoc='<div style="font-family:sans-serif;color:#b91c1c;padding:24px">通信エラー: '+esc(e.message)+'</div>';
   }
 
+}
+
+// 本文を日本語にする。
+// HTMLメールなので、まず文字だけ取り出して翻訳し、読みやすい形で並べ直す。
+// 元の見た目に戻せるよう、原文は控えておく
+var noticeSrcHtml='';
+var noticeJaHtml='';
+var noticeShowingJa=false;
+
+async function translateNotice(btn){
+  var frame=document.getElementById('nt-frame');
+  if(!frame) return;
+
+  // すでに訳してあるときは、押すたびに原文と切り替える
+  if(noticeJaHtml){
+    noticeShowingJa=!noticeShowingJa;
+    frame.srcdoc = noticeShowingJa ? noticeJaHtml : noticeSrcHtml;
+    btn.innerHTML = noticeShowingJa ? '原文に戻す' : '\uD83C\uDDEF\uD83C\uDDF5 日本語に';
+    return;
+  }
+
+  var orig=btn.innerHTML;
+  btn.innerHTML='翻訳中...';
+  btn.disabled=true;
+  try{
+    // 枠の中のHTMLから、読める文字だけを取り出す
+    var doc=frame.contentDocument;
+    var text=doc && doc.body ? (doc.body.innerText||'') : '';
+    text=text.replace(/\n{3,}/g,'\n\n').trim();
+    if(!text){ alert('翻訳できる文章が見つかりませんでした。'); return; }
+    if(text.length>6000) text=text.substring(0,6000);
+
+    var ja=await translateText(text);
+    if(!ja){ alert('翻訳できませんでした。'); return; }
+
+    noticeJaHtml='<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.9;'
+      +'color:#0f172a;padding:20px 24px;white-space:pre-wrap">'+esc(ja)+'</div>';
+    noticeShowingJa=true;
+    frame.srcdoc=noticeJaHtml;
+    btn.innerHTML='原文に戻す';
+  }catch(e){
+    alert('翻訳に失敗しました。\n'+e.message);
+    btn.innerHTML=orig;
+  }finally{
+    btn.disabled=false;
+  }
 }
 
 function closeNotice(){
@@ -2964,7 +3027,7 @@ async function toggleChatTranslate(){
     chatArea.querySelectorAll('.bbl-ja').forEach(function(e){e.remove();});
     chatArea.querySelectorAll('.bbl-tr-btn').forEach(function(b){b.textContent='日本語';b.classList.remove('on');});
     btn.style.background='';btn.style.color='';btn.style.borderColor='';
-    btn.textContent='🇯🇵 全文を日本語に';
+    btn.textContent='\uD83C\uDDEF\uD83C\uDDF5 日本語に';
     return;
   }
 
