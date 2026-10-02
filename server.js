@@ -2920,8 +2920,16 @@ app.get('/api/messages', async (req, res) => {
     }
     res.json({ messages: threads });
   } catch (e) {
-    console.error('Error:', e.message);
-    res.json({ messages });
+    // 原因が分からないと追えないので、例外の内容をそのまま返す
+    console.error('[messages] 例外:', e.message, e.stack);
+    res.json({
+      messages,
+      error: {
+        reason: 'メッセージの組み立て中にエラーが発生しました',
+        message: e.message,
+        where: String(e.stack || '').split('\n')[1] || '',
+      },
+    });
   }
 });
 
