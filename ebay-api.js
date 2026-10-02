@@ -505,10 +505,11 @@ async function getOneConversationForApp(conversationId) {
   const sorted = msgs.slice().sort((a, b) =>
     new Date(a.createdDate || 0) - new Date(b.createdDate || 0));
 
-  // 相手の名前（自分以外の登場人物）
+  // 相手の名前（自分以外の登場人物）。
+  // 名前が空のメッセージで止まらないよう、必ず中身があるものだけ採用する
   let buyer = '';
   for (const m of sorted) {
-    if (!isSelf(m.senderUsername)) { buyer = m.senderUsername || ''; break; }
+    if (m.senderUsername && !isSelf(m.senderUsername)) { buyer = m.senderUsername; break; }
     if (m.recipientUsername && !isSelf(m.recipientUsername)) { buyer = m.recipientUsername; break; }
   }
 
@@ -630,6 +631,19 @@ async function getMessagesForApp(daysBack) {
         const sorted = msgs.slice().sort(function(a, b) {
           return new Date(a.createdDate || 0) - new Date(b.createdDate || 0);
         });
+
+        // バイヤー名を会話の中身から確定させる。
+        // 一覧の「最新メッセージ」だけで判定すると、
+        // 最新が自分の発信で宛先が空のときに unknown になってしまう。
+        // 会話全体を見れば、どこかに必ず相手の名前が出てくる
+        if (!buyer || buyer === 'unknown' || isSelf(buyer)) {
+          for (const mm of sorted) {
+            if (mm.senderUsername && !isSelf(mm.senderUsername)) { buyer = mm.senderUsername; break; }
+            if (mm.recipientUsername && !isSelf(mm.recipientUsername)) { buyer = mm.recipientUsername; break; }
+          }
+          if (!buyer || isSelf(buyer)) buyer = 'unknown';
+        }
+
         // 「新着メッセージ」= 相手(buyer)からの最後のメッセージ
         let lastBuyerIdx = -1;
         for (let k = sorted.length - 1; k >= 0; k--) {
