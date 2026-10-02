@@ -2585,7 +2585,13 @@ app.get('/api/messages', async (req, res) => {
     refreshBuyerSet().catch(() => {});
     const sheetId = process.env.SHEET_ID;
     const apiKey = process.env.GOOGLE_API_KEY;
-    if (!sheetId || !apiKey) return res.json({ messages });
+    if (!sheetId || !apiKey) {
+      console.error('[messages] 環境変数が足りません SHEET_ID=' + !!sheetId + ' GOOGLE_API_KEY=' + !!apiKey);
+      return res.json({
+        messages,
+        error: { reason: '環境変数が足りません', SHEET_ID: !!sheetId, GOOGLE_API_KEY: !!apiKey },
+      });
+    }
 
     const sheetName = encodeURIComponent('シート1');
     const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${sheetName}?key=${apiKey}`;
@@ -2598,7 +2604,20 @@ app.get('/api/messages', async (req, res) => {
     }
 
     const rows = data.values || [];
-    if (rows.length <= 1) return res.json({ messages });
+    if (rows.length <= 1) {
+      // ここで空になる原因が分からないと追えないので、理由を返す
+      console.error('[messages] シートから行を取得できません rows=' + rows.length,
+        'status=' + response.status, JSON.stringify(data).substring(0, 300));
+      return res.json({
+        messages,
+        error: {
+          reason: 'シートから行を取得できませんでした',
+          rows: rows.length,
+          httpStatus: response.status,
+          detail: JSON.stringify(data).substring(0, 300),
+        },
+      });
+    }
 
     const headers = rows[0];
     // 古い行の送信者判定に使う。GetUserの値はキャッシュされるので毎回APIを叩くわけではない
