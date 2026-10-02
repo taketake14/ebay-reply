@@ -310,6 +310,36 @@ app.get('/api/sheet/dedupe', async (req, res) => {
 
 // ===== 購入者一覧をキャッシュ（SOLD判定用） =====
 let buyerOrderSet = new Set();
+// 商品ID → 落札者。メッセージから名前が取れない会話の特定に使う
+let buyerByItemId = {};
+
+// バイヤー名を確定させる。
+//
+// eBayのメッセージAPIは送信者名を返さないことがあるため、
+// メッセージだけに頼ると unknown になり、
+// 購入履歴との照合ができず SOLD や購入イベントも出なくなる。
+//
+// そこで、確実な順に情報源をたどる：
+//   1. メッセージに書かれた相手の名前（取れていればこれが正しい）
+//   2. 商品IDから引いた落札者（eBayが確定させた注文情報）
+//   3. どちらも無ければ unknown（分からないことを隠さない）
+async function resolveBuyerName(em) {
+  const current = String(em.buyer || '').trim().toLowerCase();
+  if (current && current !== 'unknown') return em.buyer;
+
+  // 注文情報から特定する
+  try {
+    await refreshBuyerSet();   // 商品ID→落札者の索引を用意する
+  } catch (e) {}
+
+  const iid = String(em.itemId || '');
+  if (iid && buyerByItemId[iid]) {
+    console.log('[buyer] メッセージから名前が取れないため注文情報で特定:',
+      em.conversationId, '→', buyerByItemId[iid].buyer);
+    return buyerByItemId[iid].buyer;
+  }
+  return 'unknown';
+}
 let buyerSetUpdatedAt = 0;
 let orderByBuyer = {};   // username(lower) -> 注文オブジェクト（最新）
 let cancelByBuyer = {};  // username(lower) -> キャンセル情報（診断用。表示には使わない）
@@ -423,6 +453,17 @@ async function refreshBuyerSet() {
         }
         // 注文IDからバイヤーを引けるようにする（キャンセル紐付け用）
         if (o.orderId) buyerByOrderId[o.orderId] = lu;
+        // 商品IDからも落札者を引けるようにする。
+        // eBayのメッセージAPIは送信者名を返さないことがあり、
+        // メッセージだけに頼るとバイヤーが特定できない場合がある。
+        // 注文情報はeBayが確定させたものなので、こちらの方が確実
+        (o.lineItems || []).forEach(li => {
+          const iid = String(li.legacyItemId || li.itemId || '');
+          if (!iid) return;
+          const at = new Date(o.creationDate || 0).getTime() || 0;
+          const prevE = buyerByItemId[iid];
+          if (!prevE || at > prevE.at) buyerByItemId[iid] = { buyer: lu, at };
+        });
         if (o.legacyOrderId) buyerByOrderId[o.legacyOrderId] = lu;
         // 商品ごとの照合用に全注文を保持
         if (!ordersByBuyerAll[lu]) ordersByBuyerAll[lu] = [];
@@ -1049,6 +1090,8 @@ app.get('/api/ebay/repair-history', async (req, res) => {
 
     const missing = [];
     for (const em of ebayMsgs) {
+      // メッセージから名前が取れない場合は注文情報で特定する
+      em.buyer = await resolveBuyerName(em);
       checked++;
       try {
         const r = await refreshRowInSheet(em, false);
@@ -1626,13 +1669,19 @@ app.get('/api/ebay/sync', async (req, res) => {
     const syncErrors = [];
 
     for (const em of ebayMsgs) {
+      // メッセージから名前が取れない場合は注文情報で特定する
+      em.buyer = await resolveBuyerName(em);
       const cid = String(em.conversationId);
       const st = sheetState[cid];
       const savedTs = (st && st.ts) || 0;
       const newTs = new Date(em.timestamp || 0).getTime() || 0;
       const existsInSheet = savedTs > 0;
       // 保存済みの送信者の向きがeBayの内容と食い違っている行も直す
-      const mismatched = !!(st && em.sig && st.sig !== em.sig);
+      // バイヤー名も照合に含める。
+      // 含めないと、名前が間違っていても誰も気づかず永久に直らない
+      const buyerWrong = !!(st && em.buyer && em.buyer !== 'unknown'
+        && String(st.buyer || '').toLowerCase() !== String(em.buyer).toLowerCase());
+      const mismatched = !!(st && em.sig && st.sig !== em.sig) || buyerWrong;
 
       if (existsInSheet) {
         // 既にシートにある会話。新しいメッセージが来ていれば行を更新する
@@ -2077,6 +2126,7 @@ async function getSheetConvState() {
     const iTs = h.indexOf('timestamp');
     const iHist = h.indexOf('history');
     const iFrom = h.indexOf('msgFrom');
+    const iBuyer = h.indexOf('buyer');
     if (iConv < 0 || iTs < 0) return map;
     for (let i = 1; i < rows.length; i++) {
       const cid = rows[i][iConv];
@@ -2094,6 +2144,9 @@ async function getSheetConvState() {
       // ここで別の行を見ていると食い違いが永久に解消せず、修復が延々と繰り返される。
       map[cid] = {
         ts,
+        // シートに保存されているバイヤー名。
+        // eBay側と食い違っていれば直すために使う
+        buyer: (iBuyer >= 0 ? (rows[i][iBuyer] || '') : ''),
         // 書き込み側(ebay-api.js)とまったく同じ形で計算すること。
         // 少しでも違うと食い違いが永久に解消せず、修復が繰り返される
         sig: from + '|' + hist.length
@@ -2302,6 +2355,8 @@ app.post('/api/ebay/notification', async (req, res) => {
   try {
     const ebayMsgs = await ebayApi.getMessagesForApp(1);
     for (const em of ebayMsgs) {
+      // メッセージから名前が取れない場合は注文情報で特定する
+      em.buyer = await resolveBuyerName(em);
       const exists = messages.find(m => m.conversationId === em.conversationId);
       if (exists) continue;
       const msg = {
@@ -2956,6 +3011,8 @@ async function autoSyncFromEbay() {
     // 残りは次回以降の同期で少しずつ直す
     const HEAL_LIMIT = 30;
     for (const em of ebayMsgs) {
+      // メッセージから名前が取れない場合は注文情報で特定する
+      em.buyer = await resolveBuyerName(em);
       const cid = String(em.conversationId);
       const st = sheetState[cid];
       const savedTs = (st && st.ts) || 0;
