@@ -310,6 +310,12 @@ app.get('/api/sheet/dedupe', async (req, res) => {
 
 // ===== 購入者一覧をキャッシュ（SOLD判定用） =====
 let buyerOrderSet = new Set();
+let buyerSetUpdatedAt = 0;
+let orderByBuyer = {};    // username(lower) -> 注文オブジェクト（最新）
+let cancelByBuyer = {};   // username(lower) -> キャンセル情報（診断用。表示には使わない）
+let cancelByOrderId = {}; // orderId -> キャンセル情報（表示はこちらを使う）
+let buyerByOrderId = {};  // orderId -> username(lower)
+let ordersByBuyerAll = {}; // username(lower) -> 注文の配列（全件）
 
 // バイヤー名について。
 //
@@ -322,6 +328,40 @@ let buyerOrderSet = new Set();
 // 同じ商品を複数人が購入した場合に別人の名前を付けてしまうため採用しない。
 // 名前を間違えるのは、分からないまま表示するより悪い。
 
+// スレッド（＝1つの商品についての会話）に対応するキャンセル情報を返す。
+//
+// 以前はバイヤー名だけで引いていたため、同じバイヤーの別商品の会話にも
+// 無関係なキャンセルが表示されていた。未購入の商品の問い合わせにまで
+// キャンセル表示が出るため、注文単位で判定する。
+function findCancelForThread(buyerLower, itemId, orderId) {
+  // 1. 行に注文番号があればそれで直接引く
+  if (orderId && cancelByOrderId[orderId]) return cancelByOrderId[orderId];
+
+  const orders = ordersByBuyerAll[buyerLower] || [];
+
+  // 2. 商品IDから、その商品を含む注文を特定して引く
+  if (itemId) {
+    const hits = orders.filter(o =>
+      (o.lineItems || []).some(li => String(li.legacyItemId || '') === String(itemId)));
+    for (const o of hits) {
+      const c = cancelByOrderId[o.orderId] || cancelByOrderId[o.legacyOrderId];
+      if (c) return c;
+    }
+    // その商品の注文が分かっていてキャンセルが無い、または
+    // そもそもその商品を買っていない場合は、キャンセルは存在しない
+    return null;
+  }
+
+  // 3. 商品IDも注文番号も無い古いデータ。
+  //    注文が1件しかないバイヤーは取り違えようがないので、その場合だけ表示する
+  if (orders.length === 1) {
+    const o = orders[0];
+    return cancelByOrderId[o.orderId] || cancelByOrderId[o.legacyOrderId] || null;
+  }
+  return null;
+}
+
+// Post-Order APIからキャンセル一覧を取得し、注文単位のマップを作る
 async function refreshCancelMap() {
   try {
     const cmap = await ebayApi.getCancellations(180);
