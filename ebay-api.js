@@ -64,6 +64,76 @@ async function getAccessToken() {
   return cachedToken;
 }
 
+// eBayが返すエラー番号を、利用者が対処できる日本語の説明に置き換える。
+// そのままだと英語の専門的な文面しか出ず、何を直せばよいか分からない
+const EBAY_ERROR_GUIDE = {
+  50065: {
+    title: 'リンクが含まれているため送信できません',
+    detail: 'eBayはバイヤーとのメッセージに外部サイトへのリンクを書くことを禁止しています。\n\n'
+      + '次のようなものがリンクと判断されます。\n'
+      + '・https:// や www. で始まる文字列\n'
+      + '・example.com のような「.com」「.jp」を含む文字列（httpが無くても対象）\n'
+      + '・メールアドレス\n\n'
+      + '商品名や型番に「.com」などが入っている場合も弾かれることがあります。'
+      + '該当部分を外すか、別の言い方に変えてから送信してください。',
+  },
+  50064: {
+    title: '連絡先が含まれているため送信できません',
+    detail: 'メールアドレス・電話番号・SNSのIDなど、eBay外で連絡を取るための情報は書けません。\n'
+      + '該当部分を外してから送信してください。',
+  },
+  50013: {
+    title: '本文が長すぎます',
+    detail: 'eBayのメッセージは2,000文字までです。文章を短くしてから送信してください。',
+  },
+  50001: {
+    title: 'eBay側で一時的な問題が起きています',
+    detail: '少し時間をおいてから、もう一度送信してください。',
+  },
+  50004: {
+    title: '送信内容に不備があります',
+    detail: '宛先や本文が正しく指定されていない可能性があります。'
+      + 'メッセージを開き直してから、もう一度お試しください。',
+  },
+  355014: {
+    title: '添付した画像をeBayが受け付けませんでした',
+    detail: '画像の形式や大きさをご確認ください。'
+      + 'eBayが対応しているのは画像のみで、1回につき5枚までです。',
+  },
+  1001: {
+    title: 'eBayへの接続が認められませんでした',
+    detail: 'eBayとの連携が切れている可能性があります。トークンの再取得が必要です。',
+  },
+  1002: {
+    title: 'eBayへの接続が認められませんでした',
+    detail: 'eBayとの連携が切れている可能性があります。トークンの再取得が必要です。',
+  },
+  2001: {
+    title: 'eBayの呼び出し回数の上限に達しました',
+    detail: '1日に使える回数を超えています。日本時間16時に回復するので、それ以降にお試しください。',
+  },
+};
+
+// エラーの説明文を組み立てる
+function describeEbayError(errorId, originalMessage, httpStatus) {
+  const g = EBAY_ERROR_GUIDE[Number(errorId)];
+  if (g) {
+    return g.title + '\n\n' + g.detail
+      + '\n\n---\n（eBayからの回答：エラー' + errorId + '）';
+  }
+  // 一覧にないものは、分かる範囲で手がかりを添える
+  let hint = '';
+  if (httpStatus === 401 || httpStatus === 403) {
+    hint = '\n\neBayとの連携が切れている可能性があります。';
+  } else if (httpStatus === 429) {
+    hint = '\n\n短時間に多く送りすぎた可能性があります。少し待ってからお試しください。';
+  } else if (httpStatus >= 500) {
+    hint = '\n\neBay側で問題が起きている可能性があります。時間をおいてお試しください。';
+  }
+  return 'eBayが送信を受け付けませんでした（エラー' + (errorId || httpStatus) + '）'
+    + hint + '\n\n---\n（eBayからの回答）\n' + String(originalMessage || '').substring(0, 300);
+}
+
 async function callMessageAPI(pathAndQuery, options) {
   options = options || {};
   const token = await getAccessToken();
@@ -89,10 +159,15 @@ async function callMessageAPI(pathAndQuery, options) {
   try { json = text ? JSON.parse(text) : null; } catch (e) {}
 
   if (!res.ok) {
-    const errMsg = (json && json.errors && json.errors[0])
-      ? (json.errors[0].errorId + ': ' + json.errors[0].message)
-      : text.substring(0, 300);
-    throw new Error('eBay API ' + res.status + ': ' + errMsg);
+    const e0 = (json && json.errors && json.errors[0]) || null;
+    const err = new Error(describeEbayError(
+      e0 ? e0.errorId : null,
+      e0 ? (e0.longMessage || e0.message) : text.substring(0, 300),
+      res.status
+    ));
+    err.ebayErrorId = e0 ? e0.errorId : null;
+    err.httpStatus = res.status;
+    throw err;
   }
   return json;
 }
