@@ -4173,7 +4173,8 @@ async function sendReplyToEbay(){
       setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
     } else {
       btn.innerHTML='&#10007; 失敗';
-      alert('送信エラー:\n'+(d.error||'不明なエラー'));
+      // エラーの内容をそのまま見せる。何を直せばよいか分かるようにするため
+      alert('送信できませんでした\n\n'+(d.error||'原因が分かりませんでした。もう一度お試しください。'));
       setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
     }
   }catch(e){
