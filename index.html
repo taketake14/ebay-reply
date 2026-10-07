@@ -1521,7 +1521,12 @@ function toJST(ts){
 // ===== 状態保存 =====
 function saveState(m){
   if(!m||!m.id) return;
-  fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:m.id,read:m.read,starred:m.starred,replied:m.replied,memo:m.memo||''})}).catch(function(){});
+  // 会話IDも一緒に送る。
+  // サーバー側は行番号から会話IDを引けないことがあり、
+  // 引けないと既読の記録が残らず、同期のときに未読へ戻ってしまう
+  fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({id:m.id, conversationId:m.conversationId||'',
+      read:m.read, starred:m.starred, replied:m.replied, memo:m.memo||''})}).catch(function(){});
 }
 
 // ===== 画面切り替え =====
@@ -2822,7 +2827,8 @@ async function markFilterRead(key){
     var res=await fetch('/api/state/bulk',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({items:targets.map(function(m){
-        return {id:m.id, read:true, starred:!!m.starred, replied:!!m.replied, memo:m.memo||''};
+        return {id:m.id, conversationId:m.conversationId||'',
+                read:true, starred:!!m.starred, replied:!!m.replied, memo:m.memo||''};
       })})
     });
     var d=await res.json();
