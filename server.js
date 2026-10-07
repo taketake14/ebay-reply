@@ -2224,10 +2224,28 @@ async function refreshRowInSheet(em, forceUnread) {
     get('item'),
     get('orderId'),
     em.itemId || get('itemId'),
-    forceUnread ? 'false' : (get('read') || 'false'),   // 新着があれば未読に戻す
-    get('starred') || 'false',
-    get('replied') || 'false',
-    get('memo'),
+    // 既読・フラグ・返信済み・メモは、会話IDで保存した記録を正とする。
+    // シートの行の値をそのまま書き戻すと、
+    // 既読にした直後に行が書き直されたとき（自分が返信したときなど）
+    // 書き込みが間に合っていない古い値で上書きされ、未読に戻ってしまう。
+    // これが「毎朝、既読にしたはずのものが未読で浮かぶ」原因だった。
+    ...(function () {
+      const cs = convState[String(em.conversationId)] || null;
+      const sheetRead = (get('read') || 'false');
+      const sheetStar = (get('starred') || 'false');
+      const sheetRep  = (get('replied') || 'false');
+      const sheetMemo = get('memo');
+      if (forceUnread) {
+        return ['false', sheetStar, sheetRep, sheetMemo];
+      }
+      if (!cs) return [sheetRead, sheetStar, sheetRep, sheetMemo];
+      return [
+        cs.read !== undefined ? (cs.read ? 'true' : 'false') : sheetRead,
+        cs.starred !== undefined ? (cs.starred ? 'true' : 'false') : sheetStar,
+        cs.replied !== undefined ? (cs.replied ? 'true' : 'false') : sheetRep,
+        (cs.memo !== undefined && cs.memo !== '') ? cs.memo : sheetMemo,
+      ];
+    })(),
     em.conversationId,
     JSON.stringify(historyWithBodyMedia(em.history, em.bodyMedia)),
     em.msgFrom || 'buyer',
@@ -2480,7 +2498,7 @@ app.post('/api/state/bulk', async (req, res) => {
         read: it.read, starred: it.starred, replied: it.replied, memo: it.memo,
         readAt: it.read ? new Date().toISOString() : (prev.readAt || null),
       };
-      rememberConvState(convIdOfMessageId(id), it);
+      rememberConvState(convIdOfMessageId(id, it.conversationId), it);
       const msg = messages.find(m => m.id == id);
       if (msg) {
         if (it.read !== undefined) msg.read = it.read;
@@ -2557,7 +2575,12 @@ function saveConvState() {
 setInterval(saveConvState, 15000);
 
 // 会話IDを見つける（idは行番号なので、messagesから引く）
-function convIdOfMessageId(id) {
+// 会話IDを求める。
+// シートから組み立てた行は、この messages 配列には入っていないため、
+// id から引けないことが多い。そのため画面から会話IDを直接受け取り、
+// それが無い場合だけ id から引く
+function convIdOfMessageId(id, convIdFromClient) {
+  if (convIdFromClient) return String(convIdFromClient);
   const m = messages.find(x => x.id == id);
   return m && m.conversationId ? String(m.conversationId) : '';
 }
@@ -2580,7 +2603,7 @@ function rememberConvState(cid, st) {
 }
 
 app.post('/api/state', async (req, res) => {
-  const { id, read, starred, replied, memo } = req.body;
+  const { id, read, starred, replied, memo, conversationId } = req.body;
   if (!id) return res.json({ ok: false });
 
   // メモリに保存（既読にした時刻も記録＝その後の新着で未読に戻せる）
@@ -2591,7 +2614,7 @@ app.post('/api/state', async (req, res) => {
   };
 
   // 会話IDでも残す（行が動いても失われないように）
-  rememberConvState(convIdOfMessageId(id), { read, starred, replied, memo });
+  rememberConvState(convIdOfMessageId(id, conversationId), { read, starred, replied, memo });
 
   // messagesにも反映
   const msg = messages.find(m => m.id == id);
