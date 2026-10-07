@@ -1910,31 +1910,11 @@ app.post('/api/ebay/reply', async (req, res) => {
           + MEDIA_MAX_TEXT + '文字なので、短くしてください',
       });
     }
-    // eBayはバイヤーへのメッセージに外部リンクを書くことを禁止している。
-    // 送ってから弾かれると何が悪かったか分からないので、送る前に見つけて知らせる
-    if (messageText) {
-      const found = [];
-      const checks = [
-        [/https?:\/\/\S+/gi, 'URL'],
-        [/\bwww\.[a-z0-9-]+\.[a-z]{2,}/gi, 'URL'],
-        [/[\w.+-]+@[\w-]+\.[a-z]{2,}/gi, 'メールアドレス'],
-        [/\b[a-z0-9][a-z0-9-]*\.(com|net|org|jp|io|shop|store|co\.jp|co\.uk|de|fr)\b/gi, 'リンクとみなされる文字列'],
-      ];
-      checks.forEach(([re, label]) => {
-        const m = String(messageText).match(re);
-        if (m) m.slice(0, 5).forEach(x => found.push(label + '：' + x));
-      });
-      if (found.length) {
-        return res.json({
-          ok: false,
-          error: 'リンクとみなされる文字列が含まれているため、eBayに拒否されます。\n\n'
-            + '該当箇所\n' + Array.from(new Set(found)).join('\n')
-            + '\n\neBayはバイヤーとのメッセージに外部サイトへの誘導を書くことを禁止しています。'
-            + '該当部分を外すか、別の言い方に変えてから送信してください。\n'
-            + '（商品名や型番に「.com」などが含まれている場合も対象になります）',
-        });
-      }
-    }
+    // リンクの事前チェックは行わない。
+    // eBayがリンクを弾く基準は一律ではなく、実際には7割ほど通る
+    // （配送業者への問い合わせ先の案内など）。
+    // こちらで一律に止めると、eBayが通すものまで送れなくなるため、
+    // 送信してeBayが拒否した場合だけエラーを表示する。
 
     if (media.length > MEDIA_MAX_COUNT) {
       return res.json({
