@@ -2608,6 +2608,38 @@ function rememberConvState(cid, st) {
   convStateDirty = true;
 }
 
+// 既読などの記録が実際に残っているか確認するための窓口。
+// 未読に戻る原因を追うために使う
+app.get('/api/state/debug', async (req, res) => {
+  try {
+    const cid = String(req.query.cid || '');
+    const sheetState = await getSheetConvState();
+    if (cid) {
+      return res.json({
+        ok: true,
+        conversationId: cid,
+        保存されている記録: convState[cid] || '（記録なし）',
+        シートの値: sheetState[cid] ? {
+          buyer: sheetState[cid].buyer,
+          timestamp: new Date(sheetState[cid].ts).toISOString(),
+        } : '（シートに無い）',
+      });
+    }
+    const keys = Object.keys(convState);
+    res.json({
+      ok: true,
+      記録件数: keys.length,
+      既読として記録: keys.filter(k => convState[k] && convState[k].read).length,
+      最近の記録: keys
+        .map(k => ({ cid: k, ...convState[k] }))
+        .sort((a, b) => String(b.at || '').localeCompare(String(a.at || '')))
+        .slice(0, 10),
+    });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.post('/api/state', async (req, res) => {
   const { id, read, starred, replied, memo, conversationId } = req.body;
   if (!id) return res.json({ ok: false });
