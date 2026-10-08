@@ -2640,6 +2640,27 @@ app.get('/api/state/debug', async (req, res) => {
   }
 });
 
+// 未読に戻した瞬間を記録する。
+// 「既読にしたはずのものが翌朝また未読になる」原因を特定するために使う
+const unreadEvents = [];
+function noteUnreadEvent(cid, reason, extra) {
+  const cs = convState[String(cid)] || null;
+  unreadEvents.unshift({
+    時刻: new Date().toISOString(),
+    conversationId: String(cid),
+    理由: reason,
+    既読の記録: cs ? { read: cs.read, readAt: cs.readAt } : '（記録なし）',
+    ...(extra || {}),
+  });
+  if (unreadEvents.length > 200) unreadEvents.pop();
+  console.warn('[未読に戻した]', cid, reason, JSON.stringify(extra || {}));
+}
+
+// 未読に戻した履歴を見る窓口
+app.get('/api/state/unread-log', (req, res) => {
+  res.json({ ok: true, 件数: unreadEvents.length, 履歴: unreadEvents.slice(0, 60) });
+});
+
 app.post('/api/state', async (req, res) => {
   const { id, read, starred, replied, memo, conversationId } = req.body;
   if (!id) return res.json({ ok: false });
@@ -3090,6 +3111,11 @@ async function autoSyncFromEbay() {
                 mm.read = false;
                 mm.unreadCount = (mm.unreadCount || 0) + 1;
                 if (stateStore[mm.id]) { stateStore[mm.id].read = false; stateStore[mm.id].readAt = null; }
+                noteUnreadEvent(cid, '新着あり', {
+                  buyer: em.buyer,
+                  シートの時刻: new Date(savedTs).toISOString(),
+                  eBayの時刻: new Date(newTs).toISOString(),
+                });
               }
             }
           } catch (e) { console.error('[autoSync] refresh:', e.message); }
@@ -3161,6 +3187,14 @@ async function autoSyncFromEbay() {
       };
       messages.unshift(msg);
       added++;
+      // 既存の会話が「新規」として追加されると、未読の行が増えてしまう。
+      // 既読の記録がある会話なら、過去に見ているはずなので記録に残す
+      if (convState[String(em.conversationId)]) {
+        noteUnreadEvent(em.conversationId, '新規として追加された（過去に既読の記録あり）', {
+          buyer: em.buyer,
+          追加後のread: msg.read,
+        });
+      }
       await appendToSheet(msg).catch(e => console.error('appendToSheet:', e.message));
     }
     if (messages.length > 300) messages = messages.slice(0, 300);
