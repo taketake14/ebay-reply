@@ -2159,6 +2159,8 @@ function selectMsg(i){
   showChat();
   renderChatDetail();
   renderMiniList();   // 最左のミニリストも更新（選択状態・既読を反映）
+  // 翻訳の表示状態を元に戻す（吹き出しが描き直されるため）
+  resetChatTranslate();
   // この会話の送信者情報が正しいかをeBayに確認する。
   // 自動同期は直近しか見ないため、古い会話は壊れたまま残ることがある
   verifyOpenedConversation(m);
@@ -3024,6 +3026,36 @@ async function translateBubble(idx, btn){
 }
 
 // 全体翻訳のトグル
+// 翻訳の表示状態を元に戻す（別のメッセージを開いたときに使う）
+function resetChatTranslate(){
+  chatTranslateMode = false;
+  var btn = document.getElementById('btn-translate');
+  if(btn){
+    btn.style.background=''; btn.style.color=''; btn.style.borderColor='';
+    btn.textContent='🇯🇵 全文を日本語に';
+  }
+}
+
+// 保存済みの訳文を、描き直した吹き出しに貼り直す（通信は発生しない）
+function applyCachedTranslations(){
+  var chatArea=document.getElementById('chat-area');
+  if(!chatArea) return;
+  chatArea.querySelectorAll('.bbl-wrap').forEach(function(w){
+    if(w.querySelector('.bbl-ja')) return;
+    var bbl=w.querySelector('.bbl');
+    if(!bbl) return;
+    var orig=bbl.getAttribute('data-orig') || bbl.textContent;
+    var ja=translationCache[String(orig).trim()];
+    if(!ja) return;
+    var div=document.createElement('div');
+    div.className='bbl-ja';
+    div.textContent=ja;
+    bbl.parentElement.insertBefore(div, bbl.nextSibling);
+    var trBtn=w.querySelector('.bbl-tr-btn');
+    if(trBtn){ trBtn.textContent='原文に戻す'; trBtn.classList.add('on'); }
+  });
+}
+
 async function toggleChatTranslate(){
   if(currentIdx===null) return;
   chatTranslateMode = !chatTranslateMode;
@@ -3106,13 +3138,10 @@ function fmtTime(t){
 
 function renderChatBubbles(){
   if(currentIdx===null) return;
-  // 再描画時は翻訳表示を解除（吹き出しが作り直されるため）
-  var trBtn=document.getElementById('btn-translate');
-  if(trBtn && chatTranslateMode){
-    chatTranslateMode=false;
-    trBtn.style.background='';trBtn.style.color='';trBtn.style.borderColor='';
-    trBtn.textContent='🇯🇵 全文を日本語に';
-  }
+  // 描き直しても翻訳表示は維持する。
+  // 以前はここで解除していたため、同期や検証で描き直しが起きると
+  // 「日本語表示中」の目印だけが消え、次に押しても1回目が無反応になっていた。
+  // 訳文は保存してあるので、描き直したあとに貼り直す
   var m=messages[currentIdx];
   var el=document.getElementById('chat-area');
   var html='';
@@ -3252,6 +3281,8 @@ function renderChatBubbles(){
   });
   if(!html) html='<div class="chat-empty">メッセージのやり取りはありません</div>';
   el.innerHTML=html;
+  // 日本語表示中なら、保存済みの訳文を貼り直す
+  if(chatTranslateMode) applyCachedTranslations();
   el.scrollTop=el.scrollHeight;
   // 吹き出しの中の画像は、読み込みが終わるまで高さが決まらない。
   // 先に一番下へ移動しても、あとから画像の高さが加わって途中で止まってしまうので、
@@ -3501,6 +3532,34 @@ async function translateToJapanese(){
 }
 
 // ===== 日本語→英語 翻訳 =====
+// 英語欄に全角文字が混ざらないようにする。
+// AIへの指示だけでは毎回同じ結果にならないので、出力を機械的に直す
+function toHalfWidthForEnglish(text) {
+  if (!text) return '';
+  let t = String(text);
+  // 全角の英数字・記号を半角へ
+  t = t.replace(/[！-～]/g, function (c) {
+    return String.fromCharCode(c.charCodeAt(0) - 0xFEE0);
+  });
+  // 半角が無い記号は、意味の近い半角に置き換える
+  const map = {
+    '　': ' ', '・': '- ', '〜': '~', '～': '~',
+    '－': '-', 'ー': '-', '―': '-', '–': '-', '—': '-',
+    '’': "'", '‘': "'", '“': '"', '”': '"',
+    '「': '"', '」': '"', '『': '"', '』': '"',
+    '、': ', ', '。': '. ', '：': ': ', '；': '; ',
+    '（': '(', '）': ')', '【': '[', '】': ']', '［': '[', '］': ']',
+    '％': '%', '￥': 'JPY ', '＄': '$',
+    '…': '...', '※': '*', '→': '->', '←': '<-',
+    '≒': '=', '≠': '!=', '±': '+/-', '×': 'x', '÷': '/',
+    '℃': 'C', '№': 'No.',
+  };
+  t = t.replace(/[　・〜～－ー―–—’‘“”「」『』、。：；（）【】［］％￥＄…※→←≒≠±×÷℃№]/g,
+    function (c) { return map[c] !== undefined ? map[c] : c; });
+  t = t.replace(/[ \t]{2,}/g, ' ').replace(/ +$/gm, '');
+  return t;
+}
+
 async function translateToEnglish(){
   var ja=document.getElementById('d-input-ja').value.trim();
   if(!ja){ alert('日本語の入力が空です'); return; }
@@ -3519,6 +3578,8 @@ async function translateToEnglish(){
     var data=await res.json();
     var en=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
     en=en.replace(/\n{3,}/g,'\n\n');
+    // 全角が混ざっていると相手の環境で崩れるので、必ず半角に直す
+    en=toHalfWidthForEnglish(en);
     document.getElementById('d-reply').value=en;
     if(currentIdx!==null&&messages[currentIdx]){
       messages[currentIdx].reply=en;
@@ -4089,6 +4150,8 @@ async function sendReplyToEbay(){
   var raw=document.getElementById('d-reply').value || '';
   // 連続改行を1つにまとめる（eBay側で間延びするのを防ぐ）
   var text=raw.replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+  // 手で打ち足した全角が残っている場合もあるので、送る直前にも半角へ直す
+  if(typeof toHalfWidthForEnglish==='function') text=toHalfWidthForEnglish(text);
   // 添付だけを送ることもできる
   var atts=pendingAttachments.filter(function(a){return a && a.id;});
   if(pendingAttachments.some(function(a){return a && a.uploading;})){
