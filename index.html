@@ -3036,6 +3036,31 @@ function resetChatTranslate(){
   }
 }
 
+// 原文を手がかりに、今の画面から該当の吹き出しを探して訳文を貼る。
+// 画面が描き直されたあとでも確実に貼れるようにするため
+function attachJaToBubble(orig, ja){
+  var chatArea=document.getElementById('chat-area');
+  if(!chatArea) return false;
+  var key=String(orig).trim();
+  var wraps=chatArea.querySelectorAll('.bbl-wrap');
+  for(var i=0;i<wraps.length;i++){
+    var w=wraps[i];
+    var bbl=w.querySelector('.bbl');
+    if(!bbl) continue;
+    var t=(bbl.getAttribute('data-orig') || bbl.textContent || '').trim();
+    if(t!==key) continue;
+    if(w.querySelector('.bbl-ja')) return true;   // すでに貼ってある
+    var div=document.createElement('div');
+    div.className='bbl-ja';
+    div.textContent=ja;
+    bbl.parentElement.insertBefore(div, bbl.nextSibling);
+    var trBtn=w.querySelector('.bbl-tr-btn');
+    if(trBtn){ trBtn.textContent='原文に戻す'; trBtn.classList.add('on'); }
+    return true;
+  }
+  return false;
+}
+
 // 保存済みの訳文を、描き直した吹き出しに貼り直す（通信は発生しない）
 function applyCachedTranslations(){
   var chatArea=document.getElementById('chat-area');
@@ -3072,27 +3097,24 @@ async function toggleChatTranslate(){
   }
 
   btn.style.background='var(--navy)';btn.style.color='#fff';btn.style.borderColor='var(--navy)';
-  var wraps=Array.from(chatArea.querySelectorAll('.bbl-wrap'));
-  var total=wraps.length, done=0;
 
-  for(var i=0;i<wraps.length;i++){
-    if(!chatTranslateMode) break;  // 途中で解除されたら中断
-    var w=wraps[i];
-    if(w.querySelector('.bbl-ja')){ done++; continue; }  // 訳済みは飛ばす
-    var bbl=w.querySelector('.bbl');
-    if(!bbl) continue;
-    var orig=bbl.getAttribute('data-orig') || bbl.textContent;
+  // 翻訳する原文をいったん控える。
+  // 翻訳の途中で画面が描き直される（注文情報が後から届くなど）ことがあり、
+  // そのとき要素を掴んだままだと、作り直された画面に訳文を貼れず消えてしまう。
+  // 要素ではなく「原文」を控えておき、訳し終えるたびに画面を探し直して貼る
+  var origs=Array.from(chatArea.querySelectorAll('.bbl-wrap')).map(function(w){
+    var b2=w.querySelector('.bbl');
+    return b2 ? (b2.getAttribute('data-orig') || b2.textContent) : '';
+  }).filter(function(t){ return t && String(t).trim(); });
+
+  var total=origs.length, done=0;
+  for(var i=0;i<origs.length;i++){
+    if(!chatTranslateMode) break;   // 利用者が解除したら中断
+    var orig=origs[i];
     btn.textContent='🇯🇵 翻訳中 '+(done+1)+'/'+total;
     try{
       var ja=await translateText(orig);
-      if(ja && chatTranslateMode){
-        var div=document.createElement('div');
-        div.className='bbl-ja';
-        div.textContent=ja;
-        var trBtn=w.querySelector('.bbl-tr-btn');
-        bbl.parentElement.insertBefore(div, bbl.nextSibling);
-        if(trBtn){trBtn.textContent='原文に戻す';trBtn.classList.add('on');}
-      }
+      if(ja && chatTranslateMode) attachJaToBubble(orig, ja);
     }catch(e){}
     done++;
   }
@@ -3827,6 +3849,8 @@ async function loadBuyerDetail(buyer, idx){
     if(mm){
       mm.orderDate=info.orderDate||'';
       mm.orderIdForEvent=info.orderId||'';
+      var prevCancelLabel=mm.cancelLabel||'';
+      var prevOrderDate=mm.orderDate||'';
       mm.cancelLabel=info.cancelLabel||'';
       mm.cancelKind=info.cancelKind||'';
       mm.cancelShort=info.cancelShort||'';
@@ -3836,7 +3860,11 @@ async function loadBuyerDetail(buyer, idx){
       mm.cancelClosedAt=info.cancelClosedAt||'';
       if(info.salesRecordNo) mm.salesRecordNo=info.salesRecordNo;
       if(info.orderId) mm.orderId=info.orderId;
-      if(mm.cancelLabel||mm.orderDate) renderChatBubbles();
+      // 注文情報が届いたときの描き直しは、表示が変わる場合だけにする。
+      // 毎回描き直すと、翻訳中やスクロール中に画面が作り直されてしまう
+      var needRedraw = (mm.cancelLabel && mm.cancelLabel !== prevCancelLabel)
+        || (mm.orderDate && mm.orderDate !== prevOrderDate);
+      if(needRedraw) renderChatBubbles();
     }
 
     // アイコン画像
