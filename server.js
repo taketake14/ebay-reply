@@ -2601,6 +2601,12 @@ function rememberConvState(cid, st) {
     starred: st.starred !== undefined ? !!st.starred : prev.starred,
     replied: st.replied !== undefined ? !!st.replied : prev.replied,
     memo: st.memo !== undefined ? st.memo : prev.memo,
+    // 本人が「未読に戻す」を押したかどうか。
+    // バイヤーからの受信が無い会話は自動で既読扱いにするが、
+    // 本人が意図して未読に戻したものまで既読にしてはいけないため区別して残す。
+    // 既読にしたら印は消す
+    manualUnread: st.read === true ? false
+      : (st.manualUnread === true ? true : !!prev.manualUnread),
     // 既読にした時刻。これより新しいメッセージが来たら未読に戻す
     readAt: st.read ? new Date().toISOString() : (prev.readAt || null),
     at: new Date().toISOString(),
@@ -2662,7 +2668,7 @@ app.get('/api/state/unread-log', (req, res) => {
 });
 
 app.post('/api/state', async (req, res) => {
-  const { id, read, starred, replied, memo, conversationId } = req.body;
+  const { id, read, starred, replied, memo, conversationId, manualUnread } = req.body;
   if (!id) return res.json({ ok: false });
 
   // メモリに保存（既読にした時刻も記録＝その後の新着で未読に戻せる）
@@ -2673,7 +2679,7 @@ app.post('/api/state', async (req, res) => {
   };
 
   // 会話IDでも残す（行が動いても失われないように）
-  rememberConvState(convIdOfMessageId(id, conversationId), { read, starred, replied, memo });
+  rememberConvState(convIdOfMessageId(id, conversationId), { read, starred, replied, memo, manualUnread });
 
   // messagesにも反映
   const msg = messages.find(m => m.id == id);
@@ -2991,6 +2997,16 @@ app.get('/api/messages', async (req, res) => {
         // 既読にした後に新着が来ている → 未読へ
         t.read = false;
       }
+      // 【未読の定義】未読とは「バイヤーから届いた、まだ読んでいないメッセージがある」か
+      // 「本人が未読に戻した」状態のこと。
+      // バイヤーから1通も届いていない会話（購入御礼など自分の送信だけの会話）は
+      // 読むものが無いので既読として扱う。
+      // 以前は新しい会話を一律で未読として登録していたため、
+      // 画面では既読に見えるのに件数だけ数えられ、既読にする手段も無い状態になっていた
+      if (!t.read && !t.hasBuyerMsg) {
+        const csT = t.conversationId ? convState[String(t.conversationId)] : null;
+        if (!(csT && csT.manualUnread)) t.read = true;
+      }
       if (t.read) {
         t.unreadCount = 0;
       } else {
@@ -3013,7 +3029,9 @@ app.get('/api/messages', async (req, res) => {
           const v = new Date(t.timestamp).getTime();
           if (!isNaN(v) && v > lastMineAt) cnt++;
         }
-        t.unreadCount = cnt > 0 ? cnt : (t.hasBuyerMsg ? 1 : 0);
+        // 未読なら件数は必ず1以上にする。0だと画面では既読に見えるのに
+        // 左の件数には数えられる、という食い違いが起きるため
+        t.unreadCount = cnt > 0 ? cnt : 1;
       }
     });
 
