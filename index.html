@@ -1369,7 +1369,7 @@ function clearAllChecks(){
 function bulkMarkRead(readVal){
   checkedIds.forEach(function(id){
     var m=messages.find(function(x){return x.id==id;});
-    if(m){m.read=readVal; if(readVal) m.unreadCount=0; else if(!m.unreadCount) m.unreadCount=1; saveState(m);}
+    if(m){m.read=readVal; if(readVal) m.unreadCount=0; else if(!m.unreadCount) m.unreadCount=1; saveState(m,{manualUnread:!readVal});}
   });
   clearAllChecks();
   renderList();
@@ -1519,14 +1519,18 @@ function toJST(ts){
 }
 
 // ===== 状態保存 =====
-function saveState(m){
+function saveState(m, opts){
   if(!m||!m.id) return;
+  // manualUnread：本人が「未読に戻す」を押したときだけtrue。
+  // サーバーはバイヤー受信の無い会話を既読扱いにするため、意図した未読と区別する
+  var manualUnread=!!(opts && opts.manualUnread);
   // 会話IDも一緒に送る。
   // サーバー側は行番号から会話IDを引けないことがあり、
   // 引けないと既読の記録が残らず、同期のときに未読へ戻ってしまう
   fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({id:m.id, conversationId:m.conversationId||'',
-      read:m.read, starred:m.starred, replied:m.replied, memo:m.memo||''})}).catch(function(){});
+      read:m.read, starred:m.starred, replied:m.replied, memo:m.memo||'',
+      manualUnread:manualUnread})}).catch(function(){});
 }
 
 // ===== 画面切り替え =====
@@ -1851,7 +1855,7 @@ function renderList(){
           +'</div>';
       })(),
       status: '<div class="s1-status-cell s1-col-status">'
-        +((!m.read&&m.unreadCount>0)?'<span class="unread-pill">'+m.unreadCount+'</span>':'')
+        +((!m.read)?'<span class="unread-pill">'+Math.max(1,m.unreadCount||0)+'</span>':'')
         +'</div>',
       thumb: '<div class="s1-col-thumb">'+thumbHtml+'</div>',
       sold: (function(){
@@ -1912,7 +1916,7 @@ function markUnreadIdx(i){
   if(!m) return;
   m.read=false;
   if(!m.unreadCount||m.unreadCount<1) m.unreadCount=1;
-  saveState(m);
+  saveState(m,{manualUnread:true});
   renderList();
   if(typeof renderMiniList==='function') renderMiniList();
 }
@@ -2001,8 +2005,8 @@ function renderMiniList(){
       +'<div class="mini-info">'
         +'<div class="mini-top">'
           +'<span class="mini-buyer">'+esc(m.buyer)+'</span>'
-          +((!m.read&&m.unreadCount>0)
-            ? '<button class="unread-pill mini clickable" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">'+m.unreadCount+'</button>'
+          +((!m.read)
+            ? '<button class="unread-pill mini clickable" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">'+Math.max(1,m.unreadCount||0)+'</button>'
             : '<button class="mini-read-btn" onclick="event.stopPropagation();markUnreadIdx('+ri+')" title="未読に戻す">'
               +'<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 6.5L10 11.5l7.5-5"/></svg>'
               +'</button>')
@@ -3356,7 +3360,7 @@ function markUnread(){
   var m=messages[currentIdx];
   m.read=false;
   if(!m.unreadCount||m.unreadCount<1) m.unreadCount=1;
-  saveState(m);
+  saveState(m,{manualUnread:true});
   renderList();
   renderMiniList();
   // 一覧に戻らず、その場で状態だけ変える
@@ -3847,10 +3851,13 @@ async function loadBuyerDetail(buyer, idx){
     // チャットに表示するイベント情報を保持
     var mm=messages[idx];
     if(mm){
-      mm.orderDate=info.orderDate||'';
-      mm.orderIdForEvent=info.orderId||'';
+      // 前の値は、書き換える前に控える。
+      // 以前は書き換えた後に控えていたため、前と今がいつも同じになり、
+      // 購入情報が届いても描き直されず「ご購入いただきました」が出なかった
       var prevCancelLabel=mm.cancelLabel||'';
       var prevOrderDate=mm.orderDate||'';
+      mm.orderDate=info.orderDate||'';
+      mm.orderIdForEvent=info.orderId||'';
       mm.cancelLabel=info.cancelLabel||'';
       mm.cancelKind=info.cancelKind||'';
       mm.cancelShort=info.cancelShort||'';
