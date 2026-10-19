@@ -691,6 +691,8 @@ async function syncEbayNotices(days) {
       isReply: n.isReply,
       // 既読は一度付けたら保持する。eBay側の未読数は初回だけ参考にする
       read: old ? old.read : (n.unreadCount === 0),
+      // フラグはこちらだけで持つ情報。取り込み直しても消さない
+      starred: old ? !!old.starred : false,
     };
     if (!old) added++;
   });
@@ -742,6 +744,23 @@ app.post('/api/ebay/notices/read', (req, res) => {
     let changed = 0;
     store.notices.forEach(n => {
       if (ids.indexOf(n.conversationId) >= 0 && n.read !== read) { n.read = read; changed++; }
+    });
+    if (changed) saveNotices(store);
+    res.json({ ok: true, changed });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// フラグを付ける／外す（1件 / まとめて）
+app.post('/api/ebay/notices/star', (req, res) => {
+  try {
+    const ids = Array.isArray(req.body && req.body.ids) ? req.body.ids.map(String) : [];
+    const starred = !!(req.body && req.body.starred);
+    const store = loadNotices();
+    let changed = 0;
+    store.notices.forEach(n => {
+      if (ids.indexOf(n.conversationId) >= 0 && !!n.starred !== starred) { n.starred = starred; changed++; }
     });
     if (changed) saveNotices(store);
     res.json({ ok: true, changed });
@@ -1599,6 +1618,48 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
     }
     res.json({ ok: !!buyer, buyer, debug: debug ? ebayApi.getLastOrderDebug() : undefined });
   } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ===== キャンセルリクエストに回答する（承認 / 拒否） =====
+// 取り消せない操作なので、送る前に必ず確かめる：
+//  ・そのキャンセルIDが自分のストアのキャンセル一覧に実在すること
+//  ・まだ回答待ち（決着していない）であること
+//  ・バイヤーから来たリクエストであること（自分から出したキャンセルは対象外）
+// 画面の表示が古いまま押されても、ここで止められるようにするため
+app.post('/api/ebay/cancellation/:cancelId/:action', async (req, res) => {
+  const cancelId = String(req.params.cancelId || '').trim();
+  const action = String(req.params.action || '');
+  try {
+    if (!/^[0-9]+$/.test(cancelId)) return res.json({ ok: false, error: 'キャンセルIDが正しくありません' });
+    if (action !== 'approve' && action !== 'reject') return res.json({ ok: false, error: '操作の指定が正しくありません' });
+
+    // 最新の状態で確かめる（記憶している一覧は使わない）
+    ebayApi.clearCancellationCache();
+    const cmap = await ebayApi.getCancellations(180);
+    if (!cmap) return res.json({ ok: false, error: 'eBayからキャンセル情報を取得できませんでした。時間をおいて再度お試しください' });
+    const hit = Object.values(cmap).find(c => String(c.cancelId) === cancelId);
+    if (!hit) return res.json({ ok: false, error: 'このキャンセルリクエストが見つかりません（すでに決着した可能性があります）' });
+    const ci = ebayApi.cancelInfo(hit.state);
+    if (ci.kind !== 'open') return res.json({ ok: false, error: 'このキャンセルはすでに決着しています（' + ci.label + '）' });
+    if (String(hit.initiator || '').toUpperCase().indexOf('SELLER') >= 0) {
+      return res.json({ ok: false, error: '自分から出したキャンセルには、ここから回答できません' });
+    }
+
+    const opts = {};
+    if (action === 'reject' && req.body) {
+      if (req.body.trackingNumber) opts.trackingNumber = String(req.body.trackingNumber).trim();
+      if (req.body.shipmentDate) opts.shipmentDate = String(req.body.shipmentDate);
+    }
+    await ebayApi.respondCancellation(cancelId, action, opts);
+    console.log('[cancel] ' + action + ' 成功 cancelId=' + cancelId);
+
+    // 一覧のキャンセル表示も最新にする
+    try { await refreshCancelMap(); } catch (e) { console.error('[cancel] refreshCancelMap:', e.message); }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[cancel] ' + action + ' 失敗 cancelId=' + cancelId + ':', e.message, e.raw || '');
     res.json({ ok: false, error: e.message });
   }
 });
