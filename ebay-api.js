@@ -1704,6 +1704,55 @@ async function getCancellations(daysBack) {
   }
 }
 
+// ===== Post-Order API: キャンセルリクエストへの回答 =====
+// 承認：POST /post-order/v2/cancellation/{cancelId}/approve（本文なし）
+// 拒否：POST /post-order/v2/cancellation/{cancelId}/reject（発送日・追跡番号は任意）
+// いずれもeBayの公式仕様どおり。成功すると注文の状態が変わるので、
+// キャンセル一覧の記憶（5分）を捨てて、次の取得で最新を取り直す
+function clearCancellationCache() {
+  cancelSearchCache.data = null;
+  cancelSearchCache.at = 0;
+}
+
+async function respondCancellation(cancelId, action, opts) {
+  if (!cancelId) throw new Error('キャンセルIDがありません');
+  if (action !== 'approve' && action !== 'reject') throw new Error('操作の指定が正しくありません');
+  const token = await getAccessToken();
+  const url = 'https://api.ebay.com/post-order/v2/cancellation/'
+    + encodeURIComponent(cancelId) + '/' + action;
+  const body = {};
+  if (action === 'reject' && opts) {
+    if (opts.shipmentDate) body.shipmentDate = { value: opts.shipmentDate };
+    if (opts.trackingNumber) body.trackingNumber = String(opts.trackingNumber);
+  }
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': 'TOKEN ' + token,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+    },
+    body: action === 'reject' && Object.keys(body).length ? JSON.stringify(body) : undefined,
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    // eBayが返した理由をそのまま伝える（推測で言い換えない）
+    let msg = '';
+    try {
+      const j = JSON.parse(text);
+      const e0 = (j.error && j.error[0]) || (j.errors && j.errors[0]) || {};
+      msg = e0.message || e0.longMessage || '';
+    } catch (e) {}
+    const err = new Error(msg || ('eBayが受け付けませんでした（' + res.status + '）'));
+    err.status = res.status;
+    err.raw = text.substring(0, 500);
+    throw err;
+  }
+  clearCancellationCache();
+  return { ok: true, status: res.status };
+}
+
 function sumOrderTaxes(o) {
   const out = { total: 0, currency: '', items: [] };
   if (!o) return out;
@@ -1809,6 +1858,9 @@ function formatOrder(o) {
   return {
     orderId: o.orderId || '',
     orderDate: o.creationDate || '',
+    // 購入時にバイヤーが残したコメント（Buyer's note）。
+    // eBayの仕様で、コメントがあった注文にだけ返る項目
+    buyerNote: o.buyerCheckoutNotes || '',
     marketplace: marketplaceName(pickMarketplaceId(o)),
     marketplaceRaw: pickMarketplaceId(o),
     listingSite: marketplaceName(pickListingMarketplaceId(o)),
@@ -2075,6 +2127,7 @@ async function getBuyerOrderInfo(buyerUsername, daysBack, debug) {
     const info = {
       orderId: o.orderId || '',
       orderDate: o.creationDate || '',
+      buyerNote: o.buyerCheckoutNotes || '',
       marketplace: marketplaceName(pickMarketplaceId(o)),
       marketplaceRaw: pickMarketplaceId(o),
       listingSite: marketplaceName(pickListingMarketplaceId(o)),
@@ -2171,6 +2224,8 @@ module.exports = {
   formatOrder: formatOrder,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
+  respondCancellation: respondCancellation,
+  clearCancellationCache: clearCancellationCache,
   cancelReasonLabel: cancelReasonLabel,
   extractTaxId: extractTaxId,
   getOrderExtras: getOrderExtras,
