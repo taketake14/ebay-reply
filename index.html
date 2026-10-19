@@ -52,7 +52,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .app-logo em{color:var(--teal-mid);font-style:normal;}
 .search-wrap{position:relative;flex:1;max-width:420px;display:flex;align-items:center;}
 .search-icon{position:absolute;left:11px;color:#8fb3ae;display:flex;align-items:center;pointer-events:none;}
-.header-search{width:100%;background:rgba(255,255,255,0.95);border:1px solid rgba(255,255,255,0.35);border-radius:8px;padding:7px 32px 7px 34px;font-size:12.5px;color:#0f2e2b;outline:none;font-family:var(--sans);transition:all 0.13s;}
+.header-search{width:100%;background:rgba(255,255,255,0.95);border:1px solid rgba(255,255,255,0.35);border-radius:8px;padding:7px 36px 7px 34px;font-size:12.5px;color:#0f2e2b;outline:none;font-family:var(--sans);transition:all 0.13s;}
 .header-search::placeholder{color:#94a3b8;}
 .header-search:focus{background:#fff;border-color:#5eead4;box-shadow:0 0 0 3px rgba(94,234,212,0.28);}
 /* 検索中インジケーター */
@@ -68,8 +68,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:#b6c2cc;}
 .cp-text{font-size:13px;color:var(--text3);}
 
-.search-clear{position:absolute;right:8px;background:transparent;border:none;color:#94a3b8;cursor:pointer;font-size:12px;padding:3px 5px;border-radius:4px;line-height:1;display:flex;align-items:center;}
-.search-clear:hover{background:#f1f5f9;color:#334155;}
+/* 検索のクリア。小さく薄いと見つけにくいので、丸い背景つきではっきり見せる */
+.search-clear{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:22px;height:22px;border-radius:50%;
+  background:#cbd5e1;border:none;color:#1e293b;cursor:pointer;font-size:12px;font-weight:800;padding:0;line-height:1;
+  display:flex;align-items:center;justify-content:center;transition:background 0.12s,color 0.12s;}
+.search-clear:hover{background:#64748b;color:#fff;}
 .header-search:focus{border-color:var(--orange);}
 .header-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
 .h-avatar{width:30px;height:30px;border-radius:50%;background:var(--navy3);display:flex;align-items:center;justify-content:center;font-size:12px;color:#cbd5e1;font-weight:500;}
@@ -116,20 +119,30 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s2-side{width:170px;flex-shrink:0;position:relative;transition:width 0.16s ease;}
 
 /* 折りたたみボタン */
-.side-collapse{position:absolute;top:8px;right:6px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:11px;padding:3px 5px;border-radius:4px;line-height:1;z-index:2;transition:all 0.12s;}
-.side-collapse:hover{background:#e6f7f4;color:var(--teal);}
+/* 折りたたみの矢印（分類の列・受信トレイで共通）。
+   帯の高さ（--fold-band）と矢印の大きさ（--fold-btn）を1か所で決め、
+   2つの矢印が開いた時も閉じた時も同じ高さ・同じ大きさになるようにする */
+:root{--fold-band:40px;--fold-btn:24px;}
+.side-collapse,.mini-collapse{
+  width:var(--fold-btn);height:var(--fold-btn);padding:0;border:none;border-radius:5px;
+  background:transparent;color:var(--text3);cursor:pointer;font-size:12px;line-height:1;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:background 0.12s,color 0.12s,transform 0.12s;}
+.side-collapse:hover,.mini-collapse:hover{background:#e6f7f4;color:var(--teal);}
+/* 分類の列：帯の中で上下中央。開いた時は右寄せ、閉じた時は列の中央 */
+.side-collapse{position:absolute;z-index:2;top:calc((var(--fold-band) - var(--fold-btn)) / 2);right:8px;}
 
 /* 折りたたみ時：アイコンと件数だけの細い列 */
 .s2-side.collapsed{width:56px;padding:10px 5px;}
-.s2-side.collapsed .side-collapse{position:static;width:100%;margin-bottom:5px;transform:rotate(180deg);}
+.s2-side.collapsed .side-collapse{right:auto;left:50%;margin-left:calc(var(--fold-btn) / -2);transform:rotate(180deg);}
 .s2-side.collapsed .side-filter{flex-direction:column;gap:3px;padding:8px 4px;justify-content:center;}
 .s2-side.collapsed .sf-label{display:none;}
 .s2-side.collapsed .sf-icon{width:auto;font-size:16px;}
 .s2-side.collapsed .sf-count{font-size:11px;font-weight:700;padding:1px 6px;min-width:22px;}
 
-/* 折りたたみ時は上部に余白を作らない */
-.s2-side{padding-top:30px;}
-.s2-side.collapsed{padding-top:10px;}
+/* 項目は開閉どちらでも矢印の帯の下から始める（開け閉めで位置が動かないように） */
+.s2-side{padding-top:calc(var(--fold-band) + 2px);}
+.s2-side.collapsed{padding-top:calc(var(--fold-band) + 2px);}
 .s1-side-resizer{width:5px;flex-shrink:0;background:#d5efeb;cursor:col-resize;position:relative;transition:background 0.12s;}
 .s1-side-resizer:hover,.s1-side-resizer.dragging{background:var(--teal);}
 .s1-side-resizer::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:28px;background:rgba(255,255,255,0.6);border-radius:2px;}
@@ -228,7 +241,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .chat-event.cancel{background:linear-gradient(135deg,#fff1f2,#fee2e2);border:1.5px solid #f87171;color:#b91c1c;box-shadow:0 2px 8px rgba(248,113,113,0.24);}
 .ce-icon{font-size:17px;line-height:1;}
 .ce-time{font-size:12px;opacity:0.85;font-family:var(--mono);font-weight:600;}
-.ce-reason{display:block;font-size:11px;font-weight:500;opacity:0.85;margin-top:2px;}
+.ce-reason{display:block;font-size:12.5px;font-weight:500;opacity:0.9;margin-top:2px;}
 
 /* 購入イベントカード */
 .chat-event-card{align-self:center;width:min(420px,80%);background:linear-gradient(135deg,#fffbeb,#fef3c7);border:1.5px solid #f5c451;border-radius:14px;padding:12px 15px;margin:8px 0;box-shadow:0 2px 10px rgba(245,196,81,0.26);}
@@ -237,9 +250,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ce-body{display:flex;gap:11px;align-items:flex-start;}
 .ce-thumb{width:52px;height:52px;object-fit:contain;background:#fff;border:1px solid #f0d49a;border-radius:7px;flex-shrink:0;}
 .ce-info{flex:1;min-width:0;}
-.ce-item{font-size:12px;color:#78632e;line-height:1.5;margin-bottom:5px;word-break:break-word;}
+.ce-item{font-size:13px;color:#78632e;line-height:1.5;margin-bottom:5px;word-break:break-word;}
 .ce-links{display:flex;flex-wrap:wrap;gap:6px;}
-.ce-link{font-size:10.5px;color:#8a5a12;background:#fff;border:1px solid #f0d49a;padding:2px 8px;border-radius:10px;text-decoration:none;font-family:var(--mono);}
+.ce-link{font-size:12px;color:#8a5a12;background:#fff;border:1px solid #f0d49a;padding:2px 8px;border-radius:10px;text-decoration:none;font-family:var(--mono);}
 .ce-link:hover{background:#fef3c7;border-color:#e8a838;}
 .ce-note{margin-top:9px;padding:7px 10px;background:#fff;border:1px solid #f0d49a;border-radius:8px;font-size:12.5px;color:#4a3b14;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
 .ce-note-k{display:block;font-size:10.5px;font-weight:800;color:#8a5a12;margin-bottom:2px;}
@@ -267,11 +280,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* キャンセルID・リンク・承認／拒否ボタン（チャット欄と右側パネルで共通） */
 .cancel-alert.has-tools{flex-direction:column;align-items:stretch;gap:7px;}
 .cxl-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:600;}
-.cxl-id{font-size:11.5px;color:#7f1d1d;font-family:var(--mono);}
+.cxl-id{font-size:13.5px;color:#7f1d1d;font-family:var(--mono);}
 .cxl-id a{color:#b91c1c;font-weight:800;text-decoration:underline;}
 .cxl-id a:hover{color:#7f1d1d;}
 .cxl-btns{display:flex;gap:6px;}
-.cxl-btn{font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:var(--sans);border:1px solid;}
+.cxl-btn{font-size:13px;font-weight:700;padding:5px 14px;border-radius:6px;cursor:pointer;font-family:var(--sans);border:1px solid;}
 .cxl-btn.approve{background:#dc2626;border-color:#dc2626;color:#fff;}
 .cxl-btn.approve:hover{background:#b91c1c;}
 .cxl-btn.reject{background:#fff;border-color:#94a3b8;color:#334155;}
@@ -344,7 +357,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 /* 折りたたみ時：画像・SOLD・未読数・フラグだけが見える細い列にする。
    矢印は見出しの中に残し、上端の位置を変えない（左の分類の列と同じ考え方） */
 .mini-list.collapsed{width:78px;}
-.mini-list.collapsed .mini-list-hdr{justify-content:center;padding:8px 4px;}
+.mini-list.collapsed .mini-list-hdr{justify-content:center;padding:0;}
 .mini-list.collapsed .mini-list-title{display:none;}
 .mini-list.collapsed .mini-collapse{transform:rotate(180deg);}
 .mini-list.collapsed .mini-item{padding:9px 4px;justify-content:center;gap:0;}
@@ -354,10 +367,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-list.collapsed .mini-compact{display:flex;align-items:center;justify-content:center;gap:4px;width:56px;margin-top:2px;}
 .mini-compact .unread-pill{margin:0;}
 .mini-compact .mini-star{margin:0;padding:0 1px;}
-.mini-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid #d5efeb;background:#eefaf8;flex-shrink:0;}
+.mini-list-hdr{display:flex;align-items:center;justify-content:space-between;height:var(--fold-band);box-sizing:border-box;padding:0 8px 0 12px;border-bottom:1px solid #d5efeb;background:#eefaf8;flex-shrink:0;}
 .mini-list-title{font-size:12px;font-weight:700;color:#12554e;white-space:nowrap;}
-.mini-collapse{border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:4px;line-height:1;}
-.mini-collapse:hover{background:var(--bg2);color:var(--text);}
+
 .mini-list-body{flex:1;overflow-y:auto;overflow-x:hidden;}
 
 
@@ -513,7 +525,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 }
 /* eBayからの連絡の一覧 */
 /* 行の作りはバイヤー側（.s1-row）と揃える。見た目が変わると迷うため */
-.nt-row{position:relative;display:grid;grid-template-columns:36px 80px 1fr 56px;gap:0;
+.nt-row{position:relative;display:grid;grid-template-columns:36px 64px 80px 1fr;gap:0;
   padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;
   font-size:14px;transition:background 0.1s;}
 .nt-row:hover{background:var(--bg2);}
@@ -522,6 +534,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .nt-cb-cell{display:flex;align-items:center;justify-content:center;}
 .nt-cb{cursor:pointer;width:15px;height:15px;accent-color:var(--orange);}
 .nt-title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:10px;}
+/* 見出し「フラグ」は1行で中央に（幅が狭いと2行に折れるため、折り返さない） */
+.s1-th.nt-th-flag{text-align:center;white-space:nowrap;padding-left:0;padding-right:0;letter-spacing:0;}
 .nt-reply{display:inline-block;font-size:11px;font-weight:700;color:var(--teal);
   border:1px solid #99f6e4;background:#f0fdfa;
   border-radius:4px;padding:1px 7px;margin-right:8px;vertical-align:1px;}
@@ -1057,6 +1071,7 @@ a.kv-v:hover{text-decoration:underline;}
         <div class="sf-group">eBayからの連絡</div>
         <button class="side-filter" onclick="setFilter('notice-all',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h14"/><path d="M3 10h14"/><path d="M3 14.5h14"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="cnt-notice-all">0</span><span class="sf-more" title="この分類の操作" onclick="event.stopPropagation();openNoticeMenu(this)">&#8943;</span></button>
         <button class="side-filter" onclick="setFilter('notice-unread',this)"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="cnt-notice-unread">0</span></button>
+        <button class="side-filter" onclick="setFilter('notice-starred',this)"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="cnt-notice-starred">0</span></button>
       </div>
       <div class="s1-side-resizer" id="s1-side-resizer"></div>
       <div class="s1-listwrap">
@@ -1139,6 +1154,7 @@ a.kv-v:hover{text-decoration:underline;}
         <div class="sf-group">eBayからの連絡</div>
         <button class="side-filter" onclick="goNotices('notice-all')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5h14"/><path d="M3 10h14"/><path d="M3 14.5h14"/></svg></span><span class="sf-label">すべて</span><span class="sf-count" id="mcnt-notice-all">0</span></button>
         <button class="side-filter" onclick="goNotices('notice-unread')"><span class="sf-icon"><svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.5h15v9h-15z"/><path d="M2.5 6l7.5 5 7.5-5"/></svg></span><span class="sf-label">未読</span><span class="sf-count" id="mcnt-notice-unread">0</span></button>
+        <button class="side-filter" title="フラグ" onclick="goNotices('notice-starred')"><span class="sf-icon">&#9733;</span><span class="sf-label">フラグ</span><span class="sf-count" id="mcnt-notice-starred">0</span></button>
     </div>
 
     <!-- ミニ受信リスト（開いたまま次のメッセージへ移動できる） -->
@@ -1802,7 +1818,7 @@ function clearSearch(){
 function renderList(){
   if(typeof updateFilterCounts==='function') updateFilterCounts();
   // eBayの一覧から戻ったときに、見出し行をバイヤー用へ戻す
-  if(currentFilter!=='notice-all' && currentFilter!=='notice-unread'){
+  if(!isNoticeFilter(currentFilter)){
     var hdr0=document.getElementById('s1-table-header-row');
     if(hdr0 && hdr0.getAttribute('data-mode')==='notice'){
       hdr0.removeAttribute('data-mode');
@@ -1814,14 +1830,13 @@ function renderList(){
     if(nb) nb.style.display='none';
   }
   // eBayからの連絡はバイヤーとは別のデータなので、専用の描画に切り替える
-  if(currentFilter==='notice-all' || currentFilter==='notice-unread'){
-    var onlyUnread=(currentFilter==='notice-unread');
+  if(isNoticeFilter(currentFilter)){
     if(!noticeLoaded){
       var el0=document.getElementById('msg-list');
       if(el0) el0.innerHTML='<div class="s1-empty">読み込んでいます...</div>';
-      loadNotices().then(function(){ renderNoticeList(onlyUnread); });
+      loadNotices().then(function(){ renderNoticeList(); });
     }else{
-      renderNoticeList(onlyUnread);
+      renderNoticeList();
     }
     var mc=document.getElementById('msg-count');
     if(mc) mc.textContent='eBayからの連絡';
@@ -2520,14 +2535,28 @@ async function loadNotices(force){
   return noticeList;
 }
 
+// eBayからの連絡の分類。分類の判定はここだけで行う。
+// 画面ごとに条件を書くと、分類を足したときに書き漏れて表示がずれるため
+var NOTICE_FILTERS={
+  'notice-all':     function(n){ return true; },
+  'notice-unread':  function(n){ return !n.read; },
+  'notice-starred': function(n){ return !!n.starred; }
+};
+function isNoticeFilter(f){ return Object.prototype.hasOwnProperty.call(NOTICE_FILTERS, f); }
+// 今選んでいる分類に入る連絡の一覧
+function noticeFiltered(){
+  var fn=NOTICE_FILTERS[currentFilter] || NOTICE_FILTERS['notice-all'];
+  return noticeList.filter(fn);
+}
+
 function updateNoticeCounts(){
-  var unread=noticeList.filter(function(n){return !n.read;}).length;
-  if(typeof setUnreadBadge==='function'){
-    setUnreadBadge('cnt-notice-all', unread);
-    setUnreadBadge('cnt-notice-unread', unread);
-    setUnreadBadge('mcnt-notice-all', unread);
-    setUnreadBadge('mcnt-notice-unread', unread);
-  }
+  if(typeof setUnreadBadge!=='function') return;
+  // バイヤー側と同じく、件数は「その分類の中の未読数」で揃える
+  Object.keys(NOTICE_FILTERS).forEach(function(k){
+    var n=noticeList.filter(function(x){ return NOTICE_FILTERS[k](x) && !x.read; }).length;
+    setUnreadBadge('cnt-'+k, n);
+    setUnreadBadge('mcnt-'+k, n);
+  });
 }
 
 // メッセージ画面から、受信トレイのeBay一覧へ移動する。
@@ -2539,25 +2568,29 @@ function goNotices(f){
   renderList();
 }
 
-function renderNoticeList(onlyUnread){
+// 一覧と見出しで同じ列幅を使う（ずれないよう1か所で決める）
+var NOTICE_GRID='36px 64px 80px 1fr';
+function renderNoticeList(){
   var el=document.getElementById('msg-list');
   if(!el) return;
   // 見出し行を差し替える（バイヤー用の列見出しは隠す）
   var hdr=document.getElementById('s1-table-header-row');
   if(hdr){
     hdr.style.display='grid';
-    hdr.style.gridTemplateColumns='36px 80px 1fr 56px';
+    hdr.style.gridTemplateColumns=NOTICE_GRID;
     hdr.setAttribute('data-mode','notice');
     hdr.innerHTML='<div class="s1-th" style="text-align:center;border-right:none;">'
       +'<input type="checkbox" id="nt-check-all" onchange="toggleNoticeCheckAll(this)" '
       +'style="cursor:pointer;width:15px;height:15px;accent-color:var(--teal);"></div>'
+      +'<div class="s1-th nt-th-flag">フラグ</div>'
       +'<div class="s1-th" style="text-align:center;">日付</div>'
-      +'<div class="s1-th">件名</div>'
-      +'<div class="s1-th" style="text-align:center;border-right:none;">フラグ</div>';
+      +'<div class="s1-th" style="border-right:none;">件名</div>';
   }
-  var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
+  var list=noticeFiltered();
   if(!list.length){
-    el.innerHTML='<div class="s1-empty">eBayからの連絡はありません</div>';
+    el.innerHTML='<div class="s1-empty">'+(currentFilter==='notice-starred'
+      ? 'フラグを付けたeBayからの連絡はありません'
+      : 'eBayからの連絡はありません')+'</div>';
     return;
   }
   el.innerHTML=list.map(function(n){
@@ -2573,13 +2606,13 @@ function renderNoticeList(onlyUnread){
     return '<div class="nt-row '+(n.read?'read':'unread')+'" onclick="openNotice(\''+id+'\')">'
       +'<div class="nt-cb-cell"><input type="checkbox" class="nt-cb"'+(ck?' checked':'')
         +' onclick="toggleNoticeCheck(\''+id+'\',event)"></div>'
+      +'<div class="s1-col-flag"><button class="s1-star-btn '+(n.starred?'on':'')+'" onclick="toggleNoticeStar(\''+id+'\',event)" title="'+(n.starred?'フラグを外す':'フラグを付ける')+'">'+(n.starred?'&#9733;':'&#9734;')+'</button></div>'
       +'<div class="s1-time-cell">'
         +((!n.read)?'<span class="s1-unread-dot"></span>':'<span class="s1-read-dot"></span>')
         +'<span class="s1-date">'+esc(md)+'</span>'
         +'<span class="s1-time">'+esc(hm)+'</span>'
       +'</div>'
       +'<span class="nt-title">'+(n.isReply?'<span class="nt-reply">やり取り</span>':'')+esc(n.title)+'</span>'
-      +'<div class="s1-col-flag"><button class="s1-star-btn '+(n.starred?'on':'')+'" onclick="toggleNoticeStar(\''+id+'\',event)" title="'+(n.starred?'フラグを外す':'フラグを付ける')+'">'+(n.starred?'&#9733;':'&#9734;')+'</button></div>'
       +'</div>';
   }).join('');
   var ca=document.getElementById('nt-check-all');
@@ -2597,14 +2630,13 @@ function toggleNoticeCheck(cid, ev){
 }
 
 function toggleNoticeCheckAll(cb){
-  var onlyUnread=(currentFilter==='notice-unread');
-  var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
+  var list=noticeFiltered();
   list.forEach(function(n){
     if(cb.checked) noticeChecked.add(String(n.conversationId));
     else noticeChecked.delete(String(n.conversationId));
   });
   updateNoticeBulkBar();
-  renderNoticeList(onlyUnread);
+  renderNoticeList();
 }
 
 function clearNoticeChecks(){
@@ -2612,7 +2644,7 @@ function clearNoticeChecks(){
   var ca=document.getElementById('nt-check-all');
   if(ca) ca.checked=false;
   updateNoticeBulkBar();
-  renderNoticeList(currentFilter==='notice-unread');
+  renderNoticeList();
 }
 
 function updateNoticeBulkBar(){
@@ -2642,7 +2674,7 @@ async function bulkNoticeRead(readVal){
     // 保存できていないのに画面だけ変えると事実と食い違うので元に戻す
     changed.forEach(function(n){ n.read=!readVal; });
     updateNoticeCounts();
-    renderNoticeList(currentFilter==='notice-unread');
+    renderNoticeList();
     alert('保存に失敗しました。\n'+e.message+'\n\n画面を元に戻しました。');
   }
 }
@@ -2673,11 +2705,13 @@ function toggleNoticeStar(cid, ev){
   if(!n) return;
   var next=!n.starred;
   n.starred=next;
-  renderNoticeList(currentFilter==='notice-unread');
+  updateNoticeCounts();
+  renderNoticeList();
   updateNoticeStarBtn();
   function rollback(){
     n.starred=!next;
-    renderNoticeList(currentFilter==='notice-unread');
+    updateNoticeCounts();
+    renderNoticeList();
     updateNoticeStarBtn();
     alert('フラグを保存できませんでした。時間をおいて再度お試しください。');
   }
@@ -2698,7 +2732,7 @@ async function openNotice(cid){
   if(n && !n.read){
     n.read=true;
     updateNoticeCounts();
-    renderNoticeList(currentFilter==='notice-unread');   // 分類に関わらず見た目を更新する
+    renderNoticeList();   // 分類に関わらず見た目を更新する
     fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ids:[String(cid)],read:true})})
       .then(function(x){return x.json();})
@@ -2707,13 +2741,13 @@ async function openNotice(cid){
           // 保存できていないのに既読に見せると事実と食い違うので戻す
           n.read=false;
           updateNoticeCounts();
-          renderNoticeList(currentFilter==='notice-unread');
+          renderNoticeList();
         }
       })
       .catch(function(){
         n.read=false;
         updateNoticeCounts();
-        renderNoticeList(currentFilter==='notice-unread');
+        renderNoticeList();
       });
   }
 
@@ -2838,14 +2872,14 @@ async function markNoticesRead(){
   if(!confirm('eBayからの連絡の未読 '+targets.length+' 件を既読にします。\nよろしいですか？')) return;
   targets.forEach(function(n){ n.read=true; });
   updateNoticeCounts();
-  renderNoticeList(currentFilter==='notice-unread');
+  renderNoticeList();
   try{
     await fetch('/api/ebay/notices/read',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({ids:targets.map(function(n){return n.conversationId;}),read:true})});
   }catch(e){
     targets.forEach(function(n){ n.read=false; });
     updateNoticeCounts();
-    renderNoticeList(currentFilter==='notice-unread');
+    renderNoticeList();
     alert('既読の保存に失敗しました。画面を元に戻しました。');
   }
 }
