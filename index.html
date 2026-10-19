@@ -241,6 +241,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ce-links{display:flex;flex-wrap:wrap;gap:6px;}
 .ce-link{font-size:10.5px;color:#8a5a12;background:#fff;border:1px solid #f0d49a;padding:2px 8px;border-radius:10px;text-decoration:none;font-family:var(--mono);}
 .ce-link:hover{background:#fef3c7;border-color:#e8a838;}
+.ce-note{margin-top:9px;padding:7px 10px;background:#fff;border:1px solid #f0d49a;border-radius:8px;font-size:12.5px;color:#4a3b14;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
+.ce-note-k{display:block;font-size:10.5px;font-weight:800;color:#8a5a12;margin-bottom:2px;}
+.buyer-note-row{align-items:flex-start;}
+.kv-v.buyer-note{white-space:pre-wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 7px;}
 
 /* キャンセルイベントの色分け */
 .chat-event.cancel-open{background:linear-gradient(135deg,#fff1f2,#fee2e2);border:1.5px solid #f87171;color:#b91c1c;box-shadow:0 2px 8px rgba(248,113,113,0.24);}
@@ -260,6 +264,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* キャンセル注意喚起 */
 .cancel-alert{display:flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fca5a5;border-left:3px solid #dc2626;color:#b91c1c;font-size:12px;font-weight:700;padding:7px 11px;border-radius:7px;margin-bottom:10px;}
+/* キャンセルID・リンク・承認／拒否ボタン（チャット欄と右側パネルで共通） */
+.cancel-alert.has-tools{flex-direction:column;align-items:stretch;gap:7px;}
+.cxl-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-weight:600;}
+.cxl-id{font-size:11.5px;color:#7f1d1d;font-family:var(--mono);}
+.cxl-id a{color:#b91c1c;font-weight:800;text-decoration:underline;}
+.cxl-id a:hover{color:#7f1d1d;}
+.cxl-btns{display:flex;gap:6px;}
+.cxl-btn{font-size:12px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;font-family:var(--sans);border:1px solid;}
+.cxl-btn.approve{background:#dc2626;border-color:#dc2626;color:#fff;}
+.cxl-btn.approve:hover{background:#b91c1c;}
+.cxl-btn.reject{background:#fff;border-color:#94a3b8;color:#334155;}
+.cxl-btn.reject:hover{background:#f1f5f9;}
+.cxl-btn:disabled{opacity:0.55;cursor:default;}
+.chat-event.has-tools{flex-direction:column;gap:7px;border-radius:14px;padding:10px 18px;}
+.chat-event.has-tools .cxl-tools{justify-content:center;}
 
 /* 返信済み列 */
 .s1-replied-cell{display:flex;align-items:center;justify-content:center;}
@@ -322,7 +341,19 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* ===== ミニ受信リスト（チャット画面の最左） ===== */
 .mini-list{width:290px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
-.mini-list.collapsed{width:0;border-right:none;}
+/* 折りたたみ時：画像・SOLD・未読数・フラグだけが見える細い列にする。
+   矢印は見出しの中に残し、上端の位置を変えない（左の分類の列と同じ考え方） */
+.mini-list.collapsed{width:78px;}
+.mini-list.collapsed .mini-list-hdr{justify-content:center;padding:8px 4px;}
+.mini-list.collapsed .mini-list-title{display:none;}
+.mini-list.collapsed .mini-collapse{transform:rotate(180deg);}
+.mini-list.collapsed .mini-item{padding:9px 4px;justify-content:center;gap:0;}
+.mini-list.collapsed .mini-info{display:none;}
+.mini-list.collapsed .mini-cancel-tag{display:none;}
+.mini-compact{display:none;}
+.mini-list.collapsed .mini-compact{display:flex;align-items:center;justify-content:center;gap:4px;width:56px;margin-top:2px;}
+.mini-compact .unread-pill{margin:0;}
+.mini-compact .mini-star{margin:0;padding:0 1px;}
 .mini-list-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 12px;border-bottom:1px solid #d5efeb;background:#eefaf8;flex-shrink:0;}
 .mini-list-title{font-size:12px;font-weight:700;color:#12554e;white-space:nowrap;}
 .mini-collapse{border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:12px;padding:2px 5px;border-radius:4px;line-height:1;}
@@ -331,10 +362,6 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 
 
-/* 折りたたみ時に出る展開ボタン */
-.mini-expand{display:none;width:20px;flex-shrink:0;border:none;border-right:1px solid var(--border);background:var(--bg3);color:var(--text3);cursor:pointer;font-size:12px;padding:0;}
-.mini-expand:hover{background:var(--accent-light);color:var(--accent);}
-.mini-list.collapsed + .mini-expand{display:block;}
 
 /* リスト項目 */
 .mini-item{position:relative;display:flex;gap:10px;padding:12px 11px 12px 15px;align-items:flex-start;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.1s;}
@@ -486,7 +513,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 }
 /* eBayからの連絡の一覧 */
 /* 行の作りはバイヤー側（.s1-row）と揃える。見た目が変わると迷うため */
-.nt-row{position:relative;display:grid;grid-template-columns:36px 80px 1fr;gap:0;
+.nt-row{position:relative;display:grid;grid-template-columns:36px 80px 1fr 56px;gap:0;
   padding:14px 18px;border-bottom:1px solid #e8ecf0;cursor:pointer;align-items:center;
   font-size:14px;transition:background 0.1s;}
 .nt-row:hover{background:var(--bg2);}
@@ -507,6 +534,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .nt-head-t{font-size:15px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .nt-close{border:none;background:#eef2f6;color:#475569;border-radius:7px;width:30px;height:30px;cursor:pointer;font-size:15px;}
 .nt-close:hover{background:#e2e8f0;}
+.nt-star{border:none;background:transparent;color:#cbd5e1;cursor:pointer;font-size:22px;line-height:1;padding:0 4px;transition:color 0.12s,transform 0.1s;}
+.nt-star:hover,.nt-star.on{color:#e8a838;}
+.nt-star:active{transform:scale(0.88);}
 .nt-body{flex:1;min-height:0;border:none;width:100%;}
 .nt-foot{padding:12px 18px;border-top:1px solid var(--border);background:var(--bg2);
   display:flex;gap:14px;align-items:center;}
@@ -530,6 +560,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .att-clip{flex-shrink:0;}
 .att-chip{display:inline-flex;align-items:center;gap:3px;font-size:11px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:3px 4px 3px 9px;max-width:150px;line-height:1.5;flex-shrink:0;}
 .att-chip .an{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.att-chip .an.clickable{cursor:pointer;color:var(--teal);text-decoration:underline;text-underline-offset:2px;}
+.att-chip .an.clickable:hover{color:var(--teal-dark,#0f766e);}
 .att-chip .as{color:var(--text3);font-size:10px;flex-shrink:0;}
 .att-chip .ax{border:none;background:#eef2f6;color:#64748b;border-radius:50%;width:15px;height:15px;line-height:1;cursor:pointer;flex-shrink:0;font-size:9px;padding:0;}
 .att-chip .ax:hover{background:#fee2e2;color:#b91c1c;}
@@ -1113,11 +1145,10 @@ a.kv-v:hover{text-decoration:underline;}
     <div class="mini-list" id="mini-list">
       <div class="mini-list-hdr">
         <span class="mini-list-title">受信トレイ</span>
-        <button class="mini-collapse" onclick="toggleMiniList()" title="リストを折りたたむ">&#10094;</button>
+        <button class="mini-collapse" id="btn-mini-collapse" onclick="toggleMiniList()" title="リストを折りたたむ">&#10094;</button>
       </div>
       <div class="mini-list-body" id="mini-list-body"></div>
     </div>
-    <button class="mini-expand" id="mini-expand" onclick="toggleMiniList()" title="受信リストを表示">&#10095;</button>
 
     <!-- 左パネル：商品・バイヤー・メモ情報 -->
     <div class="s2-right-panel" id="right-panel" style="width:290px;">
@@ -1261,6 +1292,7 @@ a.kv-v:hover{text-decoration:underline;}
   <div class="nt-box">
     <div class="nt-head">
       <div class="nt-head-t" id="nt-title">　</div>
+      <button class="nt-star" id="nt-star" onclick="toggleNoticeStar(noticeOpenId,event)" title="フラグを付ける">&#9734;</button>
       <button class="nt-close" onclick="closeNotice()" title="閉じる">&#10005;</button>
     </div>
     <!-- sandbox で script と外部通信を止めつつ、翻訳のため中身を読めるようにする -->
@@ -1547,6 +1579,7 @@ function showChat(){
     var col=localStorage.getItem('ebay_mini_collapsed')==='1';
     var ml=document.getElementById('mini-list');
     if(ml){ if(col) ml.classList.add('collapsed'); else ml.classList.remove('collapsed'); }
+    if(typeof updateMiniCollapseTitle==='function') updateMiniCollapseTitle();
     var sc=localStorage.getItem('ebay_side_collapsed')==='1';
     var sd=document.getElementById('s2-side');
     if(sd){ if(sc) sd.classList.add('collapsed'); else sd.classList.remove('collapsed'); }
@@ -1989,6 +2022,13 @@ function renderMiniList(){
         if(cn && cn.short) return '<span class="mini-cancel-tag '+(cn.kind||'open')+'" title="'+esc(cn.label||'')+'">'+esc(cn.short.replace('キャンセル',''))+'</span>';
         return '';
       })()
+      // 折りたたみ時だけ見える：未読数とフラグ（通常時は右側の同じボタンを使う）
+      +'<div class="mini-compact">'
+        +((!m.read)
+          ? '<button class="unread-pill mini clickable" onclick="event.stopPropagation();markReadIdx('+ri+')" title="既読にする">'+Math.max(1,m.unreadCount||0)+'</button>'
+          : '')
+        +'<button class="mini-star '+(m.starred?'on':'')+'" onclick="event.stopPropagation();toggleStarIdx('+ri+')" title="'+(m.starred?'フラグを外す':'フラグを付ける')+'">'+(m.starred?'&#9733;':'&#9734;')+'</button>'
+      +'</div>'
       +'</div>';
     // 日付を M/D 形式に
     var dstr='';
@@ -2046,7 +2086,13 @@ function toggleMiniList(){
   var ml=document.getElementById('mini-list');
   if(!ml) return;
   ml.classList.toggle('collapsed');
+  updateMiniCollapseTitle();
   try{ localStorage.setItem('ebay_mini_collapsed', ml.classList.contains('collapsed')?'1':'0'); }catch(e){}
+}
+function updateMiniCollapseTitle(){
+  var ml=document.getElementById('mini-list');
+  var b=document.getElementById('btn-mini-collapse');
+  if(ml && b) b.title = ml.classList.contains('collapsed') ? 'リストを広げる' : 'リストを折りたたむ';
 }
 
 // ===== 受信トレイ サイドバーの幅調整 =====
@@ -2500,13 +2546,14 @@ function renderNoticeList(onlyUnread){
   var hdr=document.getElementById('s1-table-header-row');
   if(hdr){
     hdr.style.display='grid';
-    hdr.style.gridTemplateColumns='36px 80px 1fr';
+    hdr.style.gridTemplateColumns='36px 80px 1fr 56px';
     hdr.setAttribute('data-mode','notice');
     hdr.innerHTML='<div class="s1-th" style="text-align:center;border-right:none;">'
       +'<input type="checkbox" id="nt-check-all" onchange="toggleNoticeCheckAll(this)" '
       +'style="cursor:pointer;width:15px;height:15px;accent-color:var(--teal);"></div>'
       +'<div class="s1-th" style="text-align:center;">日付</div>'
-      +'<div class="s1-th" style="border-right:none;">件名</div>';
+      +'<div class="s1-th">件名</div>'
+      +'<div class="s1-th" style="text-align:center;border-right:none;">フラグ</div>';
   }
   var list=noticeList.filter(function(n){ return onlyUnread ? !n.read : true; });
   if(!list.length){
@@ -2532,6 +2579,7 @@ function renderNoticeList(onlyUnread){
         +'<span class="s1-time">'+esc(hm)+'</span>'
       +'</div>'
       +'<span class="nt-title">'+(n.isReply?'<span class="nt-reply">やり取り</span>':'')+esc(n.title)+'</span>'
+      +'<div class="s1-col-flag"><button class="s1-star-btn '+(n.starred?'on':'')+'" onclick="toggleNoticeStar(\''+id+'\',event)" title="'+(n.starred?'フラグを外す':'フラグを付ける')+'">'+(n.starred?'&#9733;':'&#9734;')+'</button></div>'
       +'</div>';
   }).join('');
   var ca=document.getElementById('nt-check-all');
@@ -2607,8 +2655,43 @@ function noticeWhen(iso){
     +String(dt.getHours()).padStart(2,'0')+':'+String(dt.getMinutes()).padStart(2,'0');
 }
 
+// ===== eBayからの連絡：フラグ =====
+// 表示を先に切り替え、保存に失敗したら元に戻す（既読と同じ考え方。事実と食い違わせない）
+var noticeOpenId='';
+function updateNoticeStarBtn(){
+  var b=document.getElementById('nt-star');
+  if(!b) return;
+  var n=noticeList.find(function(x){return String(x.conversationId)===String(noticeOpenId);});
+  var on=!!(n && n.starred);
+  b.classList.toggle('on', on);
+  b.innerHTML = on ? '&#9733;' : '&#9734;';
+  b.title = on ? 'フラグを外す' : 'フラグを付ける';
+}
+function toggleNoticeStar(cid, ev){
+  if(ev) ev.stopPropagation();
+  var n=noticeList.find(function(x){return String(x.conversationId)===String(cid);});
+  if(!n) return;
+  var next=!n.starred;
+  n.starred=next;
+  renderNoticeList(currentFilter==='notice-unread');
+  updateNoticeStarBtn();
+  function rollback(){
+    n.starred=!next;
+    renderNoticeList(currentFilter==='notice-unread');
+    updateNoticeStarBtn();
+    alert('フラグを保存できませんでした。時間をおいて再度お試しください。');
+  }
+  fetch('/api/ebay/notices/star',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ids:[String(cid)],starred:next})})
+    .then(function(x){return x.json();})
+    .then(function(r){ if(!r || !r.ok) rollback(); })
+    .catch(rollback);
+}
+
 async function openNotice(cid){
   var n=noticeList.find(function(x){return String(x.conversationId)===String(cid);});
+  noticeOpenId=String(cid);
+  updateNoticeStarBtn();
 
   // 既読にするのは本文の読み込みを待たず、開いた瞬間に行う。
   // 読み込み後にしていたため、数秒たたないと一覧に反映されなかった
@@ -2908,7 +2991,10 @@ function attachHtml(media){
 var imgvGroup=null, imgvIdx=0;
 
 function openImgViewer(gid, idx){
-  var g=attachGroups[gid];
+  openImgGroup(attachGroups[gid], idx);
+}
+// g：[{url, name}, ...]
+function openImgGroup(g, idx){
   if(!g || !g.length) return;
   imgvGroup=g; imgvIdx=Math.max(0, Math.min(idx, g.length-1));
   document.getElementById('imgv').classList.add('on');
@@ -2919,9 +3005,14 @@ function openImgViewer(gid, idx){
 function renderImgViewer(){
   if(!imgvGroup) return;
   var a=imgvGroup[imgvIdx];
-  document.getElementById('imgv-img').src=a.url;
-  document.getElementById('imgv-img').alt=a.name;
-  document.getElementById('imgv-name').textContent=a.name;
+  var img=document.getElementById('imgv-img');
+  var nameEl=document.getElementById('imgv-name');
+  // TIFFなど、eBayには送れてもブラウザでは表示できない形式がある。
+  // 黙って空白にせず、表示できないことを伝える
+  img.onerror=function(){ nameEl.textContent=a.name+'（この形式はブラウザで表示できません）'; };
+  img.src=a.url;
+  img.alt=a.name;
+  nameEl.textContent=a.name;
   document.getElementById('imgv-pos').textContent=(imgvIdx+1)+' / '+imgvGroup.length;
   document.getElementById('imgv-dl').href=a.url;   // すでに原寸を指している
   // この吹き出しの中だけを送り見する。端まで来たら止まる
@@ -3155,6 +3246,72 @@ function updateScrollBtn(){
   else btn.classList.remove('show');
 }
 
+// ===== キャンセルリクエスト：ID・eBayのページ・承認／拒否 =====
+// eBayのキャンセル詳細ページ。eBayから届くキャンセル通知メールのリンクと同じ形
+function cancelPageUrl(cancelId){
+  return 'https://www.ebay.com/Cancel/Details?cancelId='+encodeURIComponent(cancelId);
+}
+// actionable：回答待ちで、バイヤーから来たリクエストのときだけ承認・拒否を出す
+function cancelToolsHtml(cancelId, actionable){
+  var id=esc(String(cancelId));
+  var h='<div class="cxl-tools">'
+    +'<span class="cxl-id">キャンセルID <a href="'+esc(cancelPageUrl(cancelId))+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="eBayのキャンセルページを開く">'+id+'</a></span>';
+  if(actionable){
+    h+='<span class="cxl-btns">'
+      +'<button class="cxl-btn approve" onclick="event.stopPropagation();respondCancel(\'approve\',\''+id+'\',this)">承認する</button>'
+      +'<button class="cxl-btn reject" onclick="event.stopPropagation();respondCancel(\'reject\',\''+id+'\',this)">拒否する</button>'
+      +'</span>';
+  }
+  return h+'</div>';
+}
+
+var cancelBusy=false;
+async function respondCancel(action, cancelId, btn){
+  if(cancelBusy) return;
+  var opts={};
+  if(action==='approve'){
+    if(!confirm('キャンセルを承認します。\n\n注文はキャンセルされ、eBayからバイヤーに通知されます。\nこの操作は取り消せません。よろしいですか？')) return;
+  } else {
+    // 発送済みなら追跡番号を伝えるのがeBayの推奨。入力は任意
+    var tn=prompt('キャンセルを拒否します（取引はそのまま続きます）。\nこの操作は取り消せません。\n\n発送済みの場合は追跡番号を入力してください（空欄のままでも拒否できます）。', '');
+    if(tn===null) return;   // キャンセルを押した
+    tn=String(tn).trim();
+    if(tn) opts.trackingNumber=tn;
+  }
+  cancelBusy=true;
+  // 同じキャンセルのボタンはすべて押せなくする（チャット欄と右側の二重押しを防ぐ）
+  var allBtns=document.querySelectorAll('.cxl-btn');
+  allBtns.forEach(function(b){ b.disabled=true; });
+  if(btn) btn.textContent='送信中...';
+  try{
+    var r=await fetch('/api/ebay/cancellation/'+encodeURIComponent(cancelId)+'/'+action,{
+      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(opts)
+    });
+    var d=await r.json();
+    if(!d || !d.ok){
+      alert((action==='approve'?'承認':'拒否')+'できませんでした。\n\n'+((d&&d.error)||'原因不明のエラーです'));
+      allBtns.forEach(function(b){ b.disabled=false; });
+      if(btn) btn.textContent=(action==='approve'?'承認する':'拒否する');
+      return;
+    }
+    alert(action==='approve'?'キャンセルを承認しました。':'キャンセルを拒否しました。');
+    // 表示を最新にする。購入者情報の記憶を捨てて取り直す
+    var m=(currentIdx!==null)?messages[currentIdx]:null;
+    var buyer=m?m.buyer:'';
+    Object.keys(buyerDetailCache).forEach(function(k){
+      if(buyer && k.indexOf(buyer+'|')===0) delete buyerDetailCache[k];
+    });
+    if(typeof window.loadFromSheet==='function') await window.loadFromSheet();
+    if(currentIdx!==null && messages[currentIdx]) loadBuyerDetail(messages[currentIdx].buyer, currentIdx);
+  }catch(e){
+    alert((action==='approve'?'承認':'拒否')+'できませんでした。\n\n'+e.message);
+    allBtns.forEach(function(b){ b.disabled=false; });
+    if(btn) btn.textContent=(action==='approve'?'承認する':'拒否する');
+  }finally{
+    cancelBusy=false;
+  }
+}
+
 function fmtTime(t){
   if(!t) return '';
   var d=new Date(t);
@@ -3202,7 +3359,8 @@ function renderChatBubbles(){
     if(!isNaN(ot)){
       evts.push({
         type:'event', kind:'buy', text:'ご購入いただきました', ts:ot, ord:-1,
-        item:m.item||'', img:m.imgUrl||'', itemId:m.itemId||'', orderId:m.orderIdForEvent||''
+        item:m.item||'', img:m.imgUrl||'', itemId:m.itemId||'', orderId:m.orderIdForEvent||'',
+        note:m.buyerNote||''
       });
     }
   }
@@ -3220,11 +3378,13 @@ function renderChatBubbles(){
     if(m.cancelKind==='open'){
       var openText = bySeller ? 'キャンセルを申請しました（自分から）' : m.cancelLabel;
       if(!isNaN(reqTs)){
-        evts.push({type:'event',kind:'cancel-open',text:openText,ts:reqTs,ord:0,reason:m.cancelReasonLabel||''});
+        evts.push({type:'event',kind:'cancel-open',text:openText,ts:reqTs,ord:0,reason:m.cancelReasonLabel||'',
+          cancelId:m.cancelId||'', actionable:!bySeller});
       } else {
         // 日時がAPIから取得できない場合は先頭に固定表示する
         // （末尾に置くと「最後に起きた」と誤解されるため）
-        evts.push({type:'event',kind:'cancel-open',text:openText,ts:0,ord:-99,pinned:true});
+        evts.push({type:'event',kind:'cancel-open',text:openText,ts:0,ord:-99,pinned:true,
+          cancelId:m.cancelId||'', actionable:!bySeller});
       }
     } else {
       // 決着済み
@@ -3237,7 +3397,8 @@ function renderChatBubbles(){
         else { reqTs=lastTsOf()+1000; }
         reqNoTime=true;
       }
-      evts.push({type:'event',kind:'cancel-open',text:reqText,ts:reqTs,ord:0,noTime:reqNoTime,reason:m.cancelReasonLabel||''});
+      evts.push({type:'event',kind:'cancel-open',text:reqText,ts:reqTs,ord:0,noTime:reqNoTime,reason:m.cancelReasonLabel||'',
+        cancelId:m.cancelId||'', actionable:false});
 
       // 完了日時が無い場合は依頼直後に置く（末尾に飛ばさない）
       var closedNoTime=false;
@@ -3282,14 +3443,19 @@ function renderChatBubbles(){
               +(links?'<div class="ce-links">'+links+'</div>':'')
             +'</div>'
           +'</div>'
+          // 購入時にバイヤーが残したコメント
+          +(h.note?'<div class="ce-note"><span class="ce-note-k">Buyer\'s note</span>'+esc(h.note)+'</div>':'')
         +'</div>';
       } else {
-        html+='<div class="chat-event '+h.kind+'">'
+        var cxl=h.cancelId ? cancelToolsHtml(h.cancelId, h.actionable) : '';
+        html+='<div class="chat-event '+h.kind+(cxl?' has-tools':'')+'">'
+          +(cxl?'<div style="display:flex;align-items:center;gap:9px;">':'')
           +'<span class="ce-icon">'+(ICONS[h.kind]||'&#9888;&#65039;')+'</span>'
           +'<span class="ce-text">'+esc(h.text)
             +(h.reason?'<span class="ce-reason">理由: '+esc(h.reason)+'</span>':'')
           +'</span>'
           +timeHtml
+          +(cxl?'</div>'+cxl:'')
         +'</div>';
       }
       return;
@@ -3856,8 +4022,10 @@ async function loadBuyerDetail(buyer, idx){
       // 購入情報が届いても描き直されず「ご購入いただきました」が出なかった
       var prevCancelLabel=mm.cancelLabel||'';
       var prevOrderDate=mm.orderDate||'';
+      var prevBuyerNote=mm.buyerNote||'';
       mm.orderDate=info.orderDate||'';
       mm.orderIdForEvent=info.orderId||'';
+      mm.buyerNote=info.buyerNote||'';
       mm.cancelLabel=info.cancelLabel||'';
       mm.cancelKind=info.cancelKind||'';
       mm.cancelShort=info.cancelShort||'';
@@ -3865,12 +4033,16 @@ async function loadBuyerDetail(buyer, idx){
       mm.cancelRequestedBy=info.cancelRequestedBy||'';
       mm.cancelReasonLabel=info.cancelReasonLabel||'';
       mm.cancelClosedAt=info.cancelClosedAt||'';
+      var prevCancelId=mm.cancelId||'';
+      mm.cancelId=info.cancelId||'';
       if(info.salesRecordNo) mm.salesRecordNo=info.salesRecordNo;
       if(info.orderId) mm.orderId=info.orderId;
       // 注文情報が届いたときの描き直しは、表示が変わる場合だけにする。
       // 毎回描き直すと、翻訳中やスクロール中に画面が作り直されてしまう
       var needRedraw = (mm.cancelLabel && mm.cancelLabel !== prevCancelLabel)
-        || (mm.orderDate && mm.orderDate !== prevOrderDate);
+        || (mm.orderDate && mm.orderDate !== prevOrderDate)
+        || (mm.cancelId !== prevCancelId)
+        || ((mm.buyerNote||'') !== prevBuyerNote);
       if(needRedraw) renderChatBubbles();
     }
 
@@ -3911,7 +4083,9 @@ async function loadBuyerDetail(buyer, idx){
     // バイヤーからのリクエストで未対応の場合のみ警告を出す
     var bySeller2=String(info.cancelRequestedBy||'').toUpperCase().indexOf('SELLER')>=0;
     if(info.cancelLabel && info.cancelKind==='open' && !bySeller2){
-      html+='<div class="cancel-alert">&#9888; '+esc(info.cancelLabel)+'</div>';
+      var cxl2=info.cancelId ? cancelToolsHtml(info.cancelId, true) : '';
+      html+='<div class="cancel-alert'+(cxl2?' has-tools':'')+'">'
+        +'<span>&#9888; '+esc(info.cancelLabel)+'</span>'+cxl2+'</div>';
     }
 
     // --- 配送先（最優先で表示） ---
@@ -3991,6 +4165,10 @@ async function loadBuyerDetail(buyer, idx){
     if(info.marketplace){
       ob+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v">'+esc(info.marketplace)+'</span></div>';
     }
+    if(info.buyerNote){
+      ob+='<div class="prod-kv-row buyer-note-row"><span class="kv-k">Buyer\'s note</span>'
+        +'<span class="kv-v buyer-note">'+esc(info.buyerNote)+'</span>'+cp(info.buyerNote)+'</div>';
+    }
 
     var h = ob ? '<div class="order-box">'+ob+'</div>' : '';
 
@@ -4060,7 +4238,9 @@ function renderAttachments(){
   pendingAttachments.forEach(function(a,i){
     // ファイル名だけを出す。サイズはツールチップに回して幅を詰める
     html+='<span class="att-chip'+(a.uploading?' uploading':'')+'" title="'+esc(a.name)+' ('+fmtSize(a.size||0)+')">'
-      +'<span class="an">'+esc(a.name)+'</span>'
+      +(a.previewUrl
+        ? '<span class="an clickable" onclick="previewPendingAttachment('+i+')" title="クリックで画像を確認">'+esc(a.name)+'</span>'
+        : '<span class="an">'+esc(a.name)+'</span>')
       +(a.uploading?'<span class="as">準備中</span>':'<button class="ax" title="外す" onclick="removeAttachment('+i+')">&#10005;</button>')
       +'</span>';
   });
@@ -4104,10 +4284,25 @@ function adjustReplyAreaForAttachments(){
   if(typeof updateScrollBtn==='function') setTimeout(updateScrollBtn,60);
 }
 
+// 送信前の添付を拡大表示する。
+// 画像は手元のファイルから直接表示する（サーバーの保存先やネットに左右されない）
+function previewPendingAttachment(i){
+  var list=pendingAttachments.filter(function(a){ return a && a.previewUrl; });
+  var target=pendingAttachments[i];
+  var idx=list.indexOf(target);
+  if(idx<0) return;
+  openImgGroup(list.map(function(a){ return {url:a.previewUrl, name:a.name}; }), idx);
+}
+// 手元表示用のURLは、使い終わったら必ず解放する（開いたままだとメモリを使い続けるため）
+function releasePreview(a){
+  if(a && a.previewUrl){ try{ URL.revokeObjectURL(a.previewUrl); }catch(e){} a.previewUrl=''; }
+}
+
 function removeAttachment(i){
   var a=pendingAttachments[i];
   if(!a) return;
   pendingAttachments.splice(i,1);
+  releasePreview(a);
   renderAttachments();
   // 保存済みのファイルも消しておく（使われないまま残さない）
   if(a.id) fetch('/api/media/'+encodeURIComponent(a.id),{method:'DELETE'}).catch(function(){});
@@ -4131,7 +4326,8 @@ async function onAttachPick(files){
       alert(f.name+' は '+fmtSize(f.size)+' あります。20MB以下にしてください。');
       continue;
     }
-    var placeholder={name:f.name,size:f.size,uploading:true};
+    var placeholder={name:f.name,size:f.size,uploading:true,previewUrl:''};
+    try{ placeholder.previewUrl=URL.createObjectURL(f); }catch(e){}
     pendingAttachments.push(placeholder);
     renderAttachments();
     try{
@@ -4148,14 +4344,19 @@ async function onAttachPick(files){
       var d=await res.json();
       var at=pendingAttachments.indexOf(placeholder);
       if(d.ok && d.media){
+        // 手元表示用のURLは引き継ぐ（サーバーの返す情報には含まれないため）
+        d.media.previewUrl=placeholder.previewUrl;
         if(at>=0) pendingAttachments[at]=d.media;
+        else releasePreview(placeholder);   // 準備中に外された
       } else {
         if(at>=0) pendingAttachments.splice(at,1);
+        releasePreview(placeholder);
         alert(f.name+' を添付できませんでした。\n'+(d.error||'原因不明'));
       }
     }catch(e){
       var at2=pendingAttachments.indexOf(placeholder);
       if(at2>=0) pendingAttachments.splice(at2,1);
+      releasePreview(placeholder);
       alert(f.name+' を添付できませんでした。\n'+e.message);
     }
     renderAttachments();
@@ -4163,6 +4364,7 @@ async function onAttachPick(files){
 }
 
 function clearAttachments(){
+  pendingAttachments.forEach(releasePreview);
   pendingAttachments=[];
   renderAttachments();
 }
