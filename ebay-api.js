@@ -1008,6 +1008,14 @@ async function getItemInfo(legacyItemId) {
       availabilityStatus: ea ? (ea.estimatedAvailabilityStatus || '') : '',
       soldQuantity: (typeof d.estimatedSoldQuantity === 'number') ? d.estimatedSoldQuantity
         : (ea && typeof ea.estimatedSoldQuantity === 'number' ? ea.estimatedSoldQuantity : null),
+      // 出品ページの商品詳細（Item specifics）。調査依頼の手がかりに使う。
+      // 自分で入力した内容なので、事実の根拠としては扱わない
+      brand: d.brand || '',
+      mpn: d.mpn || '',
+      aspects: (Array.isArray(d.localizedAspects) ? d.localizedAspects : [])
+        .slice(0, 40)
+        .map(a => ({ name: String(a.name || ''), value: String(a.value || '') }))
+        .filter(a => a.name && a.value),
     };
     // Browse APIはSKUを返さないので、セラー向けAPIから補完
     let skuKnown = true;
