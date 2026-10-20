@@ -65,6 +65,15 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .panel-idle .rp-section,.panel-idle .buyer-fixed{visibility:hidden;}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(10px);background:#0f2e2b;color:#fff;font-size:13px;font-weight:600;padding:10px 20px;border-radius:22px;box-shadow:0 4px 18px rgba(15,46,43,0.3);opacity:0;pointer-events:none;transition:opacity 0.2s,transform 0.2s;z-index:2000;}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+/* AIのエラー表示 */
+.ai-err{position:fixed;inset:0;background:rgba(15,23,42,0.45);z-index:3500;display:none;align-items:center;justify-content:center;}
+.ai-err.on{display:flex;}
+.ai-err-box{background:#fff;border-radius:12px;width:min(480px,90vw);padding:20px 22px;box-shadow:0 12px 40px rgba(15,23,42,0.25);}
+.ai-err-title{font-size:16px;font-weight:800;color:#b91c1c;margin-bottom:10px;}
+.ai-err-msg{font-size:14px;line-height:1.75;color:#1e293b;white-space:pre-wrap;word-break:break-word;}
+.ai-err-msg a{color:var(--teal);font-weight:700;}
+.ai-err-foot{display:flex;justify-content:flex-end;margin-top:16px;}
+.ai-err-ok{font-size:13px;font-weight:700;padding:7px 20px;border-radius:7px;border:none;background:var(--teal);color:#fff;cursor:pointer;}
 .chat-placeholder{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;color:#b6c2cc;}
 .cp-text{font-size:13px;color:var(--text3);}
 
@@ -458,6 +467,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-tr-btn.on{background:#475569;border-color:#475569;color:#fff;}
 .bbl-tr-btn.on::before{content:'↩';font-size:10px;}
 .bbl-tr-btn:disabled{opacity:0.5;cursor:wait;}
+/* 吹き出しごとのコピー（翻訳ボタンと同じ見た目に揃える） */
+.bbl-cp-btn{font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:12px;border:1px solid #e3e8ef;background:#fff;color:#667085;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.12s;}
+.bbl-cp-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
+.bbl-cp-btn.done{background:#0d9488;border-color:#0d9488;color:#fff;}
 
 /* 翻訳文の表示 */
 /* 訳文：原文の付属情報として一段引いた見せ方（枠なし・細いライン1本） */
@@ -585,7 +598,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 
 /* 返信エリア */
 .reply-area{flex-shrink:0;border-top:none;background:var(--bg2);overflow:hidden;display:flex;flex-direction:column;min-height:0;}
-.reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;}
+.reply-top{padding:8px 18px 0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;row-gap:6px;}
+/* ボタンの中の文字は折り返さない。幅が足りないときは、ボタンごと次の行へ回す
+   （文字が「AIにお／まかせ」のように折れると読みにくいため） */
+.reply-top > .btn,.reply-top > .reply-status{white-space:nowrap;flex-shrink:0;}
 .reply-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.08em;}
 .reply-status{font-size:10px;padding:2px 9px;border-radius:20px;font-weight:600;}
 .status-generating{background:#d1fae5;color:#065f46;}
@@ -1249,6 +1265,7 @@ a.kv-v:hover{text-decoration:underline;}
             onchange="onAttachPick(this.files); this.value='';">
           <button class="btn btn-ai" onclick="regenReply()" id="btn-ai-reply">&#10024; AIにおまかせ</button>
           <button class="btn btn-ai2" onclick="openAiHint()" id="btn-ai-hint">&#10024; AIに情報を渡す</button>
+          <button class="btn btn-ai2" onclick="openResearch()" id="btn-research" title="バイヤーの質問を、Claudeで事実ベースで調べるための依頼文を作ります">&#128269; 調査を依頼</button>
           <button class="btn btn-ghost" onclick="toggleCanned()" id="btn-canned">&#128221; 定型文</button>
           <span class="reply-status" id="d-status"></span>
           <select class="reply-history-select" id="reply-history-select" onchange="loadReplyFromHistory()" style="display:none;">
@@ -2822,8 +2839,9 @@ async function translateNotice(btn){
     if(!text){ alert('翻訳できる文章が見つかりませんでした。'); return; }
     if(text.length>6000) text=text.substring(0,6000);
 
-    var ja=await translateText(text);
-    if(!ja){ alert('翻訳できませんでした。'); return; }
+    var ja;
+    try{ ja=await translateText(text); }
+    catch(e2){ btn.innerHTML=orig; showAiError(e2); return; }
 
     // HTMLメールから取り出した文章は空行が多く、そのまま出すと間延びする。
     // 3行以上続く空行は1つにまとめてから表示する
@@ -3096,6 +3114,53 @@ function saveTranslationCache(){
   }catch(e){}
 }
 
+// ===== AIの呼び出し（すべてのAIボタンがこれを使う） =====
+// 成功したら本文を返す。失敗したら、サーバーが付けた日本語の説明を持ったエラーを投げる。
+// 呼び出す側ごとにエラーの扱いを書くと、表示漏れや「失敗したのに成功に見える」が起きるため1つにまとめる
+async function callClaude(prompt, maxTokens){
+  var data;
+  try{
+    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:maxTokens||4000,messages:[{role:'user',content:prompt}]})});
+    data=await res.json();
+  }catch(e){
+    var ne=new Error('ReplAIのサーバーに接続できませんでした。少し待ってから、もう一度押してください。');
+    ne.aiError=true; throw ne;
+  }
+  if(!data || data.ok===false || data.type==='error'){
+    var e=new Error((data&&data.error&&typeof data.error==='string') ? data.error : 'AIが応答しませんでした。もう一度押してください。');
+    e.aiError=true; e.aiKind=(data&&data.errorKind)||'';
+    throw e;
+  }
+  var text=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+  if(!text){
+    var ee=new Error('AIの返事が空でした。もう一度押してください。');
+    ee.aiError=true; throw ee;
+  }
+  return text;
+}
+
+// AIのエラーを見せる。URLは押せるようにする（チャージのページへすぐ行けるように）
+function showAiError(err){
+  var msg=(err && err.message) || String(err||'');
+  var box=document.getElementById('ai-err');
+  if(!box){
+    box=document.createElement('div');
+    box.id='ai-err';
+    box.className='ai-err';
+    box.innerHTML='<div class="ai-err-box"><div class="ai-err-title">&#9888;&#65039; AIを使えませんでした</div>'
+      +'<div class="ai-err-msg" id="ai-err-msg"></div>'
+      +'<div class="ai-err-foot"><button class="ai-err-ok" onclick="document.getElementById(\'ai-err\').classList.remove(\'on\')">閉じる</button></div></div>';
+    box.addEventListener('click',function(ev){ if(ev.target===box) box.classList.remove('on'); });
+    document.body.appendChild(box);
+  }
+  var html=esc(msg).replace(/https:\/\/[^\s<]+/g,function(u){
+    return '<a href="'+u+'" target="_blank" rel="noopener">'+u+'</a>';
+  });
+  document.getElementById('ai-err-msg').innerHTML=html;
+  box.classList.add('on');
+}
+
 // 単一テキストをClaudeで翻訳
 async function translateText(text){
   if(!text || !text.trim()) return '';
@@ -3106,11 +3171,8 @@ async function translateText(text){
     +'原文が既に日本語の場合はそのまま出力してください。改行は原文の構造を保ちつつ、'
     +'不要な空行は増やさず、段落の区切り以外で空行を入れないでください。\n\n'+text;
 
-  var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
-  var data=await res.json();
-  var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
-  if(ja){ translationCache[key]=ja; saveTranslationCache(); }
+  var ja=await callClaude(prompt, 4000);   // 失敗時はエラーを投げる（呼び出し側で表示）
+  translationCache[key]=ja; saveTranslationCache();
   return ja;
 }
 
@@ -3148,10 +3210,26 @@ async function translateBubble(idx, btn){
       btn.textContent='日本語';
     }
   }catch(e){
-    btn.textContent='✕';
-    setTimeout(function(){btn.textContent='日本語';},1500);
+    btn.textContent='日本語';
+    showAiError(e);
   }
   btn.disabled=false;
+}
+
+// 吹き出し1件をコピーする。日本語訳を表示中なら、訳も一緒にコピーする
+function copyBubble(btn){
+  var wrap=btn.closest('.bbl-wrap');
+  if(!wrap) return;
+  var bbl=wrap.querySelector('.bbl');
+  var orig=bbl ? (bbl.getAttribute('data-orig') || bbl.textContent || '') : '';
+  var jaEl=wrap.querySelector('.bbl-ja');
+  var text=String(orig).trim();
+  if(jaEl && jaEl.textContent.trim()) text+='\n\n（日本語訳）\n'+jaEl.textContent.trim();
+  if(!text) return;
+  navigator.clipboard.writeText(text).then(function(){
+    btn.textContent='コピー済み'; btn.classList.add('done');
+    setTimeout(function(){ btn.textContent='コピー'; btn.classList.remove('done'); },1300);
+  }).catch(function(){ alert('コピーできませんでした。'); });
 }
 
 // 全体翻訳のトグル
@@ -3244,7 +3322,11 @@ async function toggleChatTranslate(){
     try{
       var ja=await translateText(orig);
       if(ja && chatTranslateMode) attachJaToBubble(orig, ja);
-    }catch(e){}
+    }catch(e){
+      // AIそのものが使えない状態なので、残りも全部失敗する。ここで止めて理由を出す
+      showAiError(e);
+      break;
+    }
     done++;
   }
   if(chatTranslateMode) btn.textContent='🇯🇵 日本語表示中（クリックで戻す）';
@@ -3502,6 +3584,7 @@ function renderChatBubbles(){
       +attachHtml(h.media)
       +'<div class="bbl-meta">'+esc(fmtTime(h.time))
         +'<button class="bbl-tr-btn" onclick="translateBubble('+idx+',this)" title="この吹き出しを日本語に">日本語</button>'
+        +'<button class="bbl-cp-btn" onclick="copyBubble(this)" title="このメッセージをコピー（日本語を表示中なら訳も一緒に）">コピー</button>'
       +'</div>'
       +'</div>';
   });
@@ -3742,18 +3825,15 @@ async function translateToJapanese(){
   btn.disabled=true;
   try{
     var prompt='以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力し、説明や前置きは不要です。段落間の空行は1行までにしてください。\n\n'+en;
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
-    var data=await res.json();
-    var ja=((data.content&&data.content[0]&&data.content[0].text)||'').trim().replace(/\n{3,}/g,'\n\n');
+    // 失敗したときは日本語欄を書き換えない（入力済みの内容を消さない）
+    var ja=(await callClaude(prompt, 4000)).replace(/\n{3,}/g,'\n\n');
     document.getElementById('d-input-ja').value=ja;
     if(currentIdx!==null&&messages[currentIdx]) messages[currentIdx].replyJa=ja;
     btn.innerHTML='<span class="arrow-mark">&#10003;</span>';
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1500);
   }catch(e){
-    btn.innerHTML='<span class="arrow-mark">&#10007;</span>';
-    alert('翻訳エラー: '+e.message);
-    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
+    btn.innerHTML=orig; btn.disabled=false;
+    showAiError(e);
   }
 }
 
@@ -3799,10 +3879,9 @@ async function translateToEnglish(){
       +'ルール:\n- 翻訳文だけを出力（説明・前置き不要）\n- 段落間は1行の空行のみ（空行を2行以上入れない）\n- 過度に堅苦しくせず、丁寧で読みやすく\n'
       +(manual?'\n【対応方針・注意点】\n'+manual+'\n':'')
       +'\n【翻訳する日本語】\n'+ja;
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
-    var data=await res.json();
-    var en=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+    // 失敗したときは英語欄を書き換えない。
+    // 以前は失敗すると英語欄が空になり、成功の印が出ていた
+    var en=await callClaude(prompt, 4000);
     en=en.replace(/\n{3,}/g,'\n\n');
     // 全角が混ざっていると相手の環境で崩れるので、必ず半角に直す
     en=toHalfWidthForEnglish(en);
@@ -3814,9 +3893,8 @@ async function translateToEnglish(){
     btn.innerHTML='<span class="arrow-mark">&#10003;</span>';
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},1500);
   }catch(e){
-    btn.innerHTML='<span class="arrow-mark">&#10007;</span>';
-    alert('翻訳エラー: '+e.message);
-    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2000);
+    btn.innerHTML=orig; btn.disabled=false;
+    showAiError(e);
   }
 }
 
@@ -4827,6 +4905,81 @@ function delChip(i){
   renderChips();
 }
 
+// ===== 調査依頼 =====
+// Claude.ai（本人のMaxプラン）で調べてもらうための依頼文を作る。ReplAIからAIは呼ばないので費用はかからない。
+// 「予想で答えない」ための決まりを毎回必ず入れる
+var CLAUDE_NEW_URL='https://claude.ai/new';
+function buildResearchPrompt(m){
+  // バイヤーの質問＝自分が最後に返信した後に届いたバイヤーのメッセージ。
+  // 最後が自分の返信なら、その前のバイヤーのメッセージ
+  var hist=(m.history||[]).filter(function(h){ return h && h.text; });
+  var qs=[];
+  for(var i=hist.length-1;i>=0;i--){
+    if(hist[i].from==='me'){ if(qs.length) break; else continue; }
+    qs.unshift(hist[i].text);
+  }
+  if(!qs.length && m.msg) qs=[m.msg];
+
+  var it=(m.itemId && itemDetailCache[m.itemId]) || null;
+  var title=(it&&it.title)||m.item||'';
+  var url=(m.itemId?('https://www.ebay.com/itm/'+m.itemId):'');
+  var aspects=(it&&it.aspects)||[];
+
+  var p='あなたは商品調査の担当です。eBayのバイヤーから下の質問が届きました。質問ごとに、事実を調べて答えてください。\n\n'
+    +'【必ず守ること】\n'
+    +'1. 必ずWeb検索で調べてから答えること。自分の知識や推測では答えない。\n'
+    +'2. 根拠は、メーカー公式サイト・公式の取扱説明書や仕様書・正規販売店のページを優先する。フリマ、オークション、個人ブログ、まとめサイト、他のeBay出品は根拠にしない。\n'
+    +'3. 型番が完全に一致するページだけを使う。色違い・地域違い・旧型・限定版など、別の型番の情報を混ぜない。\n'
+    +'4. 日本語と英語の両方で調べる（日本のメーカー製品は、日本語の公式サイトにしか詳しい情報がないことが多い）。\n'
+    +'5. 見つからない場合は「確認できませんでした」と書く。推測で埋めない。\n'
+    +'6. 情報源によって内容が食い違う場合は、両方を示す。\n'
+    +'7. 下の「出品ページの記載」は私が入力したもので、誤りの可能性がある。根拠には使わず、公式の情報と食い違う箇所があれば指摘する。\n\n'
+    +'【答え方】質問ごとに次の形で書く。\n'
+    +'- 質問（日本語訳）\n- 答え\n- 判定：確認済み（公式で確認）／一部確認（公式以外でのみ確認）／確認できず\n- 根拠：ページのURLと、該当箇所の要約\n\n'
+    +'最後に、「確認済み」の内容だけを使って、バイヤーへの英語の返信文の案を書く。確認できなかった点は推測で答えず、確認して連絡する旨を書く。\n\n'
+    +'【商品】\n'
+    +'商品名: '+(title||'不明')+'\n'
+    +(url?('eBayの商品ページ: '+url+'\n'):'')
+    +(it&&it.brand?('ブランド: '+it.brand+'\n'):'')
+    +(it&&it.mpn?('型番（MPN）: '+it.mpn+'\n'):'')
+    +'購入状況: '+(m.sold?'購入済み':'問い合わせのみ（未購入）')+'\n';
+  if(aspects.length){
+    p+='\n【出品ページの記載（参考・誤りの可能性あり）】\n'
+      +aspects.map(function(a){ return '- '+a.name+': '+a.value; }).join('\n')+'\n';
+  }
+  p+='\n【バイヤーの質問（原文）】\n'+(qs.length?qs.join('\n---\n'):'（質問が見つかりませんでした。ここに質問を貼ってください）')+'\n';
+  return p;
+}
+async function openResearch(){
+  if(currentIdx===null){ alert('メッセージを選択してください'); return; }
+  var m=messages[currentIdx];
+  // 商品詳細がまだ届いていなければ取ってから作る（入れ漏れを防ぐ）
+  if(m.itemId && itemDetailCache[m.itemId]===undefined){
+    try{
+      var r=await fetch('/api/ebay/item/'+encodeURIComponent(m.itemId));
+      var d=await r.json();
+      itemDetailCache[m.itemId]=d.item||null;
+    }catch(e){}
+  }
+  document.getElementById('research-text').value=buildResearchPrompt(m);
+  document.getElementById('research-modal').classList.add('open');
+}
+function closeResearch(){
+  document.getElementById('research-modal').classList.remove('open');
+}
+function copyResearch(openClaude){
+  var text=document.getElementById('research-text').value;
+  if(!text.trim()) return;
+  // ポップアップを止められないよう、クリックの直後に新しいタブを開く
+  var w=openClaude ? window.open(CLAUDE_NEW_URL,'_blank','noopener') : null;
+  navigator.clipboard.writeText(text).then(function(){
+    showToast(openClaude ? 'コピーしました。Claudeに貼り付けて送信してください' : 'コピーしました');
+    closeResearch();
+  }).catch(function(){
+    alert('コピーできませんでした。文章を選択してコピーしてください。');
+  });
+}
+
 function openAiHint(){
   if(currentIdx===null){ alert('メッセージを選択してください'); return; }
   chipEditMode=false;
@@ -4864,9 +5017,11 @@ async function generateReply(i, hint){
   var jaEl=document.getElementById('d-reply-ja');
   sEl.className='reply-status status-generating';sEl.textContent='生成中...';
   // 生成前に両方の入力欄をクリアする（前回の内容が残らないように）
+  // 失敗したときに元へ戻せるよう、生成前の内容を控えておく
+  var beforeEn=rEl.value, beforeJa='';
   rEl.value='返信案を生成中です...';
   var jaInput=document.getElementById('d-input-ja');
-  if(jaInput) jaInput.value='';
+  if(jaInput){ beforeJa=jaInput.value; jaInput.value=''; }
   var aiBtn=document.getElementById('btn-ai-reply');
   var aiOrig=aiBtn?aiBtn.innerHTML:'';
   if(aiBtn){aiBtn.innerHTML='&#9203; 生成中...';aiBtn.disabled=true;}
@@ -4894,10 +5049,7 @@ async function generateReply(i, hint){
     +'\n- 段落間の空行は1行まで'
     +(hint?'':'\n- 商品名や購入状況から判断できる範囲で回答し、断定できないことは「確認して連絡する」と書く');
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:4000,messages:[{role:'user',content:prompt}]})});
-    var data=await res.json();
-    var raw=(data.content&&data.content[0]&&data.content[0].text)||'';
-    if(!raw){ throw new Error('empty'); }
+    var raw=await callClaude(prompt, 4000);
 
     // ===EN=== / ===JA=== で分割
     var en=raw, ja='';
@@ -4919,8 +5071,15 @@ async function generateReply(i, hint){
     }
     if(aiBtn){aiBtn.innerHTML=aiOrig;aiBtn.disabled=false;}
   }catch(e){
-    if(currentIdx===i){rEl.value='エラー。再生成してください。';sEl.className='reply-status status-error';sEl.textContent='エラー';}
+    // 返信欄に「エラー」という文字を入れない（そのまま送ってしまう危険があるため）。
+    // 生成前の内容に戻し、理由は別の画面で知らせる
+    if(currentIdx===i){
+      rEl.value=beforeEn==='返信案を生成中です...'?'':beforeEn;
+      if(jaInput) jaInput.value=beforeJa;
+      sEl.className='reply-status status-error';sEl.textContent='エラー';
+    }
     if(aiBtn){aiBtn.innerHTML=aiOrig;aiBtn.disabled=false;}
+    showAiError(e);
   }
 }
 function regenReply(){if(currentIdx===null) return;messages[currentIdx].status='pending';expandReplyArea();generateReply(currentIdx);}
@@ -4938,12 +5097,12 @@ async function translateReply(i){
   if(replyJaCache[m.id][cacheKey]){jaEl.textContent=replyJaCache[m.id][cacheKey];return;}
   jaEl.textContent='翻訳中...';
   try{
-    var res=await fetch('/api/claude',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:3000,messages:[{role:'user',content:'以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply}]})});
-    var data=await res.json();
-    var text=((data.content&&data.content[0]&&data.content[0].text)||'').trim();
+    var text=await callClaude('以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply, 3000);
     replyJaCache[m.id][cacheKey]=text;
     if(currentIdx===i) jaEl.textContent=text;
-  }catch(e){if(currentIdx===i) jaEl.textContent='（翻訳エラー）';}
+  }catch(e){
+    if(currentIdx===i){ jaEl.textContent='（翻訳できませんでした）'; showAiError(e); }
+  }
 }
 
 function updateReplyHistorySelect(){
@@ -5429,6 +5588,25 @@ window.addEventListener('load',function(){
   applyGrid();
 });
 </script>
+<!-- 調査依頼モーダル：Claude（Maxプラン）で調べるための依頼文を作る -->
+<div class="ct-overlay" id="research-modal">
+  <div class="ai-modal">
+    <div class="ct-hdr">
+      <span class="ct-hdr-title">&#128269; 調査を依頼（Claudeで事実を調べる）</span>
+      <button class="ct-close" onclick="closeResearch()">&#10005;</button>
+    </div>
+    <div class="ai-body">
+      <div class="ai-guide">バイヤーの質問と商品情報から、調べるための依頼文を作りました。必要なら書き足してから使ってください。<br>
+        「コピーしてClaudeを開く」→ Claudeに貼り付けて送信 → 結果を確認したら「AIに情報を渡す」に貼ると、その内容で返信文を作れます。</div>
+      <textarea id="research-text" class="ai-hint-input" style="min-height:440px;font-size:12.5px;"></textarea>
+    </div>
+    <div class="ai-foot">
+      <button class="btn btn-ghost" onclick="copyResearch(false)">コピーだけ</button>
+      <button class="btn btn-ai" onclick="copyResearch(true)">&#128269; コピーしてClaudeを開く</button>
+    </div>
+  </div>
+</div>
+
 <!-- AI情報入力モーダル -->
 <div class="ct-overlay" id="ai-hint-modal">
   <div class="ai-modal">
