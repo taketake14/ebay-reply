@@ -2447,9 +2447,42 @@ app.get('/api/ebay/notification', (req, res) => {
 });
 
 
+// ===== AI（Anthropic）の窓口 =====
+// AIから返ってきたエラーは、ここ1か所で種類を見分けて日本語の説明に変える。
+// 画面側は ok:false と error（説明文）だけを見ればよい作りにする。
+// 生徒は各自でAnthropicと契約するため、説明は「本人が自分で直せる」内容にする
+// （運営者に連絡させても、本人のアカウントの問題は運営者には直せない）
+const AI_CONSOLE_URL = 'https://platform.claude.com';
+const AI_ERRORS = {
+  credit:   'AIの残高が足りません。\n' + AI_CONSOLE_URL + ' にログインし、「設定 → 請求と支払い」でチャージしてください。\n自動リロードを有効にしておくと、残高切れで止まらなくなります。',
+  key:      'AIのAPIキーが正しくないか、使えなくなっています。\nマニュアルの「APIキーの設定」のページを確認してください。',
+  permission: 'このAPIキーでは使えない機能です。\nマニュアルの「APIキーの設定」のページを確認してください。',
+  rate:     '短時間にAIを使いすぎています。1分ほど待ってから、もう一度押してください。',
+  busy:     'AIが混み合っています。少し待ってから、もう一度押してください。',
+  server:   'AI側で一時的な不具合が起きています。少し待ってから、もう一度押してください。',
+  network:  'AIに接続できませんでした。インターネットの接続を確認して、もう一度押してください。',
+};
+
+// Anthropicのエラーを種類に分ける（公式のエラーの種類と状態コードで判定する）
+function classifyAiError(status, err) {
+  const type = (err && err.type) || '';
+  const msg = String((err && err.message) || '');
+  if (/credit balance/i.test(msg)) return 'credit';
+  if (status === 401 || type === 'authentication_error') return 'key';
+  if (status === 403 || type === 'permission_error') return 'permission';
+  if (status === 429 || type === 'rate_limit_error') return 'rate';
+  if (status === 529 || status === 503 || type === 'overloaded_error') return 'busy';
+  if (status >= 500 || type === 'api_error') return 'server';
+  return 'other';
+}
+
 app.post('/api/claude', async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.json({ ok: false, errorKind: 'key', error: AI_ERRORS.key });
+  }
+  let response, data;
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -2458,11 +2491,25 @@ app.post('/api/claude', async (req, res) => {
       },
       body: JSON.stringify(req.body)
     });
-    const data = await response.json();
-    res.json(data);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error('[ai] 接続できません:', e.message);
+    return res.json({ ok: false, errorKind: 'network', error: AI_ERRORS.network });
   }
+  try {
+    data = await response.json();
+  } catch (e) {
+    data = null;
+  }
+  if (!response.ok || !data || data.type === 'error') {
+    const err = (data && data.error) || {};
+    const kind = classifyAiError(response.status, err);
+    console.error('[ai] エラー ' + response.status + ' ' + kind + ':', String(err.message || '').substring(0, 300));
+    const text = AI_ERRORS[kind]
+      || ('AIが受け付けませんでした。\n' + (err.message || ('状態コード ' + response.status)));
+    return res.json({ ok: false, errorKind: kind, error: text });
+  }
+  data.ok = true;
+  res.json(data);
 });
 
 // ===== インメモリ状態ストア（フォールバック用） =====
