@@ -1350,6 +1350,13 @@ app.post('/api/ebay/update-listing', async (req, res) => {
   }
 });
 
+// ===== 表に無いeBayのエラーの記録 =====
+// 説明表に無い番号が返ってきたときの記録。これを見て、説明表に足していく
+app.get('/api/ebay/unknown-errors', (req, res) => {
+  try { res.json({ ok: true, errors: ebayApi.getUnknownErrors() }); }
+  catch (e) { res.json({ ok: false, error: e.message }); }
+});
+
 // ===== 出品を終了する =====
 app.post('/api/ebay/end-listing', async (req, res) => {
   try {
