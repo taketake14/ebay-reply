@@ -1399,6 +1399,41 @@ a.kv-v:hover{text-decoration:underline;}
 </div>
 
 <script>
+// ===== ReplAIのサーバーとのやり取り：共通の守り =====
+// サーバーの更新・再起動中は、ReplAIの代わりにRenderが「応答できません」というWebページ（HTML）を返す。
+// そのとき、どのボタンでも「Unexpected token '<'」のような意味の分からない英語ではなく、
+// 日本語で原因を伝えるようにする。ここで一括して守るので、ボタンごとに書かなくてよい。
+//  ・err.serverUnavailable … サーバーが一時的に応答しなかった（Webページが返ってきた）
+//  ・err.networkError ……… サーバーにつながらなかった
+var SERVER_UNAVAILABLE_MSG='ReplAIのサーバーが一時的に応答しませんでした（更新中や再起動中の可能性があります）。\n1分ほど待ってから、もう一度お試しください。';
+var NETWORK_ERROR_MSG='ReplAIのサーバーに接続できませんでした。\nインターネットの接続を確認するか、1分ほど待ってから、もう一度お試しください。';
+(function(){
+  var origJson=Response.prototype.json;
+  Response.prototype.json=function(){
+    var self=this;
+    // ReplAI自身への問い合わせだけに適用する（他のサイトの返事には触らない）
+    var own=!self.url || self.url.indexOf(location.origin)===0;
+    if(!own) return origJson.call(self);
+    return self.text().then(function(t){
+      try{ return JSON.parse(t); }
+      catch(e){
+        var err=new Error(SERVER_UNAVAILABLE_MSG);
+        err.serverUnavailable=true; err.httpStatus=self.status;
+        throw err;
+      }
+    });
+  };
+  var origFetch=window.fetch;
+  window.fetch=function(input, init){
+    return origFetch.apply(this, arguments).catch(function(e){
+      if(e && e.name==='AbortError') throw e;
+      var err=new Error(NETWORK_ERROR_MSG);
+      err.networkError=true; err.cause=e;
+      throw err;
+    });
+  };
+})();
+
 // ===== ログイン =====
 (function() {
   var VALID_ID = 'samuraisoul142@gmail.com';
@@ -3622,8 +3657,14 @@ function fmtTime(t){
   return d.toLocaleString('ja-JP',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Asia/Tokyo'});
 }
 
-function renderChatBubbles(){
+// opts.keepScroll：新着で描き直すとき。一番下を見ていたら下へ移動し、
+// 上の方を読み返しているときは位置を動かさない（読んでいる途中で飛ばされないように）
+function renderChatBubbles(opts){
   if(currentIdx===null) return;
+  var keepScroll=!!(opts && opts.keepScroll);
+  var elS=document.getElementById('chat-area');
+  var prevTop=elS?elS.scrollTop:0;
+  var wasAtBottom=!elS || (elS.scrollHeight-elS.clientHeight-elS.scrollTop)<=80;
   // 描き直しても翻訳表示は維持する。
   // 以前はここで解除していたため、同期や検証で描き直しが起きると
   // 「日本語表示中」の目印だけが消え、次に押しても1回目が無反応になっていた。
@@ -3761,6 +3802,11 @@ function renderChatBubbles(){
   el.innerHTML=html;
   // 日本語表示中なら、保存済みの訳文を貼り直す
   if(chatTranslateMode) applyCachedTranslations();
+  if(keepScroll && !wasAtBottom){
+    el.scrollTop=prevTop;
+    setTimeout(updateScrollBtn,60);
+    return;
+  }
   el.scrollTop=el.scrollHeight;
   // 吹き出しの中の画像は、読み込みが終わるまで高さが決まらない。
   // 先に一番下へ移動しても、あとから画像の高さが加わって途中で止まってしまうので、
@@ -4811,6 +4857,50 @@ async function sendReplyToEbay(){
   var orig=btn.innerHTML;
   btn.innerHTML='送信中...';
   btn.disabled=true;
+  var sentAt=Date.now();   // 確かめるときの目安（この時刻以降に送られたものを探す）
+
+  // 送信できたときの後片付け（返事を受け取れた場合と、eBayに確かめて届いていた場合の両方で使う）
+  function onSent(d){
+    btn.innerHTML='&#10003; 送信完了';
+    // 履歴の保存に失敗した場合のみ控えめに通知（送信自体は成功している）
+    if(d.saved && d.saved.ok===false){
+      console.warn('履歴保存失敗:', d.saved.error);
+      showToast('送信しました（履歴の保存は次回同期時に反映されます）');
+    } else if(d.saved && d.saved.note){
+      showToast('送信しました');
+    }
+    // 送信対象を conversationId で再解決（ポーリングで配列がずれていても正しい相手に反映）
+    var tm=null;
+    if(targetConvId) tm=messages.find(function(x){return x.conversationId===targetConvId;});
+    if(!tm) tm=messages.find(function(x){return x.buyer===targetBuyer;});
+    if(!tm) tm=m;
+    tm.replied=true;
+    if(!tm.history) tm.history=[];
+    // 送信できた添付を履歴の吹き出しに反映して、添付欄を空にする
+    // eBayに登録されたURLを使う。自前URLのままだと、あとで表示できなくなる
+    var sentMedia=(d.sentMedia&&d.sentMedia.length)?d.sentMedia
+      :atts.map(function(a){return {name:a.name,mediaType:a.mediaType,url:a.url};});
+    clearAttachments();
+    var nowTs=new Date();
+    var msgTs=new Date(targetTs||0);
+    if(!isNaN(msgTs.getTime()) && nowTs<=msgTs) nowTs=new Date(msgTs.getTime()+1000);
+    tm.history.push({from:'me', text:text, time:nowTs.toISOString(),
+      media: sentMedia.length ? sentMedia : undefined});
+    saveState(tm);
+    // 表示中の会話を送信対象に合わせ直す
+    var ti=messages.indexOf(tm);
+    if(ti>=0) currentIdx=ti;
+    // 入力欄と保存済み返信案をクリア（次に開いた時に残らないように）
+    document.getElementById('d-input-ja').value='';
+    document.getElementById('d-reply').value='';
+    collapseReplyArea();   // 送信完了したら返信欄を元の高さに戻す
+    tm.reply=''; tm.replyJa=''; tm.status='pending';
+    var sEl=document.getElementById('d-status');
+    if(sEl){sEl.className='reply-status';sEl.textContent='';}
+    renderChatBubbles();
+    renderList();
+    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+  }
 
   try{
     var r=await fetch('/api/ebay/reply',{
@@ -4826,45 +4916,14 @@ async function sendReplyToEbay(){
     });
     var d=await r.json();
     if(d.ok){
-      btn.innerHTML='&#10003; 送信完了';
-      // 履歴の保存に失敗した場合のみ控えめに通知（送信自体は成功している）
-      if(d.saved && d.saved.ok===false){
-        console.warn('履歴保存失敗:', d.saved.error);
-        showToast('送信しました（履歴の保存は次回同期時に反映されます）');
-      } else if(d.saved && d.saved.note){
-        showToast('送信しました');
+      // 送信は成功している。後片付け（画面の更新）で問題が起きても「失敗」とは出さない
+      // （出すと送り直して二重送信になるため）
+      try{ onSent(d); }
+      catch(e2){
+        console.error('送信後の画面更新でエラー:', e2);
+        btn.innerHTML=orig; btn.disabled=false;
+        alert('送信は完了しました。\n（画面の更新で問題が起きたため、表示が古い可能性があります。画面を読み込み直してください）');
       }
-      // 送信対象を conversationId で再解決（ポーリングで配列がずれていても正しい相手に反映）
-      var tm=null;
-      if(targetConvId) tm=messages.find(function(x){return x.conversationId===targetConvId;});
-      if(!tm) tm=messages.find(function(x){return x.buyer===targetBuyer;});
-      if(!tm) tm=m;
-      tm.replied=true;
-      if(!tm.history) tm.history=[];
-      // 送信できた添付を履歴の吹き出しに反映して、添付欄を空にする
-      // eBayに登録されたURLを使う。自前URLのままだと、あとで表示できなくなる
-      var sentMedia=(d.sentMedia&&d.sentMedia.length)?d.sentMedia
-        :atts.map(function(a){return {name:a.name,mediaType:a.mediaType,url:a.url};});
-      clearAttachments();
-      var nowTs=new Date();
-      var msgTs=new Date(targetTs||0);
-      if(!isNaN(msgTs.getTime()) && nowTs<=msgTs) nowTs=new Date(msgTs.getTime()+1000);
-      tm.history.push({from:'me', text:text, time:nowTs.toISOString(),
-        media: sentMedia.length ? sentMedia : undefined});
-      saveState(tm);
-      // 表示中の会話を送信対象に合わせ直す
-      var ti=messages.indexOf(tm);
-      if(ti>=0) currentIdx=ti;
-      // 入力欄と保存済み返信案をクリア（次に開いた時に残らないように）
-      document.getElementById('d-input-ja').value='';
-      document.getElementById('d-reply').value='';
-      collapseReplyArea();   // 送信完了したら返信欄を元の高さに戻す
-      tm.reply=''; tm.replyJa=''; tm.status='pending';
-      var sEl=document.getElementById('d-status');
-      if(sEl){sEl.className='reply-status';sEl.textContent='';}
-      renderChatBubbles();
-      renderList();
-      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
     } else {
       btn.innerHTML='&#10007; 失敗';
       // エラーの内容をそのまま見せる。何を直せばよいか分かるようにするため
@@ -4872,10 +4931,46 @@ async function sendReplyToEbay(){
       setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
     }
   }catch(e){
+    // サーバーから返事を受け取れなかった場合、eBayに届いたかどうかは分からない。
+    // そのまま「失敗」と出すと、送り直して二重送信になることがあるので、eBayに確かめる
+    if(e && (e.serverUnavailable || e.networkError) && targetConvId){
+      btn.innerHTML='送信できたか確認中...';
+      var v=await verifySentOnEbay(targetConvId, text, atts.length>0, sentAt);
+      if(v==='sent'){
+        try{ onSent({ok:true}); }catch(e3){ console.error('送信後の画面更新でエラー:', e3); btn.innerHTML=orig; btn.disabled=false; }
+        showToast('送信できていました（通信が途切れましたが、eBayには届いています）');
+        return;
+      }
+      btn.innerHTML='&#10007; 失敗';
+      if(v==='not-sent'){
+        alert('送信されていません。\n\nReplAIのサーバーが一時的に応答しませんでした（更新中の可能性があります）。\neBayに届いていないことを確認しました。もう一度送信してください。');
+      } else {
+        alert('送信できたかどうか、確認できませんでした。\n\nReplAIのサーバーが一時的に応答していません（更新中の可能性があります）。\n二重に送らないよう、1分ほど待ってから画面を読み込み直し、この会話に送信済みのメッセージが無いことを確かめてから送り直してください。');
+      }
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+      return;
+    }
     btn.innerHTML='&#10007; 失敗';
-    alert('通信エラー: '+e.message);
+    alert('送信できませんでした\n\n'+e.message);
     setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
   }
+}
+
+// eBayに、この会話で送信できたかを確かめる。
+// サーバーが再起動中なら少し待って何度か試す（再起動は通常1分以内に終わる）。
+// 戻り値：'sent'（届いていた）／'not-sent'（届いていない）／'unknown'（確かめられなかった）
+async function verifySentOnEbay(convId, text, hasMedia, sentAt){
+  var waits=[3000,5000,8000,10000,15000,20000];   // 合計 約1分
+  for(var i=0;i<waits.length;i++){
+    await new Promise(function(r){ setTimeout(r, waits[i]); });
+    try{
+      var r=await fetch('/api/ebay/verify-sent',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({conversationId:convId, text:text, hasMedia:hasMedia, since:sentAt})});
+      var d=await r.json();
+      if(d && d.ok) return d.sent ? 'sent' : 'not-sent';
+    }catch(e){ /* まだ再起動中。次の回でもう一度 */ }
+  }
+  return 'unknown';
 }
 
 // 旧コピー関数（互換のため残す）
@@ -5899,20 +5994,57 @@ document.addEventListener('mousedown',function(e){
 
 // ===== 起動・ポーリング =====
 window.addEventListener('load',function(){
+  // ===== 一覧のデータを作り直す（「eBayから取得」と自動更新の両方がこれを使う） =====
+  // サーバーの最新の内容で作り直すが、画面側だけで持っている情報は、同じ会話から引き継ぐ。
+  // 引き継がないと、作り直すたびに購入イベントやBuyer's noteが消え、書きかけの返信案も消える
+  var CLIENT_ONLY_FIELDS=['reply','replyJa','status','replyHistory',
+    'orderDate','orderIdForEvent','buyerNote','salesRecordNo',
+    'cancelLabel','cancelKind','cancelShort','cancelRequestedAt','cancelRequestedBy',
+    'cancelReasonLabel','cancelClosedAt','cancelId'];
+  function convKey(m){ return m.conversationId ? 'c:'+m.conversationId : 'i:'+m.id; }
+  // 開いている会話の中身が変わったかを見分けるための目印
+  function chatSignature(m){
+    if(!m) return '';
+    var h=m.history||[];
+    var last=h.length?h[h.length-1]:null;
+    return [h.length, last?(last.time+'|'+String(last.text||'').length):'', m.timestamp, String(m.msg||'').length, m.msgFrom].join('/');
+  }
+  function rebuildMessages(list, reason){
+    var prev={};
+    messages.forEach(function(m){ prev[convKey(m)]=m; });
+    var openBefore=(currentIdx!==null)?messages[currentIdx]:null;
+    var sigBefore=chatSignature(openBefore);
+
+    messages=list.map(function(m){
+      var jst=toJST(m.timestamp);
+      var n={id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',msgMedia:m.msgMedia||null,timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+      var o=prev[convKey(n)];
+      if(o){
+        CLIENT_ONLY_FIELDS.forEach(function(k){
+          // サーバーが値を持っている項目は、サーバーの値を優先する
+          if(o[k]!==undefined && (n[k]===undefined || n[k]==='' || (Array.isArray(n[k]) && !n[k].length))) n[k]=o[k];
+        });
+      }
+      return n;
+    });
+    // 一覧を作り直したので、開いている会話の位置を取り直す
+    noteListRebuilt(reason);
+    var stillOpen=resyncCurrentIdx(reason);
+    renderList();
+    if(typeof renderMiniList==='function') renderMiniList();
+    // 開いている会話に新着などの変化があれば、チャット欄を描き直す
+    var chatOpen=document.getElementById('screen-chat').style.display!=='none';
+    if(chatOpen && stillOpen && currentIdx!==null && messages[currentIdx]){
+      if(chatSignature(messages[currentIdx])!==sigBefore) renderChatBubbles({keepScroll:true});
+    }
+  }
+
   async function loadFromSheet(){
     try{
       var r=await fetch('/api/messages');
       var d=await r.json();
       if(d.messages&&d.messages.length>0){
-        messages=d.messages.map(function(m){
-          var jst=toJST(m.timestamp);
-          return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',msgMedia:m.msgMedia||null,timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
-        });
-        // 一覧を作り直したので、開いている会話の位置を取り直す
-        noteListRebuilt('loadFromSheet');
-        resyncCurrentIdx('loadFromSheet');
-        renderList();
-        if(typeof renderMiniList==='function') renderMiniList();
+        rebuildMessages(d.messages, 'loadFromSheet');
       }
     }catch(e){console.error('loadFromSheet error:',e);}
   }
@@ -5924,10 +6056,9 @@ window.addEventListener('load',function(){
   var autoRefreshBusy=false;
   setInterval(async function(){
     if(autoRefreshBusy) return;
-    // チャットを開いている間は更新しない（誤操作・ちらつき防止）
-    var chatOpen=document.getElementById('screen-chat').style.display!=='none';
-    if(chatOpen) return;
-    // 何かを選択中（一括操作中）も更新しない
+    // 会話を開いている間も更新する（開いている会話に新着が来たら、チャット欄にも出すため）。
+    // 返信の入力欄には触らないので、書きかけの文章は消えない
+    // 何かを選択中（一括操作中）は更新しない
     if(checkedIds && checkedIds.size>0) return;
 
     autoRefreshBusy=true;
@@ -5946,15 +6077,8 @@ window.addEventListener('load',function(){
         && list.length===messages.length;
       if(isSame){ autoRefreshBusy=false; return; }
 
-      // 新着あり → データを差し替えて再描画
-      messages=list.map(function(m){
-        var jst=toJST(m.timestamp);
-        return {id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',msgMedia:m.msgMedia||null,timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
-      });
-      // 一覧を作り直したので、開いている会話の位置を取り直す
-      noteListRebuilt('autoRefresh');
-      resyncCurrentIdx('autoRefresh');
-      renderList();
+      // 新着あり → データを差し替えて再描画（開いている会話にも新着を出す）
+      rebuildMessages(list, 'autoRefresh');
     }catch(e){}
     autoRefreshBusy=false;
   },90000);
