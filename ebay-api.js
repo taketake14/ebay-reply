@@ -64,74 +64,189 @@ async function getAccessToken() {
   return cachedToken;
 }
 
-// eBayが返すエラー番号を、利用者が対処できる日本語の説明に置き換える。
-// そのままだと英語の専門的な文面しか出ず、何を直せばよいか分からない
-const EBAY_ERROR_GUIDE = {
-  50065: {
-    title: 'リンクが含まれているため送信できません',
-    detail: 'eBayはバイヤーとのメッセージに外部サイトへのリンクを書くことを禁止しています。\n\n'
-      + '次のようなものがリンクと判断されます。\n'
-      + '・https:// や www. で始まる文字列\n'
-      + '・example.com のような「.com」「.jp」を含む文字列（httpが無くても対象）\n'
-      + '・メールアドレス\n\n'
-      + '商品名や型番に「.com」などが入っている場合も弾かれることがあります。'
-      + '該当部分を外すか、別の言い方に変えてから送信してください。',
-  },
-  50064: {
-    title: '連絡先が含まれているため送信できません',
-    detail: 'メールアドレス・電話番号・SNSのIDなど、eBay外で連絡を取るための情報は書けません。\n'
-      + '該当部分を外してから送信してください。',
-  },
-  50013: {
-    title: '本文が長すぎます',
-    detail: 'eBayのメッセージは2,000文字までです。文章を短くしてから送信してください。',
-  },
-  50001: {
-    title: 'eBay側で一時的な問題が起きています',
-    detail: '少し時間をおいてから、もう一度送信してください。',
-  },
-  50004: {
-    title: '送信内容に不備があります',
-    detail: '宛先や本文が正しく指定されていない可能性があります。'
-      + 'メッセージを開き直してから、もう一度お試しください。',
-  },
-  355014: {
-    title: '添付した画像をeBayが受け付けませんでした',
-    detail: '画像の形式や大きさをご確認ください。'
-      + 'eBayが対応しているのは画像のみで、1回につき5枚までです。',
-  },
-  1001: {
-    title: 'eBayへの接続が認められませんでした',
-    detail: 'eBayとの連携が切れている可能性があります。トークンの再取得が必要です。',
-  },
-  1002: {
-    title: 'eBayへの接続が認められませんでした',
-    detail: 'eBayとの連携が切れている可能性があります。トークンの再取得が必要です。',
-  },
-  2001: {
-    title: 'eBayの呼び出し回数の上限に達しました',
-    detail: '1日に使える回数を超えています。日本時間16時に回復するので、それ以降にお試しください。',
-  },
+// ===== eBayのエラーを、利用者が対処できる日本語の説明に置き換える =====
+//
+// 【この表の決まり】
+//  ・載せるのは、eBay公式の資料で意味を確認できた番号と、実際に返ってきて意味を確かめた番号だけ。
+//    推測で番号を足さない（以前、公式と違う番号が入っていて、正しく案内できなかった）。
+//  ・出典：
+//    メッセージAPI（355xxx・335000）… https://developer.ebay.com/develop/api/sell/message_api
+//    共通エラー（1001〜3005）………… https://developer.ebay.com/develop/guides/sell/using-ebay-restful-apis
+//    画像API（190000）………………… https://developer.ebay.com/api-docs/commerce/media/resources/image/methods/createImageFromUrl
+//    50065 … 2026年10月に実際に返ってきた番号（eBayの連絡ルール違反：リンク）
+//  ・表に無い番号が来たら記録する（/api/ebay/unknown-errors で見られる）。それを見て表に足す。
+
+const EBAY_STATUS_URL = 'https://developer.ebay.com/support/api-status';
+const TOOL_BUG_NOTE = 'ツールの不具合の可能性があります。画面を読み込み直しても直らない場合は、この画面の内容（エラー番号）をお知らせください。';
+const EBAY_SIDE_NOTE = 'eBay側の一時的な問題です。少し時間をおいてから、もう一度お試しください。\n長く続く場合は、eBayのシステム状況を確認してください：\n' + EBAY_STATUS_URL;
+const RELINK_NOTE = 'eBayとの連携をやり直してください（マニュアルの「eBayとの連携」のページを参照）。';
+
+// eBayの連絡ルール（Member-to-member contact policy）による拒否。
+// この種類の番号は公開されていないため、番号が分からなくても英文の内容で見分けられるようにしておく
+const POLICY_LINK = {
+  title: 'リンクが含まれているため、eBayが送信を止めました',
+  detail: 'eBayの連絡ルールでは、メッセージにリンクやWebアドレスを入れることを禁止しています。\n\n'
+    + '次のようなものがリンクと判断されることがあります。\n'
+    + '・https:// や www. で始まる文字列\n'
+    + '・「.com」「.jp」などを含む文字列（httpが付いていなくても対象になることがあります）\n\n'
+    + '該当する部分を外すか、言い方を変えてから送信してください。\n'
+    + '時間をおいても、同じ内容のままでは送れません。',
+};
+const POLICY_CONTACT = {
+  title: '連絡先や支払いの情報が含まれているため、eBayが送信を止めました',
+  detail: 'eBayの連絡ルールでは、メッセージにメールアドレス・電話番号・SNSのアカウントやリンクなどの連絡先や、支払いに関する情報を入れることを禁止しています。\n\n'
+    + '数字が多く並んでいると、電話番号と判断されることがあると報告されています（注文番号・追跡番号・型番など）。\n\n'
+    + '該当する部分を外すか、書き方を変えてから送信してください。\n'
+    + '時間をおいても、同じ内容のままでは送れません。',
 };
 
-// エラーの説明文を組み立てる
-function describeEbayError(errorId, originalMessage, httpStatus) {
-  const g = EBAY_ERROR_GUIDE[Number(errorId)];
-  if (g) {
-    return g.title + '\n\n' + g.detail
-      + '\n\n---\n（eBayからの回答：エラー' + errorId + '）';
+const EBAY_ERROR_GUIDE = {
+  // --- 連絡ルール（実際に返ってきた番号） ---
+  50065: POLICY_LINK,
+
+  // --- メッセージAPI（公式） ---
+  355013: { title: '本文が長すぎます', detail: 'eBayのメッセージ本文には文字数の上限があります。文章を短くしてから送信してください。' },
+  355010: { title: '添付が多すぎます', detail: '1回のメッセージに付けられる添付の数には上限があります。添付を減らしてから送信してください。' },
+  355011: { title: '添付の種類をeBayが受け付けませんでした', detail: '添付をいったん外し、画像を付け直してから送信してください。' },
+  355012: { title: '添付の情報が足りません', detail: '添付をいったん外し、画像を付け直してから送信してください。' },
+  355014: { title: '添付画像をeBayが受け付けませんでした', detail: '添付をいったん外し、画像を付け直してから送信してください。\n画像の形式や大きさが原因のこともあります。' },
+  355015: { title: '本文も添付も空です', detail: '本文を入力するか、画像を添付してから送信してください。' },
+  355007: { title: 'この会話がeBay側で見つかりません', detail: '「eBayから取得」で一覧を新しくしてから、会話を開き直してください。' },
+  355006: { title: '相手のユーザー名がeBay側で見つかりません', detail: 'バイヤーの名前が変わったか、アカウントが無くなった可能性があります。' },
+  355018: { title: '送り先が指定されていません', detail: TOOL_BUG_NOTE },
+  355020: { title: '指定した商品がeBay側で見つかりません', detail: '商品（Item ID）が削除されたか、見つからない状態です。' },
+  355001: { title: 'eBayへの指定に誤りがあります（会話の状態）', detail: TOOL_BUG_NOTE },
+  355002: { title: 'eBayへの指定に誤りがあります（会話の種類）', detail: TOOL_BUG_NOTE },
+  355003: { title: 'eBayへの指定に誤りがあります（参照の種類）', detail: TOOL_BUG_NOTE },
+  355004: { title: 'eBayへの指定に誤りがあります（期間）', detail: TOOL_BUG_NOTE },
+  355005: { title: 'eBayへの指定に誤りがあります（日付の形式）', detail: TOOL_BUG_NOTE },
+  355008: { title: 'eBayへの指定に誤りがあります（取得の開始位置）', detail: TOOL_BUG_NOTE },
+  355009: { title: 'eBayへの指定に誤りがあります（取得件数）', detail: TOOL_BUG_NOTE },
+  355016: { title: 'eBayへの指定に誤りがあります（商品の番号）', detail: TOOL_BUG_NOTE },
+  355017: { title: 'eBayへの指定に誤りがあります（会話の種類）', detail: TOOL_BUG_NOTE },
+  355019: { title: 'eBayへの指定に誤りがあります（一括更新の件数）', detail: TOOL_BUG_NOTE },
+  355021: { title: 'eBayへの指定に誤りがあります（参照の情報）', detail: TOOL_BUG_NOTE },
+  355022: { title: 'eBayへの指定に誤りがあります（参照の種類）', detail: TOOL_BUG_NOTE },
+  335000: { title: 'eBay側でエラーが起きました', detail: EBAY_SIDE_NOTE },
+
+  // --- 画像API（公式） ---
+  190000: { title: 'eBay側でエラーが起きました（画像の取り込み）', detail: EBAY_SIDE_NOTE },
+
+  // --- すべてのeBay APIに共通（公式） ---
+  1001: { title: 'eBayとの連携が無効になっています', detail: RELINK_NOTE },
+  1002: { title: 'eBayとの連携の情報がありません', detail: RELINK_NOTE },
+  1003: { title: 'eBayとの連携の情報の形式が正しくありません', detail: RELINK_NOTE },
+  1004: { title: 'eBay側でエラーが起きました（連携の確認中）', detail: EBAY_SIDE_NOTE },
+  1100: { title: 'この操作をする許可がありません', detail: 'eBayとの連携のときに、必要な許可が足りていない可能性があります。\n' + RELINK_NOTE },
+  2001: { title: 'eBayへの呼び出しが多すぎます', detail: '短時間に多く呼び出したため、eBayが一時的に止めています。少し時間をおいてから、もう一度お試しください。' },
+  2002: { title: 'eBay側で呼び出し先が見つかりません', detail: TOOL_BUG_NOTE },
+  2003: { title: 'eBay側でエラーが起きました', detail: EBAY_SIDE_NOTE },
+  2004: { title: 'eBayへの送り方に誤りがあります', detail: TOOL_BUG_NOTE },
+  3001: { title: 'eBayが受け付けませんでした', detail: TOOL_BUG_NOTE },
+  3002: { title: 'eBayへの送り方に誤りがあります', detail: TOOL_BUG_NOTE },
+  3003: { title: 'eBay側で呼び出し先が見つかりません', detail: TOOL_BUG_NOTE },
+  3004: { title: 'eBay側でエラーが起きました', detail: EBAY_SIDE_NOTE },
+  3005: { title: 'eBay側でエラーが起きました', detail: EBAY_SIDE_NOTE },
+};
+
+// eBayの英文から、連絡ルールによる拒否を見分ける（番号が表に無くても案内できるように）
+function guideFromMessage(msg) {
+  const m = String(msg || '').toLowerCase();
+  if (!m) return null;
+  if (/member-to-member|contact policy/.test(m) || /not allowed/.test(m)) {
+    if (/contact (or payment )?information|payment information|email address|phone number|social media/.test(m)) return POLICY_CONTACT;
+    if (/\blinks?\b|web address|\burls?\b/.test(m)) return POLICY_LINK;
   }
-  // 一覧にないものは、分かる範囲で手がかりを添える
+  return null;
+}
+
+// eBayの英文を読める形にする（HTMLの記号やリンクのタグを外す）
+function cleanEbayMessage(s) {
+  return String(s || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
+    .replace(/\s+/g, ' ').trim();
+}
+
+// eBayのエラーの返事から、番号・種類・メッセージを取り出す。
+// 公式の形は { errors: [ {...} ] } だが、実際には { errorId, message, ... } の1件だけの形で返ることもある
+// （2026年10月の50065がこの形だった）。どちらでも読めるようにする
+function parseEbayError(json, text) {
+  let e = null;
+  if (json && typeof json === 'object') {
+    if (Array.isArray(json.errors) && json.errors.length) e = json.errors[0];
+    else if (json.errorId !== undefined || json.message) e = json;
+    else if (json.error && typeof json.error === 'object') e = json.error;
+    else if (Array.isArray(json.warnings) && json.warnings.length) e = json.warnings[0];
+  }
+  if (!e && text) {
+    // JSONとして読めなかった場合も、番号だけは拾う
+    const m = String(text).match(/"errorId"\s*:\s*(\d+)/);
+    if (m) e = { errorId: Number(m[1]), message: text };
+  }
+  if (!e) return { errorId: null, domain: '', category: '', message: cleanEbayMessage(String(text || '').substring(0, 500)) };
+  return {
+    errorId: (e.errorId !== undefined && e.errorId !== null && e.errorId !== '') ? Number(e.errorId) : null,
+    domain: String(e.domain || ''),
+    category: String(e.category || '').toUpperCase(),
+    message: cleanEbayMessage(e.longMessage || e.message || ''),
+  };
+}
+
+// ===== 表に無いエラーの記録 =====
+// 番号・種類・eBayの英文だけを残す（本文・バイヤー名・会話IDは残さない）
+const UNKNOWN_ERR_FILE = pathSku.join(process.env.DISK_PATH || '/var/data', 'ebay-unknown-errors.json');
+let unknownErrors = null;
+function loadUnknownErrors() {
+  if (unknownErrors) return unknownErrors;
+  try { unknownErrors = JSON.parse(fsSku.readFileSync(UNKNOWN_ERR_FILE, 'utf8')) || []; }
+  catch (e) { unknownErrors = []; }
+  return unknownErrors;
+}
+function recordUnknownError(where, info, httpStatus) {
+  try {
+    const list = loadUnknownErrors();
+    const key = [where, info.errorId, info.domain, String(info.message).substring(0, 80)].join('|');
+    const now = new Date().toISOString();
+    const hit = list.find(x => x.key === key);
+    if (hit) { hit.count++; hit.lastAt = now; }
+    else {
+      list.push({ key, where, errorId: info.errorId, domain: info.domain, category: info.category,
+        httpStatus, message: String(info.message).substring(0, 300), count: 1, firstAt: now, lastAt: now });
+      while (list.length > 200) list.shift();
+    }
+    fsSku.mkdirSync(pathSku.dirname(UNKNOWN_ERR_FILE), { recursive: true });
+    fsSku.writeFileSync(UNKNOWN_ERR_FILE, JSON.stringify(list, null, 1));
+  } catch (e) {
+    console.error('[ebay-error] 記録できませんでした:', e.message);
+  }
+}
+function getUnknownErrors() { return loadUnknownErrors().slice().reverse(); }
+
+// エラーの説明文を組み立てる。
+// where：どの操作か（'送信' など）。案内文に使う
+function describeEbayError(info, httpStatus, where) {
+  const act = where || '処理';
+  const guide = (info.errorId !== null && EBAY_ERROR_GUIDE[info.errorId]) || guideFromMessage(info.message);
+  if (!guide || info.errorId === null || !EBAY_ERROR_GUIDE[info.errorId]) {
+    // 表に無い番号（内容で見分けられた場合も含む）は記録して、あとで表に足せるようにする
+    recordUnknownError(act, info, httpStatus);
+  }
+  const tail = '\n\n---\n（eBayの回答' + (info.errorId !== null ? '：エラー' + info.errorId : '') + '）\n'
+    + (info.message ? info.message.substring(0, 300) : 'eBayから理由の説明はありませんでした。');
+  if (guide) return guide.title + '\n\n' + guide.detail + tail;
+
+  // 分からないものは決めつけない。eBayが付けた種類から分かる範囲だけ添える
   let hint = '';
-  if (httpStatus === 401 || httpStatus === 403) {
-    hint = '\n\neBayとの連携が切れている可能性があります。';
-  } else if (httpStatus === 429) {
-    hint = '\n\n短時間に多く送りすぎた可能性があります。少し待ってからお試しください。';
-  } else if (httpStatus >= 500) {
-    hint = '\n\neBay側で問題が起きている可能性があります。時間をおいてお試しください。';
-  }
-  return 'eBayが送信を受け付けませんでした（エラー' + (errorId || httpStatus) + '）'
-    + hint + '\n\n---\n（eBayからの回答）\n' + String(originalMessage || '').substring(0, 300);
+  if (httpStatus === 401) hint = 'eBayとの連携が切れている可能性があります。' + RELINK_NOTE;
+  else if (httpStatus === 403) hint = 'この操作をする許可が無い可能性があります。';
+  else if (httpStatus === 429) hint = '短時間に多く呼び出した可能性があります。少し時間をおいてからお試しください。';
+  else if (info.category === 'BUSINESS') hint = 'eBayのルールにより受け付けられませんでした。下のeBayの回答を確認してください。';
+  else if (info.category === 'REQUEST') hint = '送った内容に問題があったようです。下のeBayの回答を確認してください。';
+  else hint = 'eBay側の一時的な問題か、送った内容による拒否のどちらかです。下のeBayの回答を確認してください。\n内容による拒否の場合は、時間をおいても同じ内容では受け付けられません。';
+  return 'eBayが' + act + 'を受け付けませんでした（' + (info.errorId !== null ? 'エラー' + info.errorId : '状態コード ' + httpStatus) + '）'
+    + '\n\n' + hint + tail;
 }
 
 async function callMessageAPI(pathAndQuery, options) {
@@ -159,13 +274,10 @@ async function callMessageAPI(pathAndQuery, options) {
   try { json = text ? JSON.parse(text) : null; } catch (e) {}
 
   if (!res.ok) {
-    const e0 = (json && json.errors && json.errors[0]) || null;
-    const err = new Error(describeEbayError(
-      e0 ? e0.errorId : null,
-      e0 ? (e0.longMessage || e0.message) : text.substring(0, 300),
-      res.status
-    ));
-    err.ebayErrorId = e0 ? e0.errorId : null;
+    const info = parseEbayError(json, text);
+    const where = (options.method === 'POST' && pathAndQuery.indexOf('/send_message') === 0) ? '送信' : '処理';
+    const err = new Error(describeEbayError(info, res.status, where));
+    err.ebayErrorId = info.errorId;
     err.httpStatus = res.status;
     throw err;
   }
@@ -461,13 +573,10 @@ async function uploadImageToEps(selfHostedUrl) {
     body: JSON.stringify({ imageUrl: selfHostedUrl }),
   });
   if (createRes.status !== 201) {
-    let detail = '';
-    try {
-      const err = await createRes.json();
-      detail = (err.errors && err.errors[0] && (err.errors[0].longMessage || err.errors[0].message)) || '';
-    } catch (e) { detail = await createRes.text().catch(() => ''); }
-    throw new Error('eBayが画像を取り込めませんでした（HTTP ' + createRes.status + '）'
-      + (detail ? ': ' + String(detail).substring(0, 200) : ''));
+    // メッセージAPIと同じ仕組みで説明する（形の違うエラーも読めるように）
+    const t = await createRes.text().catch(() => '');
+    let j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {}
+    throw new Error(describeEbayError(parseEbayError(j, t), createRes.status, '画像の取り込み'));
   }
 
   // 画像IDはLocationヘッダーで返る（本文ではない）
@@ -2397,6 +2506,7 @@ module.exports = {
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   getShippingFulfillments: getShippingFulfillments,
+  getUnknownErrors: getUnknownErrors,
   getBuyerFeedback: getBuyerFeedback,
   endFixedPriceItem: endFixedPriceItem,
   respondCancellation: respondCancellation,
