@@ -1201,7 +1201,12 @@ async function getOrderExtras(orderId, opts) {
       phone: g(/<Phone>([^<]*)<\/Phone>/),
     } : null;
 
-    const r = { taxId, address, email: pick(/<BuyerEmail>([^<]*)<\/BuyerEmail>/) };
+    // 注文の1行ごとの番号（フィードバックの取得に使う）
+    const lineItemIds = Array.from(new Set(
+      (t2.match(/<OrderLineItemID>[^<]+<\/OrderLineItemID>/g) || [])
+        .map(x => x.replace(/<\/?OrderLineItemID>/g, '').trim()).filter(Boolean)
+    ));
+    const r = { taxId, address, email: pick(/<BuyerEmail>([^<]*)<\/BuyerEmail>/), lineItemIds };
     if (taxId || address) taxIdCache[key] = r;   // 取得できた場合のみキャッシュ
     return r;
   } catch (e) {
@@ -1605,6 +1610,69 @@ async function getShippingFulfillments(orderId) {
   }
 }
 
+// ===== バイヤーから受け取ったフィードバック =====
+// Trading API: GetFeedback に注文の1行ごとの番号（OrderLineItemID）を指定して取る（eBay公式の方法）。
+// その取引のフィードバックは双方向（自分→バイヤー、バイヤー→自分）が返るので、
+// 「バイヤー本人が付けたもの」だけを選ぶ
+const feedbackCache = {};
+const FB_TTL_FOUND = 12 * 60 * 60 * 1000;   // 付いていれば12時間（後から変更されることがあるため永久には覚えない）
+const FB_TTL_NONE = 3 * 60 * 60 * 1000;     // まだ無ければ3時間ごとに確認（1日の呼び出し上限を使いすぎないため）
+
+async function getFeedbackForLine(lineId) {
+  const key = String(lineId);
+  const hit = feedbackCache[key];
+  if (hit && (Date.now() - hit.at) < (hit.list.length ? FB_TTL_FOUND : FB_TTL_NONE)) return hit.list;
+  const token = await getAccessToken();
+  const body = '<?xml version="1.0" encoding="utf-8"?>'
+    + '<GetFeedbackRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+    + '<OrderLineItemID>' + escXml(key) + '</OrderLineItemID>'
+    + '<DetailLevel>ReturnAll</DetailLevel>'
+    + '</GetFeedbackRequest>';
+  const res = await fetch('https://api.ebay.com/ws/api.dll', {
+    method: 'POST',
+    headers: {
+      'X-EBAY-API-SITEID': '0',
+      'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+      'X-EBAY-API-CALL-NAME': 'GetFeedback',
+      'X-EBAY-API-IAF-TOKEN': token,
+      'Content-Type': 'text/xml',
+    },
+    body,
+  });
+  const t = await res.text();
+  const ack = (t.match(/<Ack>([^<]+)<\/Ack>/) || [])[1] || '';
+  if (ack !== 'Success' && ack !== 'Warning') {
+    // 失敗は覚えない（「フィードバックなし」と誤って扱わないため）
+    throw new Error((t.match(/<LongMessage>([^<]+)<\/LongMessage>/) || [])[1] || 'GetFeedbackに失敗しました');
+  }
+  const list = t.split('<FeedbackDetail>').slice(1).map(b => {
+    const g = (re) => ((b.match(re) || [])[1] || '').trim();
+    return {
+      user: g(/<CommentingUser>([^<]*)<\/CommentingUser>/),
+      type: g(/<CommentType>([^<]*)<\/CommentType>/),
+      text: g(/<CommentText>([^<]*)<\/CommentText>/),
+      time: g(/<CommentTime>([^<]*)<\/CommentTime>/),
+    };
+  });
+  feedbackCache[key] = { list, at: Date.now() };
+  return list;
+}
+
+// 注文の各行のうち、バイヤー本人が付けた最新のフィードバックを返す。無ければ null
+async function getBuyerFeedback(lineItemIds, buyerUsername) {
+  const buyer = String(buyerUsername || '').toLowerCase();
+  if (!buyer || !Array.isArray(lineItemIds) || !lineItemIds.length) return null;
+  let best = null;
+  for (const id of lineItemIds.slice(0, 5)) {
+    const list = await getFeedbackForLine(id);
+    list.forEach(f => {
+      if (String(f.user).toLowerCase() !== buyer) return;
+      if (!best || new Date(f.time || 0) > new Date(best.time || 0)) best = f;
+    });
+  }
+  return best ? { type: best.type, text: best.text, time: best.time } : null;
+}
+
 // ===== 出品を終了する =====
 // Trading API: EndFixedPriceItem（定額出品の終了）。理由は「在庫がなくなった（NotAvailable）」
 async function endFixedPriceItem(itemId) {
@@ -1729,10 +1797,10 @@ const CANCEL_REASONS = {
   WRONG_PAYMENT_METHOD: '支払い方法の誤り',
   WRONG_SHIPPING_ADDRESS: '配送先の誤り',
   WRONG_SHIPPING_METHOD: '配送方法の誤り',
-  // eBay公式：セラーが手続きするキャンセルだが、原因は「バイヤーが入力した配送先住所の問題」。
-  // セラーの評価（取引の不備）には数えられない。「セラー都合」と書くと誤解を招くため、原因をそのまま書く
-  ADDRESS_ISSUES: 'バイヤーの住所に問題あり',
-  BUYER_ASKED_CANCEL: 'バイヤーの依頼による（セラー操作）',
+  // 表記はeBayの理由そのものだけにする。「セラー都合」「バイヤー都合」や評価への影響などの補足は書かない
+  // （どの理由が評価に関わるかはセラーなら理由から分かる。補足に推測が混ざると、評価に関わる判断を誤らせるため）
+  ADDRESS_ISSUES: '住所に問題あり',
+  BUYER_ASKED_CANCEL: 'バイヤーの依頼',
   ORDER_UNPAID: '未払いのため',
   OUT_OF_STOCK_OR_CANNOT_FULFILL: '在庫切れ・出荷不可',
   OTHER: 'その他',
@@ -2329,6 +2397,7 @@ module.exports = {
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
   getShippingFulfillments: getShippingFulfillments,
+  getBuyerFeedback: getBuyerFeedback,
   endFixedPriceItem: endFixedPriceItem,
   respondCancellation: respondCancellation,
   clearCancellationCache: clearCancellationCache,
