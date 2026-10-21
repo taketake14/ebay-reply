@@ -272,7 +272,8 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ship-badge.shipped{background:#dcfce7;color:#166534;border:1px solid #86efac;}
 .ship-badge.unshipped{background:#fff7ed;color:#c2410c;border:1px solid #fdba74;}
 .ship-carrier{font-size:11.5px;font-weight:700;color:var(--text);}
-.ship-track{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);word-break:break-all;}
+.ship-track{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal);word-break:break-all;text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
+.ship-track:hover{color:var(--teal-dark,#0f766e);}
 .ship-none{font-size:11px;color:var(--text3);}
 .kv-v.buyer-note{white-space:pre-wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 7px;}
 
@@ -370,7 +371,12 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .s2-main{flex:1;display:flex;overflow:hidden;}
 
 /* ===== ミニ受信リスト（チャット画面の最左） ===== */
-.mini-list{width:290px;flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
+.mini-list{width:var(--mini-w,290px);flex-shrink:0;display:flex;flex-direction:column;background:#fff;border-right:1px solid var(--border);overflow:hidden;transition:width 0.16s ease;}
+/* 受信トレイの幅を変える境界線（チャット欄との境界線と同じ見た目） */
+.mini-resizer{width:5px;flex-shrink:0;background:var(--border);cursor:col-resize;transition:background 0.1s;}
+.mini-resizer:hover,.mini-resizer.dragging{background:var(--orange);}
+/* 折りたたみ中は幅を変えられないので隠す */
+.mini-list.collapsed + .mini-resizer{display:none;}
 /* 折りたたみ時：画像・SOLD・未読数・フラグだけが見える細い列にする。
    矢印は見出しの中に残し、上端の位置を変えない（左の分類の列と同じ考え方） */
 .mini-list.collapsed{width:78px;}
@@ -873,6 +879,8 @@ a.kv-v:hover{text-decoration:underline;}
 .prod-img-wrap{width:100%;height:150px;flex-shrink:0;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid var(--border);overflow:hidden;}
 .prod-img-wrap img{width:100%;height:100%;object-fit:contain;}
 .prod-name{font-size:13px;font-weight:600;color:var(--text);line-height:1.5;}
+.prod-name-link{color:inherit;text-decoration:none;}
+.prod-name-link:hover{color:var(--teal);text-decoration:underline;}
 .prod-kv{display:flex;flex-direction:column;gap:0;}
 .copy-chips-section{display:flex;flex-direction:column;gap:6px;}
 .copy-chips-label{font-size:11px;color:var(--text2);font-weight:600;}
@@ -1193,6 +1201,9 @@ a.kv-v:hover{text-decoration:underline;}
       </div>
       <div class="mini-list-body" id="mini-list-body"></div>
     </div>
+
+    <!-- 受信トレイと右側パネルの境界線。ドラッグで受信トレイの幅を変える -->
+    <div class="mini-resizer" id="mini-resizer" title="ドラッグで受信トレイの幅を変更"></div>
 
     <!-- 左パネル：商品・バイヤー・メモ情報 -->
     <div class="s2-right-panel" id="right-panel" style="width:290px;">
@@ -2342,7 +2353,7 @@ function renderChatDetail(){
     imgWrap.innerHTML='&#128230;';
   }
   var prodName=m.item||'（商品名なし）';
-  document.getElementById('prod-name').textContent=prodName;
+  setProdName(prodName, m.itemId);
   var cpName=document.getElementById('cp-prod-name');
   if(cpName) cpName.onclick=function(){copyValue(prodName,this);};
 
@@ -3969,6 +3980,53 @@ async function saveListingEdit(){
   }
 }
 
+// ===== 配送会社の追跡ページ（日本語） =====
+// eBayの配送会社コードから、その会社の日本語の追跡ページを開く。
+// コードの表記ゆれ（大文字小文字・記号）に強くするため、英数字だけにして判定する。
+// ページを開くときは番号もコピーする。万一ページ側に番号が入らなくても、貼り付ければ調べられるように
+// ※URLの形を公式の情報で確認済み：日本郵便（配達完了通知メールのURL）、FedEx（trknbr）。
+//   その他は広く使われている形。実際の追跡番号で確認できたら、この注記を更新すること
+var TRACKING_PAGES=[
+  {match:['FEDEX'],                      url:'https://www.fedex.com/fedextrack/?trknbr={n}&locale=ja_JP'},
+  {match:['DHL'],                        url:'https://www.dhl.com/jp-ja/home/tracking/tracking-express.html?submit=1&tracking-id={n}'},
+  {match:['UPS'],                        url:'https://www.ups.com/track?loc=ja_JP&tracknum={n}'},
+  {match:['JAPANPOST','JPPOST'],         url:'https://trackings.post.japanpost.jp/services/srv/search/direct?reqCodeNo1={n}&locale=ja'},
+  {match:['YAMATO','KURONEKO'],          url:'https://jizen.kuronekoyamato.co.jp/jizen/servlet/crjz.b.NQ0010?id={n}'},
+  {match:['SAGAWA'],                     url:'https://k2k.sagawa-exp.co.jp/p/web/okurijosearch.do?okurijoNo={n}'},
+  {match:['SPEEDPAK','ORANGECONNEX'],    url:'https://www.orangeconnex.com/tracking?language=ja&trackingnumber={n}'}
+];
+function trackingUrl(code, number){
+  var c=String(code||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(!c || !number) return '';
+  for(var i=0;i<TRACKING_PAGES.length;i++){
+    var t=TRACKING_PAGES[i];
+    for(var j=0;j<t.match.length;j++){
+      if(c.indexOf(t.match[j])>=0) return t.url.replace('{n}', encodeURIComponent(String(number).trim()));
+    }
+  }
+  return '';
+}
+function openTracking(code, number){
+  var url=trackingUrl(code, number);
+  // ポップアップを止められないよう、クリックの直後に開く
+  if(url) window.open(url,'_blank','noopener');
+  navigator.clipboard.writeText(String(number)).then(function(){
+    showToast(url ? '追跡ページを開きました（番号もコピー済み）' : '追跡番号をコピーしました（この配送会社の追跡ページは未登録です）');
+  }).catch(function(){});
+}
+
+// 商品名を表示する。Item IDと同じく、押すとeBayの商品ページが開くようにする
+// （商品名とItem IDで挙動が違うと、押し間違えたときに戸惑うため）
+function setProdName(title, itemId){
+  var el=document.getElementById('prod-name');
+  if(!el) return;
+  if(itemId){
+    el.innerHTML='<a class="prod-name-link" href="https://www.ebay.com/itm/'+encodeURIComponent(itemId)+'" target="_blank" rel="noopener" title="eBayの商品ページを開く">'+esc(title)+'</a>';
+  } else {
+    el.textContent=title;
+  }
+}
+
 // ===== 出品を終了する =====
 async function endListing(){
   if(currentIdx===null) return;
@@ -4011,7 +4069,7 @@ async function loadItemDetail(itemId, idx, hasBasics){
     var priceEl=document.getElementById('prod-price');
     var imgEl=document.getElementById('prod-img-wrap');
     if(!info) return;
-    if(nameEl && info.title) nameEl.textContent=info.title;
+    if(nameEl && info.title) setProdName(info.title, itemId);
     if(skuEl) skuEl.textContent=info.sku||'—';
     var mI=messages[idx];
     if(mI && info.sku) mI.sku=info.sku;
@@ -4313,7 +4371,9 @@ async function loadBuyerDetail(buyer, idx){
           ob+='<div class="prod-kv-row ship-row"><span class="kv-k">'+(k===0?'発送':'')+'</span>'
             +'<span class="kv-v"><span class="ship-badge shipped">発送済み'+(d?' '+esc(d):'')+'</span>'
             +(x.carrier?'<span class="ship-carrier">'+esc(x.carrier)+'</span>':'')
-            +(x.trackingNumber?'<span class="ship-track">'+esc(x.trackingNumber)+'</span>':'<span class="ship-none">追跡番号なし</span>')
+            +(x.trackingNumber
+              ? '<a class="ship-track" href="#" onclick="event.preventDefault();openTracking(\''+esc(x.carrierCode||'')+'\',\''+esc(x.trackingNumber)+'\')" title="'+(trackingUrl(x.carrierCode,x.trackingNumber)?'追跡ページを開く（番号もコピーします）':'番号をコピー（この配送会社の追跡ページは未登録）')+'">'+esc(x.trackingNumber)+'</a>'
+              : '<span class="ship-none">追跡番号なし</span>')
             +'</span>'
             +(x.trackingNumber?cp(x.trackingNumber,'追跡番号をコピー'):'')
             +'</div>';
@@ -5606,6 +5666,58 @@ document.addEventListener('mousedown',function(e){
       document.body.style.cursor='';document.body.style.userSelect='';
       saveResize();
     }
+  });
+})();
+
+// ===== 受信トレイの幅をドラッグで変える =====
+// 幅は --mini-w に入れる。折りたたみ時の細い列（CSSで固定）はこの値に左右されない
+(function(){
+  var MINI_MIN=220, MINI_MAX=560, MINI_KEY='ebay_mini_w';
+  var res=document.getElementById('mini-resizer');
+  var ml=document.getElementById('mini-list');
+  if(!res||!ml) return;
+  // チャット欄を潰さない範囲に収める（チャット欄の最小幅は他の幅調整と同じ考え方）
+  function maxWidth(){
+    var main=document.querySelector('.s2-main');
+    var chat=document.getElementById('chat-col');
+    if(!main||!chat) return MINI_MAX;
+    var total=main.getBoundingClientRect().width;
+    if(total<=0) return MINI_MAX;
+    var others=0;
+    Array.prototype.forEach.call(main.children,function(el){
+      if(el===ml||el===chat) return;
+      others+=el.getBoundingClientRect().width;
+    });
+    var chatMin=parseInt(getComputedStyle(chat).minWidth,10)||360;
+    return Math.max(MINI_MIN, Math.min(MINI_MAX, total-others-chatMin));
+  }
+  var curW=null;   // 最後に決めた幅。画面から測ると開閉の動きの途中の値を拾うので、こちらを保存する
+  function apply(w){
+    w=Math.round(Math.max(MINI_MIN, Math.min(maxWidth(), w)));
+    ml.style.setProperty('--mini-w', w+'px');
+    curW=w;
+    return w;
+  }
+  try{ var saved=parseInt(localStorage.getItem(MINI_KEY),10); if(saved) apply(saved); }catch(e){}
+  var dragging=false, startX=0, startW=0;
+  res.addEventListener('mousedown',function(e){
+    if(ml.classList.contains('collapsed')) return;
+    dragging=true; startX=e.clientX; startW=ml.getBoundingClientRect().width;
+    ml.style.transition='none';   // ドラッグ中は動きを付けない（マウスに遅れてついてくるのを防ぐ）
+    res.classList.add('dragging');
+    document.body.style.cursor='col-resize'; document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging) return;
+    apply(startW+(e.clientX-startX));
+  });
+  document.addEventListener('mouseup',function(){
+    if(!dragging) return;
+    dragging=false; res.classList.remove('dragging');
+    ml.style.transition='';
+    document.body.style.cursor=''; document.body.style.userSelect='';
+    try{ if(curW) localStorage.setItem(MINI_KEY, String(curW)); }catch(e){}
   });
 })();
 
