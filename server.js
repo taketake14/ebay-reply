@@ -867,6 +867,44 @@ app.get('/api/ebay/verify/:cid', async (req, res) => {
 
 // eBayが返す添付情報を、加工せずそのまま確認するための窓口。
 // 受信した添付が取れているのか、送った添付をeBayがどう保管しているのかを見る
+// ===== 送信できたかどうかを、eBayに直接確かめる =====
+// 送信中にサーバーが再起動するなどして返事を受け取れなかったとき、画面から呼ぶ。
+// 「eBayには届いたのに失敗と表示され、送り直して二重送信になる」のを防ぐため。
+// 判定：この会話で、自分（セラー）が since 以降に送った、同じ本文のメッセージがあるか
+app.post('/api/ebay/verify-sent', async (req, res) => {
+  try {
+    const cid = String((req.body && req.body.conversationId) || '').trim();
+    const text = String((req.body && req.body.text) || '');
+    const since = Number((req.body && req.body.since) || 0);
+    const hasMedia = !!(req.body && req.body.hasMedia);
+    if (!cid) return res.json({ ok: false, error: '会話IDがありません' });
+
+    const norm = (s) => String(s || '').replace(/\r\n/g, '\n').replace(/\s+/g, ' ').trim();
+    const want = norm(text);
+    const self = String(await ebayApi.getSellerUsername().catch(() => '') || process.env.EBAY_SELLER_USERNAME || '').toLowerCase();
+    // 時計のずれを考えて、押した時刻の2分前から探す
+    const from = since ? since - 2 * 60 * 1000 : 0;
+
+    const d = await ebayApi.getConversation(cid);
+    const msgs = (d && d.messages) || [];
+    const hit = msgs.find(m => {
+      const who = String(m.senderUsername || '').toLowerCase();
+      if (self && who !== self) return false;
+      const t = new Date(m.createdDate || 0).getTime();
+      if (from && (isNaN(t) || t < from)) return false;
+      if (want) {
+        const body = norm(m.messageBody);
+        return body === want || (want.length > 40 && body.indexOf(want.substring(0, 200)) >= 0);
+      }
+      // 本文なし（添付だけ）の送信は、添付付きのメッセージがあるかで判断する
+      return hasMedia && Array.isArray(m.messageMedia) && m.messageMedia.length > 0;
+    });
+    res.json({ ok: true, sent: !!hit, time: hit ? (hit.createdDate || '') : '' });
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 app.get('/api/ebay/media-raw/:cid', async (req, res) => {
   try {
     const d = await ebayApi.getConversation(req.params.cid);
