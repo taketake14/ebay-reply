@@ -494,15 +494,21 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-cp-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
 .bbl-cp-btn.done{background:#0d9488;border-color:#0d9488;color:#fff;}
 /* 音声入力 */
-.mic-btn{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid #99f6e4;background:#f0fdfa;color:#0f766e;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.12s;line-height:1.5;}
-.mic-btn:hover{background:#ccfbf1;}
-.mic-btn.on{background:#dc2626;border-color:#dc2626;color:#fff;animation:micPulse 1.2s ease-in-out infinite;}
-@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.45);}50%{box-shadow:0 0 0 6px rgba(220,38,38,0);}}
-.mic-live{font-size:11.5px;color:#b91c1c;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;}
-.mic-live:empty{display:none;}
-.mic-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.mic-ico{display:block;flex-shrink:0;}
+/* 日本語欄：見出しの右に、マークと文字 */
+.mic-btn{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:background 0.12s,border-color 0.12s,color 0.12s;line-height:1.5;}
+.mic-btn:hover{background:#f1f5f9;border-color:#94a3b8;}
 .reply-col-label .mic-btn{margin-left:auto;}
-.reply-col-label .mic-btn + .mic-live + .mini-btn{margin-left:6px;}
+.reply-col-label .mic-btn + .mini-btn{margin-left:6px;}
+/* 入力欄の右下に置く丸いボタン */
+.mic-field{position:relative;}
+.mic-field textarea{padding-bottom:46px;}
+.mic-fab{position:absolute;right:10px;bottom:10px;width:34px;height:34px;border-radius:50%;border:1px solid #cbd5e1;background:#fff;color:#334155;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;box-shadow:0 1px 3px rgba(15,23,42,0.12);transition:background 0.12s,border-color 0.12s,color 0.12s;}
+.mic-fab:hover{background:#f1f5f9;border-color:#94a3b8;}
+.mic-fab .mic-ico{width:17px;height:17px;}
+/* 聞き取り中（両方共通） */
+.mic-btn.on,.mic-fab.on{background:#dc2626;border-color:#dc2626;color:#fff;animation:micPulse 1.2s ease-in-out infinite;}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.45);}50%{box-shadow:0 0 0 6px rgba(220,38,38,0);}}
 
 /* 翻訳文の表示 */
 /* 訳文：原文の付属情報として一段引いた見せ方（枠なし・細いライン1本） */
@@ -1328,7 +1334,7 @@ a.kv-v:hover{text-decoration:underline;}
           <div class="reply-col">
             <div class="reply-col-label">
               <span class="reply-col-dot" style="background:var(--success);"></span>日本語
-              <button class="mic-btn" type="button" data-mic-for="d-input-ja" onclick="toggleMic('d-input-ja',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります">&#127908; 音声入力</button><span class="mic-live" data-mic-live-for="d-input-ja"></span>
+              <button class="mic-btn" type="button" data-mic-for="d-input-ja" data-mic-label="1" onclick="toggleMic('d-input-ja',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります"><svg class="mic-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg><span>音声入力</span></button>
               <button class="mini-btn" onclick="copyFromField('d-input-ja',this)" title="日本語をコピー">&#128203; コピー</button>
             </div>
             <textarea class="reply-input-ja" id="d-input-ja" placeholder="返信内容を日本語で入力、または「AI返信案」を押す..."></textarea>
@@ -3265,9 +3271,13 @@ async function translateBubble(idx, btn){
 // ===== 音声入力 =====
 // ChromeとEdgeに入っている音声認識をそのまま使う（呼び出し方は同じなので、ボタンは1つでよい。
 // Chromeなら Google、Edgeなら Microsoft の音声認識が自動で使われる）。
-// 文字は、その欄でカーソルを置いた位置に差し込む。カーソルを置いていなければ末尾に足す。
+// 話している途中の文字も、入力欄のカーソルの位置に「仮の文字」として入れ、
+// 言葉が確定するたびに正式な文字に置き換える（ボタンの横に別表示はしない）。
 // 同時に動かすのは1つの欄だけ（別の欄のマイクを押したら、前の欄は止める）
-var micRec=null, micTargetId='', micBtn=null;
+var MIC_ICON='<svg class="mic-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>';
+var STOP_ICON='<svg class="mic-ico" width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></svg>';
+var mic=null;   // 動いている音声入力の状態 {rec, el, btn, base, provLen, prefix, lastValue}
+
 function micSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
 
 // 欄ごとに「カーソルを置いたか」を覚える（置いていない欄は末尾に足すため）
@@ -3276,42 +3286,63 @@ document.addEventListener('focusin',function(e){
   if(t && t.tagName==='TEXTAREA' && t.id) t.setAttribute('data-caret-set','1');
 });
 
-function insertAtCaret(el, text){
-  if(!text) return;
-  var useCaret=el.getAttribute('data-caret-set')==='1';
-  var start=useCaret ? el.selectionStart : el.value.length;
-  var end=useCaret ? el.selectionEnd : el.value.length;
-  // カーソルを置いていないときは末尾に足す。前の文字とくっつかないよう改行してから足す
-  if(!useCaret && el.value && !/\s$/.test(el.value)) text='\n'+text;
-  el.setRangeText(text, start, end, 'end');
-  el.setAttribute('data-caret-set','1');   // 続けて話した分は、入れた文字の後ろに続ける
-  // 入力したことを他の処理にも知らせる（文字数表示などが動くように）
-  el.dispatchEvent(new Event('input',{bubbles:true}));
+function micSetButton(btn, on){
+  if(!btn) return;
+  btn.classList.toggle('on', on);
+  var withLabel=btn.getAttribute('data-mic-label')==='1';
+  btn.innerHTML = on ? (STOP_ICON+(withLabel?'<span>停止</span>':''))
+                     : (MIC_ICON+(withLabel?'<span>音声入力</span>':''));
+  btn.title = on ? 'もう一度押すと止まります' : '押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります';
 }
 
-function micLiveEl(id){ return document.querySelector('[data-mic-live-for="'+id+'"]'); }
+// 仮の文字を書き換える。話している途中は何度も呼ばれ、同じ場所を上書きしていく
+function micWrite(text){
+  var m=mic; if(!m) return;
+  var el=m.el;
+  // 聞き取り中に手で入力・編集された場合は、仮の文字の位置が分からなくなるので、
+  // 今のカーソルの位置から新しく始める（手で書いた文字は消さない）
+  if(el.value!==m.lastValue){
+    m.base=el.selectionStart; m.provLen=0; m.prefix='';
+  }
+  var full=text ? (m.prefix+text) : '';
+  el.setRangeText(full, m.base, m.base+m.provLen, 'end');
+  m.provLen=full.length;
+  m.lastValue=el.value;
+}
 
-// 止める。ボタンで止めたとき（stop）は話し途中の分も文字にしてから終わる。
-// 会話の切り替えなどで止めるとき（abort）は、その場で捨てる（別の欄に入らないように）
+// 確定した文字を書く。次の言葉はその後ろに続ける
+function micCommit(text){
+  var m=mic; if(!m || !text) return;
+  micWrite(text);
+  m.base+=m.provLen; m.provLen=0; m.prefix='';
+  m.el.dispatchEvent(new Event('input',{bubbles:true}));   // 文字数表示などを動かす
+}
+
+// 終わらせる。確定していない仮の文字は消す（止めた瞬間に途中の文字が残らないように）
+function micFinish(){
+  var m=mic; if(!m) return;
+  mic=null;
+  if(m.provLen>0 && m.el.value===m.lastValue){
+    m.el.setRangeText('', m.base, m.base+m.provLen, 'end');
+  }
+  micSetButton(m.btn, false);
+}
+
+// 止める。ボタンで止めたとき（keepPending）は話し途中の分も確定させてから終わる。
+// 会話の切り替えなどで止めるときは、その場で捨てる（別の欄に入らないように）
 function stopMic(keepPending){
-  if(!micRec) return;
-  var r=micRec;
+  if(!mic) return;
+  var r=mic.rec;
   if(keepPending){ try{ r.stop(); }catch(e){} return; }
-  micReset();
+  micFinish();
   try{ r.abort(); }catch(e){}
-}
-
-function micReset(){
-  if(micBtn){ micBtn.classList.remove('on'); micBtn.innerHTML='&#127908; 音声入力'; }
-  var live=micLiveEl(micTargetId); if(live) live.textContent='';
-  micRec=null; micTargetId=''; micBtn=null;
 }
 
 function toggleMic(targetId, btn){
   // 同じ欄でもう一度押したら止める
-  if(micRec && micTargetId===targetId){ stopMic(true); return; }
+  if(mic && mic.el.id===targetId){ stopMic(true); return; }
   // 別の欄で動いていたら止めてから始める
-  if(micRec){ var old=micRec; micReset(); try{ old.abort(); }catch(e){} }
+  if(mic) stopMic(false);
 
   if(!micSupported()){
     alert('このブラウザでは音声入力が使えません。\nGoogle Chrome または Microsoft Edge で開いてください。');
@@ -3320,21 +3351,32 @@ function toggleMic(targetId, btn){
   var el=document.getElementById(targetId);
   if(!el) return;
 
+  // 書き始める位置：カーソルを置いていればその位置（選んだ文字があれば置き換える）、無ければ末尾
+  var useCaret=el.getAttribute('data-caret-set')==='1';
+  var base=useCaret ? el.selectionStart : el.value.length;
+  if(useCaret && el.selectionEnd>el.selectionStart){
+    el.setRangeText('', el.selectionStart, el.selectionEnd, 'start');
+  }
+  // 末尾に足すときは、前の文字とくっつかないよう改行してから書く
+  var prefix=(!useCaret && el.value && !/\s$/.test(el.value)) ? '\n' : '';
+
   var SR=window.SpeechRecognition || window.webkitSpeechRecognition;
   var rec=new SR();
   rec.lang='ja-JP';
   rec.continuous=true;        // 話し続けても止めない（無音が続くとブラウザ側で止まる）
-  rec.interimResults=true;    // 話している途中の文字も見せる
+  rec.interimResults=true;    // 話している途中の文字も受け取る
+
+  mic={rec:rec, el:el, btn:btn, base:base, provLen:0, prefix:prefix, lastValue:el.value};
 
   rec.onresult=function(ev){
-    if(micRec!==rec) return;   // 止めた後に遅れて届いた結果は入れない
+    if(!mic || mic.rec!==rec) return;   // 止めた後に遅れて届いた結果は入れない
     var interim='';
     for(var i=ev.resultIndex;i<ev.results.length;i++){
       var r=ev.results[i];
-      if(r.isFinal) insertAtCaret(el, r[0].transcript);
+      if(r.isFinal) micCommit(r[0].transcript);
       else interim+=r[0].transcript;
     }
-    var live=micLiveEl(targetId); if(live) live.textContent=interim;
+    micWrite(interim);
   };
   rec.onerror=function(ev){
     var msg='';
@@ -3351,14 +3393,15 @@ function toggleMic(targetId, btn){
     }
     if(msg) alert(msg);
   };
-  rec.onend=function(){ if(micRec===rec) micReset(); };
+  rec.onend=function(){ if(mic && mic.rec===rec) micFinish(); };
 
-  micRec=rec; micTargetId=targetId; micBtn=btn;
-  btn.classList.add('on'); btn.innerHTML='&#9632; 停止';
+  micSetButton(btn, true);
+  // カーソルが見えるように欄に戻す（書き始める位置に置く）
+  try{ el.focus({preventScroll:true}); el.setSelectionRange(base, base); }catch(e){}
+  mic.lastValue=el.value;
   try{ rec.start(); }
-  catch(e){ micReset(); alert('音声入力を始められませんでした。もう一度押してください。'); }
+  catch(e){ micFinish(); alert('音声入力を始められませんでした。もう一度押してください。'); }
 }
-
 
 // 吹き出し1件をコピーする。日本語訳を表示中なら、訳も一緒にコピーする
 function copyBubble(btn){
@@ -5935,8 +5978,10 @@ window.addEventListener('load',function(){
     <div class="ai-body">
       <div class="ai-guide">やり取りの全体と商品情報から、調べるための依頼文を作りました。まだ答えていない質問を、AIが会話の流れから見つけて調べます。必要なら書き足してから使ってください。<br>
         「コピーしてClaudeを開く」→ Claudeに貼り付けて送信 → 結果を確認したら「AIに情報を渡す」に貼ると、その内容で返信文を作れます。</div>
-      <div class="mic-row"><button class="mic-btn" type="button" data-mic-for="research-text" onclick="toggleMic('research-text',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります">&#127908; 音声入力</button><span class="mic-live" data-mic-live-for="research-text"></span></div>
-      <textarea id="research-text" class="ai-hint-input" style="min-height:440px;font-size:12.5px;"></textarea>
+      <div class="mic-field">
+        <textarea id="research-text" class="ai-hint-input" style="min-height:440px;font-size:12.5px;"></textarea>
+        <button class="mic-fab" type="button" data-mic-for="research-text" onclick="toggleMic('research-text',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります"><svg class="mic-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg></button>
+      </div>
     </div>
     <div class="ai-foot">
       <button class="btn btn-ghost" onclick="copyResearch(false)">コピーだけ</button>
@@ -5954,8 +5999,10 @@ window.addEventListener('load',function(){
     </div>
     <div class="ai-body">
       <div class="ai-guide">バイヤーへ伝えたい情報を入力してください。箇条書きや単語だけでも構いません。<br>AIがこれをもとに自然な英文の返信案を作成します。</div>
-      <div class="mic-row"><button class="mic-btn" type="button" data-mic-for="ai-hint-text" onclick="toggleMic('ai-hint-text',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります">&#127908; 音声入力</button><span class="mic-live" data-mic-live-for="ai-hint-text"></span></div>
-      <textarea id="ai-hint-text" class="ai-hint-input" placeholder="例：&#10;在庫あり&#10;発送まで1週間&#10;支払いはPayPalのみ&#10;サイズは全長25cm"></textarea>
+      <div class="mic-field">
+        <textarea id="ai-hint-text" class="ai-hint-input" placeholder="例：&#10;在庫あり&#10;発送まで1週間&#10;支払いはPayPalのみ&#10;サイズは全長25cm"></textarea>
+        <button class="mic-fab" type="button" data-mic-for="ai-hint-text" onclick="toggleMic('ai-hint-text',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります"><svg class="mic-ico" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg></button>
+      </div>
       <div class="ai-chips-hdr">
         <span class="ai-chips-label">よく使う情報（クリックで追加）</span>
         <button class="ai-chip-edit" onclick="toggleChipEdit()" id="btn-chip-edit">編集</button>
