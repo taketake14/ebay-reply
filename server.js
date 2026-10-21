@@ -1598,6 +1598,14 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
     // 画面で「未発送」と誤って出さないようにする
     if (order && order.orderId) {
       order.shipping = await ebayApi.getShippingFulfillments(order.orderId).catch(() => null);
+      // バイヤーから受け取ったフィードバック。注文の1行ごとの番号は、納税者番号と同じ注文データから取る
+      // （記憶済みなら追加の呼び出しは無い）。取れなかったときは何も出さない
+      try {
+        const ex = await ebayApi.getOrderExtras(order.orderId, { orderDate: order.orderDate });
+        if (ex && ex.lineItemIds && ex.lineItemIds.length) {
+          order.feedback = await ebayApi.getBuyerFeedback(ex.lineItemIds, uname);
+        }
+      } catch (e) { console.error('[buyer] feedback:', e.message); }
     }
     // 注: 未購入バイヤーの居住国はeBay APIでは取得不可（プライバシー保護のため非開示）
     const common = user ? {
