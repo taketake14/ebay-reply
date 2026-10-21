@@ -266,6 +266,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ce-note{margin-top:9px;padding:7px 10px;background:#fff;border:1px solid #f0d49a;border-radius:8px;font-size:12.5px;color:#4a3b14;line-height:1.55;white-space:pre-wrap;word-break:break-word;}
 .ce-note-k{display:block;font-size:10.5px;font-weight:800;color:#8a5a12;margin-bottom:2px;}
 .buyer-note-row{align-items:flex-start;}
+/* 発送状況 */
+.ship-row .kv-v{display:flex;flex-wrap:wrap;align-items:center;gap:5px;}
+.ship-badge{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:10px;white-space:nowrap;}
+.ship-badge.shipped{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+.ship-badge.unshipped{background:#fff7ed;color:#c2410c;border:1px solid #fdba74;}
+.ship-carrier{font-size:11.5px;font-weight:700;color:var(--text);}
+.ship-track{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--text);word-break:break-all;}
+.ship-none{font-size:11px;color:var(--text3);}
 .kv-v.buyer-note{white-space:pre-wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 7px;}
 
 /* キャンセルイベントの色分け */
@@ -725,7 +733,11 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .buyer-link:hover{color:var(--teal);border-bottom-color:var(--teal);}
 .kv-muted{color:var(--text3);}
 
-.prod-edit-bar{padding:10px 12px;}
+.prod-edit-bar{padding:10px 12px;display:flex;gap:6px;}
+.prod-edit-bar .prod-edit-btn{flex:1;}
+.prod-end-btn{flex-shrink:0;background:#fff;border:1px solid #fca5a5;border-radius:7px;padding:7px 10px;font-size:11.5px;font-weight:700;color:#b91c1c;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.12s;}
+.prod-end-btn:hover{background:#fef2f2;border-color:#dc2626;}
+.prod-end-btn:disabled{opacity:0.55;cursor:default;}
 .prod-edit-btn{width:100%;background:#fff;border:1px dashed var(--border2);border-radius:7px;padding:7px;font-size:11.5px;color:var(--text2);cursor:pointer;font-family:var(--sans);transition:all 0.12s;}
 .prod-edit-btn:hover{border-color:var(--teal);color:var(--teal);background:#f0fdfa;border-style:solid;}
 .listing-edit{display:none;background:#f8fafc;border:1px solid #e3e8ef;border-radius:9px;padding:11px;margin-top:7px;}
@@ -2370,7 +2382,8 @@ function renderChatDetail(){
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">出品価格</span><span class="kv-v" id="prod-price">—</span></div>';
   kvHtml+='<div class="prod-kv-row"><span class="kv-k">在庫</span><span class="kv-v" id="prod-qty">—</span></div>';
 
-  kvHtml+='<div class="prod-edit-bar"><button class="prod-edit-btn" onclick="toggleListingEdit()" id="btn-listing-edit">&#9998; 数量・価格を編集</button></div>';
+  kvHtml+='<div class="prod-edit-bar"><button class="prod-edit-btn" onclick="toggleListingEdit()" id="btn-listing-edit">&#9998; 数量・価格を編集</button>'
+    +'<button class="prod-end-btn" onclick="endListing()" id="btn-end-listing">出品を終了</button></div>';
   kvHtml+='<div class="listing-edit" id="listing-edit">'
     +'<div class="le-row"><label>数量</label><input type="number" id="le-qty" min="0" placeholder="変更しない"></div>'
     +'<div class="le-row"><label>価格 (USD)</label><input type="number" id="le-price" step="0.01" min="0" placeholder="変更しない"></div>'
@@ -3446,25 +3459,7 @@ function renderChatBubbles(){
   var html='';
   // 描き直すたびに添付の組を作り直す。残すと古い画像を指したままになる
   attachGroups=[];
-  var allItems=(m.history||[]).map(function(h,i){
-    var t=new Date(h.time||0).getTime();
-    return {from:h.from, text:h.text, time:h.time||'', media:h.media, isNew:false, ts:(isNaN(t)?0:t), ord:i};
-  });
-  // 最新メッセージ（バイヤーからの新着）
-  var nt=new Date(m.timestamp||0).getTime();
-  var newTs=isNaN(nt)?0:nt;
-  // 注文検索で追加した仮エントリはメッセージ本文を吹き出しにしない
-  if(!m.orderOnly){
-    allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), media:m.msgMedia, isNew:true, ts:newTs, ord:allItems.length});
-  }
-
-  // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
-  var lastTs=0;
-  allItems.forEach(function(x,i){
-    if(x.ts>0) lastTs=x.ts;
-    else x.ts=lastTs;
-    if(x.ord===undefined) x.ord=i;
-  });
+  var allItems=chatBaseItems(m);
   // 購入・キャンセルのイベントを時系列に差し込む（ソートは最後に1回だけ行う）
   var evts=[];
   function lastTsOf(){ var t=0; allItems.forEach(function(x){ if(!x.type && x.ts>t) t=x.ts; }); return t; }
@@ -3974,6 +3969,38 @@ async function saveListingEdit(){
   }
 }
 
+// ===== 出品を終了する =====
+async function endListing(){
+  if(currentIdx===null) return;
+  var m=messages[currentIdx];
+  if(!m||!m.itemId){ alert('Item IDがありません'); return; }
+  if(!confirm('この出品を終了します。\n\n商品: '+(m.item||m.itemId)+'\nItem ID: '+m.itemId
+    +'\n\neBayから取り下げられ、購入できなくなります。\n元に戻すには、eBayで再出品が必要です。\n\nよろしいですか？')) return;
+  var btn=document.getElementById('btn-end-listing');
+  var orig=btn?btn.innerHTML:'';
+  if(btn){ btn.innerHTML='終了中...'; btn.disabled=true; }
+  try{
+    var r=await fetch('/api/ebay/end-listing',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({itemId:m.itemId})});
+    var d=await r.json();
+    if(!d.ok){
+      if(btn){ btn.innerHTML=orig; btn.disabled=false; }
+      alert('出品を終了できませんでした。\n\n'+(d.error||'不明なエラー'));
+      return;
+    }
+    delete itemDetailCache[m.itemId];
+    // 終了した出品は商品情報を取り直しても出てこないことがあるため、ここで状態を表示する
+    var qtyEl=document.getElementById('prod-qty');
+    if(qtyEl) qtyEl.innerHTML='<span class="qty-badge qty-out">出品終了</span>';
+    if(btn){ btn.innerHTML='終了済み'; }
+    var eb=document.getElementById('btn-listing-edit'); if(eb) eb.disabled=true;
+    showToast('出品を終了しました');
+  }catch(e){
+    if(btn){ btn.innerHTML=orig; btn.disabled=false; }
+    alert('出品を終了できませんでした。\n\n'+e.message);
+  }
+}
+
 // ===== 商品情報を取得して表示 =====
 var itemDetailCache={};
 async function loadItemDetail(itemId, idx, hasBasics){
@@ -4274,6 +4301,25 @@ async function loadBuyerDetail(buyer, idx){
     if(dates.length){
       ob+='<div class="prod-kv-row"><span class="kv-k">日程</span><span class="kv-v">'+esc(dates.join('　→　'))+'</span></div>';
     }
+    // 発送状況。取得に失敗したとき（shippingが無い）は何も出さない。
+    // 「未発送」と誤って出すと、発送済みの注文で判断を誤るため
+    var sh=info.shipping;
+    if(sh){
+      if(!sh.shipped){
+        ob+='<div class="prod-kv-row"><span class="kv-k">発送</span><span class="kv-v"><span class="ship-badge unshipped">未発送</span></span></div>';
+      } else {
+        sh.shipments.forEach(function(x, k){
+          var d=x.shippedDate?new Date(x.shippedDate).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'';
+          ob+='<div class="prod-kv-row ship-row"><span class="kv-k">'+(k===0?'発送':'')+'</span>'
+            +'<span class="kv-v"><span class="ship-badge shipped">発送済み'+(d?' '+esc(d):'')+'</span>'
+            +(x.carrier?'<span class="ship-carrier">'+esc(x.carrier)+'</span>':'')
+            +(x.trackingNumber?'<span class="ship-track">'+esc(x.trackingNumber)+'</span>':'<span class="ship-none">追跡番号なし</span>')
+            +'</span>'
+            +(x.trackingNumber?cp(x.trackingNumber,'追跡番号をコピー'):'')
+            +'</div>';
+        });
+      }
+    }
     if(info.marketplace){
       ob+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v">'+esc(info.marketplace)+'</span></div>';
     }
@@ -4319,7 +4365,9 @@ async function loadBuyerDetail(buyer, idx){
     var url='/api/ebay/buyer/'+encodeURIComponent(buyer)+(itemKey?('?itemId='+encodeURIComponent(itemKey)):'');
     var r=await fetch(url);
     var d=await r.json();
-    buyerDetailCache[cacheKey]=d.buyer||null;
+    // 未発送の注文は覚えない。覚えると、発送した後も開き直すまで「未発送」のままになる
+    var unshipped=d.buyer && d.buyer.shipping && !d.buyer.shipping.shipped;
+    if(!unshipped) buyerDetailCache[cacheKey]=d.buyer||null;
     render(d.buyer||null);
   }catch(e){
     buyerDetailCache[cacheKey]=null;
@@ -4905,27 +4953,65 @@ function delChip(i){
   renderChips();
 }
 
+// ===== 会話の吹き出しの元データ =====
+// チャット欄の表示と、調査依頼の依頼文の両方がこれを使う。
+// 別々に組み立てると中身がずれる（履歴には最新のメッセージが入っていないため、
+// 片方だけ足し忘れると最新の質問が抜ける）ので、1か所にまとめる
+function chatBaseItems(m){
+  var allItems=(m.history||[]).map(function(h,i){
+    var t=new Date(h.time||0).getTime();
+    return {from:h.from, text:h.text, time:h.time||'', media:h.media, isNew:false, ts:(isNaN(t)?0:t), ord:i};
+  });
+  // 最新メッセージ（バイヤーからの新着）
+  var nt=new Date(m.timestamp||0).getTime();
+  var newTs=isNaN(nt)?0:nt;
+  // 注文検索で追加した仮エントリはメッセージ本文を吹き出しにしない
+  if(!m.orderOnly){
+    allItems.push({from:(m.msgFrom==='me'?'me':'buyer'), text:m.msg, time:(m.timestamp||''), media:m.msgMedia, isNew:true, ts:newTs, ord:allItems.length});
+  }
+
+  // 時系列ソート（tsが無いものは元の位置を保つため直前要素のtsを継承）
+  var lastTs=0;
+  allItems.forEach(function(x,i){
+    if(x.ts>0) lastTs=x.ts;
+    else x.ts=lastTs;
+    if(x.ord===undefined) x.ord=i;
+  });
+  return allItems;
+}
+
 // ===== 調査依頼 =====
 // Claude.ai（本人のMaxプラン）で調べてもらうための依頼文を作る。ReplAIからAIは呼ばないので費用はかからない。
 // 「予想で答えない」ための決まりを毎回必ず入れる
 var CLAUDE_NEW_URL='https://claude.ai/new';
 function buildResearchPrompt(m){
-  // バイヤーの質問＝自分が最後に返信した後に届いたバイヤーのメッセージ。
-  // 最後が自分の返信なら、その前のバイヤーのメッセージ
-  var hist=(m.history||[]).filter(function(h){ return h && h.text; });
-  var qs=[];
-  for(var i=hist.length-1;i>=0;i--){
-    if(hist[i].from==='me'){ if(qs.length) break; else continue; }
-    qs.unshift(hist[i].text);
-  }
-  if(!qs.length && m.msg) qs=[m.msg];
+  // 会話の全体を古い順に渡す。どの質問がまだ答えられていないかは、AIに会話を読んで判断させる。
+  // 「自分の最後の返信より後」で区切ると、自動返信のあとに続いた質問の前の質問を取りこぼすため。
+  // 自動返信を文面で見分ける方法は採らない（文面は人によって違い、漏れが出るため）
+  var HIST_MAX=30;
+  // チャット欄と同じ部品で組み立て、チャット欄と同じ順（時刻順）に並べる
+  var hist=chatBaseItems(m).filter(function(h){ return h && h.text && String(h.text).trim(); })
+    .sort(function(a,b){ return (a.ts-b.ts) || (a.ord-b.ord); });
+  var omitted=Math.max(0, hist.length-HIST_MAX);
+  hist=hist.slice(-HIST_MAX);
+  var convo=hist.map(function(h){
+    var who=h.from==='me'?'セラー（私）':'バイヤー';
+    var t=h.time?fmtTime(h.time):'';
+    return '['+who+(t?' '+t:'')+']\n'+h.text;
+  }).join('\n\n');
 
   var it=(m.itemId && itemDetailCache[m.itemId]) || null;
   var title=(it&&it.title)||m.item||'';
   var url=(m.itemId?('https://www.ebay.com/itm/'+m.itemId):'');
   var aspects=(it&&it.aspects)||[];
 
-  var p='あなたは商品調査の担当です。eBayのバイヤーから下の質問が届きました。質問ごとに、事実を調べて答えてください。\n\n'
+  var p='あなたは商品調査の担当です。下はeBayのバイヤーとセラー（私）のやり取りの全体です。\n'
+    +'会話の流れを読み、まだ答えていないバイヤーの質問について、事実を調べて答えてください。\n\n'
+    +'【まだ答えていない質問の見つけ方】\n'
+    +'- 会話の全体を読み、セラーが実際に答えていないバイヤーの質問を、すべて拾う。最後のメッセージだけで判断しない。\n'
+    +'- 自動返信（営業時間外のお知らせなど）、あいさつ、「確認します」だけの返事は、答えたことに数えない。\n'
+    +'- すでに答えた質問は、調べ直さない。\n'
+    +'- 「それ」「さっきの件」などの言い方は、会話の流れから何を指すかを読み取る。\n\n'
     +'【必ず守ること】\n'
     +'1. 必ずWeb検索で調べてから答えること。自分の知識や推測では答えない。\n'
     +'2. 根拠は、メーカー公式サイト・公式の取扱説明書や仕様書・正規販売店のページを優先する。フリマ、オークション、個人ブログ、まとめサイト、他のeBay出品は根拠にしない。\n'
@@ -4934,7 +5020,11 @@ function buildResearchPrompt(m){
     +'5. 見つからない場合は「確認できませんでした」と書く。推測で埋めない。\n'
     +'6. 情報源によって内容が食い違う場合は、両方を示す。\n'
     +'7. 下の「出品ページの記載」は私が入力したもので、誤りの可能性がある。根拠には使わず、公式の情報と食い違う箇所があれば指摘する。\n\n'
-    +'【答え方】質問ごとに次の形で書く。\n'
+    +'【答え方】\n'
+    +'最初に、次の2つを一覧で書く（判断が正しいか、私が確認するため）。\n'
+    +'- 今回調べる質問（まだ答えていないと判断したもの）\n'
+    +'- 答え済みと判断した質問\n\n'
+    +'そのあと、調べる質問ごとに次の形で書く。\n'
     +'- 質問（日本語訳）\n- 答え\n- 判定：確認済み（公式で確認）／一部確認（公式以外でのみ確認）／確認できず\n- 根拠：ページのURLと、該当箇所の要約\n\n'
     +'最後に、「確認済み」の内容だけを使って、バイヤーへの英語の返信文の案を書く。確認できなかった点は推測で答えず、確認して連絡する旨を書く。\n\n'
     +'【商品】\n'
@@ -4947,7 +5037,9 @@ function buildResearchPrompt(m){
     p+='\n【出品ページの記載（参考・誤りの可能性あり）】\n'
       +aspects.map(function(a){ return '- '+a.name+': '+a.value; }).join('\n')+'\n';
   }
-  p+='\n【バイヤーの質問（原文）】\n'+(qs.length?qs.join('\n---\n'):'（質問が見つかりませんでした。ここに質問を貼ってください）')+'\n';
+  p+='\n【やり取りの全体（古い順・原文）】\n'
+    +(omitted?'（これより前に '+omitted+' 件のやり取りがありますが、長いため省略しています）\n\n':'')
+    +(convo||'（やり取りが見つかりませんでした。ここに貼ってください）')+'\n';
   return p;
 }
 async function openResearch(){
@@ -5596,7 +5688,7 @@ window.addEventListener('load',function(){
       <button class="ct-close" onclick="closeResearch()">&#10005;</button>
     </div>
     <div class="ai-body">
-      <div class="ai-guide">バイヤーの質問と商品情報から、調べるための依頼文を作りました。必要なら書き足してから使ってください。<br>
+      <div class="ai-guide">やり取りの全体と商品情報から、調べるための依頼文を作りました。まだ答えていない質問を、AIが会話の流れから見つけて調べます。必要なら書き足してから使ってください。<br>
         「コピーしてClaudeを開く」→ Claudeに貼り付けて送信 → 結果を確認したら「AIに情報を渡す」に貼ると、その内容で返信文を作れます。</div>
       <textarea id="research-text" class="ai-hint-input" style="min-height:440px;font-size:12.5px;"></textarea>
     </div>
