@@ -1350,6 +1350,20 @@ app.post('/api/ebay/update-listing', async (req, res) => {
   }
 });
 
+// ===== 出品を終了する =====
+app.post('/api/ebay/end-listing', async (req, res) => {
+  try {
+    const itemId = String((req.body && req.body.itemId) || '').trim();
+    if (!itemId) return res.json({ ok: false, error: 'Item IDが必要です' });
+    const r = await ebayApi.endFixedPriceItem(itemId);
+    if (r.ok) console.log('[end-listing] 終了しました itemId=' + itemId);
+    else console.error('[end-listing] 失敗 itemId=' + itemId + ':', r.error);
+    res.json(r);
+  } catch (e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ===== 商品情報を取得 =====
 // SKUが取れない原因を調べるための窓口。Trading APIの生の応答を確認する
 // eBay APIの使用状況を確認する窓口。
@@ -1579,6 +1593,11 @@ app.get('/api/ebay/buyer/:username', async (req, res) => {
       }
     } else if (debug) {
       order = await ebayApi.getBuyerOrderInfo(uname, 180, debug).catch(() => null);
+    }
+    // 発送情報（追跡番号・配送会社）。取れなかったときは null のままにし、
+    // 画面で「未発送」と誤って出さないようにする
+    if (order && order.orderId) {
+      order.shipping = await ebayApi.getShippingFulfillments(order.orderId).catch(() => null);
     }
     // 注: 未購入バイヤーの居住国はeBay APIでは取得不可（プライバシー保護のため非開示）
     const common = user ? {
