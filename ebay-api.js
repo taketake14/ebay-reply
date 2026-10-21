@@ -1729,7 +1729,9 @@ const CANCEL_REASONS = {
   WRONG_PAYMENT_METHOD: '支払い方法の誤り',
   WRONG_SHIPPING_ADDRESS: '配送先の誤り',
   WRONG_SHIPPING_METHOD: '配送方法の誤り',
-  ADDRESS_ISSUES: '住所に問題あり（セラー都合）',
+  // eBay公式：セラーが手続きするキャンセルだが、原因は「バイヤーが入力した配送先住所の問題」。
+  // セラーの評価（取引の不備）には数えられない。「セラー都合」と書くと誤解を招くため、原因をそのまま書く
+  ADDRESS_ISSUES: 'バイヤーの住所に問題あり',
   BUYER_ASKED_CANCEL: 'バイヤーの依頼による（セラー操作）',
   ORDER_UNPAID: '未払いのため',
   OUT_OF_STOCK_OR_CANNOT_FULFILL: '在庫切れ・出荷不可',
