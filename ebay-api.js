@@ -1550,6 +1550,100 @@ async function getOrderDetail(orderId) {
   }
 }
 
+// ===== 発送情報（追跡番号・配送会社） =====
+// Fulfillment API: GET /sell/fulfillment/v1/order/{orderId}/shipping_fulfillment
+// 発送済みの注文は内容が変わらないので長めに覚え、未発送は早めに取り直す
+// （未発送のまま覚え続けると、発送後も「未発送」と出続けるため）
+const shipCache = {};
+const SHIP_TTL_SHIPPED = 6 * 60 * 60 * 1000;   // 6時間
+const SHIP_TTL_UNSHIPPED = 5 * 60 * 1000;      // 5分
+
+// 配送会社コードの表示名。eBayのコードをそのまま出すと分かりにくいものだけ言い換える。
+// 一覧に無いコードは、eBayのコードをそのまま表示する（推測で名前を付けない）
+const CARRIER_NAMES = {
+  FEDEX: 'FedEx', DHL: 'DHL', DHLEXPRESS: 'DHL Express', UPS: 'UPS', USPS: 'USPS',
+  JAPANPOST: '日本郵便', JP_POST: '日本郵便', YAMATO: 'ヤマト運輸', SAGAWA: '佐川急便',
+};
+function carrierName(code) {
+  const c = String(code || '').trim();
+  if (!c) return '';
+  const k = c.toUpperCase().replace(/[\s-]/g, '');
+  return CARRIER_NAMES[k] || c;
+}
+
+async function getShippingFulfillments(orderId) {
+  if (!orderId) return null;
+  const key = String(orderId);
+  const hit = shipCache[key];
+  if (hit && (Date.now() - hit.at) < (hit.data.shipped ? SHIP_TTL_SHIPPED : SHIP_TTL_UNSHIPPED)) {
+    return hit.data;
+  }
+  try {
+    const token = await getAccessToken();
+    const res = await fetch('https://api.ebay.com/sell/fulfillment/v1/order/' + encodeURIComponent(key) + '/shipping_fulfillment', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      console.error('getShippingFulfillments ' + res.status + ':', t.substring(0, 200));
+      return null;   // 失敗は覚えない（「未発送」と誤って出さないため）
+    }
+    const d = await res.json();
+    const list = d.fulfillments || d.members || [];
+    const shipments = list.map(f => ({
+      trackingNumber: f.shipmentTrackingNumber || '',
+      carrierCode: f.shippingCarrierCode || '',
+      carrier: carrierName(f.shippingCarrierCode),
+      shippedDate: f.shippedDate || '',
+    }));
+    const data = { shipped: shipments.length > 0, shipments };
+    shipCache[key] = { data, at: Date.now() };
+    return data;
+  } catch (e) {
+    console.error('getShippingFulfillments error:', e.message);
+    return null;
+  }
+}
+
+// ===== 出品を終了する =====
+// Trading API: EndFixedPriceItem（定額出品の終了）。理由は「在庫がなくなった（NotAvailable）」
+async function endFixedPriceItem(itemId) {
+  if (!/^[0-9]+$/.test(String(itemId || ''))) return { ok: false, error: 'Item IDが正しくありません' };
+  try {
+    const token = await getAccessToken();
+    const body = '<?xml version="1.0" encoding="utf-8"?>'
+      + '<EndFixedPriceItemRequest xmlns="urn:ebay:apis:eBLBaseComponents">'
+      + '<ItemID>' + itemId + '</ItemID>'
+      + '<EndingReason>NotAvailable</EndingReason>'
+      + '</EndFixedPriceItemRequest>';
+    const res = await fetch('https://api.ebay.com/ws/api.dll', {
+      method: 'POST',
+      headers: {
+        'X-EBAY-API-SITEID': '0',
+        'X-EBAY-API-COMPATIBILITY-LEVEL': '1193',
+        'X-EBAY-API-CALL-NAME': 'EndFixedPriceItem',
+        'X-EBAY-API-IAF-TOKEN': token,
+        'Content-Type': 'text/xml',
+      },
+      body,
+    });
+    const t = await res.text();
+    const ack = (t.match(/<Ack>([^<]+)<\/Ack>/) || [])[1] || '';
+    if (ack === 'Success' || ack === 'Warning') {
+      clearItemCache(itemId);
+      const endTime = (t.match(/<EndTime>([^<]+)<\/EndTime>/) || [])[1] || '';
+      return { ok: true, endTime };
+    }
+    // eBayが返した理由をそのまま伝える（推測で言い換えない）
+    const msg = (t.match(/<LongMessage>([^<]+)<\/LongMessage>/) || [])[1]
+      || (t.match(/<ShortMessage>([^<]+)<\/ShortMessage>/) || [])[1]
+      || 'eBayが出品の終了を受け付けませんでした';
+    return { ok: false, error: msg };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 // 納税者番号の種類ラベル
 const TAX_ID_LABELS = {
   CPF: 'CPF', CPFTaxID: 'CPF', CNPJ: 'CNPJ',
@@ -2232,6 +2326,8 @@ module.exports = {
   formatOrder: formatOrder,
   getOrderDetail: getOrderDetail,
   getCancellations: getCancellations,
+  getShippingFulfillments: getShippingFulfillments,
+  endFixedPriceItem: endFixedPriceItem,
   respondCancellation: respondCancellation,
   clearCancellationCache: clearCancellationCache,
   cancelReasonLabel: cancelReasonLabel,
