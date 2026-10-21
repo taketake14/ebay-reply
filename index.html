@@ -275,6 +275,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .ship-track{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal);word-break:break-all;text-decoration:underline;text-underline-offset:2px;cursor:pointer;}
 .ship-track:hover{color:var(--teal-dark,#0f766e);}
 .ship-none{font-size:11px;color:var(--text3);}
+/* フィードバック */
+.fb-row{align-items:flex-start;}
+.fb-row .kv-v{display:flex;flex-direction:column;align-items:flex-start;gap:3px;}
+.fb-badge{display:inline-block;font-size:11px;font-weight:800;padding:1px 8px;border-radius:10px;white-space:nowrap;}
+.fb-badge.positive{background:#dcfce7;color:#166534;border:1px solid #86efac;}
+.fb-badge.neutral{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1;}
+.fb-badge.negative{background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;}
+.fb-text{font-size:11.5px;color:var(--text2);line-height:1.5;word-break:break-word;}
 .kv-v.buyer-note{white-space:pre-wrap;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:4px 7px;}
 
 /* キャンセルイベントの色分け */
@@ -485,6 +493,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .bbl-cp-btn{font-size:10.5px;font-weight:500;padding:2px 8px;border-radius:12px;border:1px solid #e3e8ef;background:#fff;color:#667085;cursor:pointer;font-family:var(--sans);line-height:1.6;white-space:nowrap;transition:all 0.12s;}
 .bbl-cp-btn:hover{background:#f8fafc;border-color:#cbd5e1;color:#334155;}
 .bbl-cp-btn.done{background:#0d9488;border-color:#0d9488;color:#fff;}
+/* 音声入力 */
+.mic-btn{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid #99f6e4;background:#f0fdfa;color:#0f766e;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:all 0.12s;line-height:1.5;}
+.mic-btn:hover{background:#ccfbf1;}
+.mic-btn.on{background:#dc2626;border-color:#dc2626;color:#fff;animation:micPulse 1.2s ease-in-out infinite;}
+@keyframes micPulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,0.45);}50%{box-shadow:0 0 0 6px rgba(220,38,38,0);}}
+.mic-live{font-size:11.5px;color:#b91c1c;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;}
+.mic-live:empty{display:none;}
+.mic-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.reply-col-label .mic-btn{margin-left:auto;}
+.reply-col-label .mic-btn + .mic-live + .mini-btn{margin-left:6px;}
 
 /* 翻訳文の表示 */
 /* 訳文：原文の付属情報として一段引いた見せ方（枠なし・細いライン1本） */
@@ -1310,6 +1328,7 @@ a.kv-v:hover{text-decoration:underline;}
           <div class="reply-col">
             <div class="reply-col-label">
               <span class="reply-col-dot" style="background:var(--success);"></span>日本語
+              <button class="mic-btn" type="button" data-mic-for="d-input-ja" onclick="toggleMic('d-input-ja',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります">&#127908; 音声入力</button><span class="mic-live" data-mic-live-for="d-input-ja"></span>
               <button class="mini-btn" onclick="copyFromField('d-input-ja',this)" title="日本語をコピー">&#128203; コピー</button>
             </div>
             <textarea class="reply-input-ja" id="d-input-ja" placeholder="返信内容を日本語で入力、または「AI返信案」を押す..."></textarea>
@@ -1623,6 +1642,7 @@ function saveState(m, opts){
 
 // ===== 画面切り替え =====
 function backToList(){
+  if(typeof stopMic==='function') stopMic();   // 一覧に戻ったら音声入力を止める
   document.getElementById('screen-list').style.display='flex';
   document.getElementById('screen-chat').style.display='none';
   renderList();
@@ -2248,6 +2268,8 @@ function resyncCurrentIdx(reason){
 }
 
 function selectMsg(i){
+  // 別の会話に切り替えたら音声入力を止める。止めないと、話した続きが次の会話の日本語欄に入る
+  if(typeof stopMic==='function') stopMic();
   var rp0=document.getElementById('right-panel');
   if(rp0) rp0.classList.remove('panel-idle');
   // 別のメッセージに切り替えたら、右パネルは必ず一番上から表示する。
@@ -3239,6 +3261,104 @@ async function translateBubble(idx, btn){
   }
   btn.disabled=false;
 }
+
+// ===== 音声入力 =====
+// ChromeとEdgeに入っている音声認識をそのまま使う（呼び出し方は同じなので、ボタンは1つでよい。
+// Chromeなら Google、Edgeなら Microsoft の音声認識が自動で使われる）。
+// 文字は、その欄でカーソルを置いた位置に差し込む。カーソルを置いていなければ末尾に足す。
+// 同時に動かすのは1つの欄だけ（別の欄のマイクを押したら、前の欄は止める）
+var micRec=null, micTargetId='', micBtn=null;
+function micSupported(){ return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+// 欄ごとに「カーソルを置いたか」を覚える（置いていない欄は末尾に足すため）
+document.addEventListener('focusin',function(e){
+  var t=e.target;
+  if(t && t.tagName==='TEXTAREA' && t.id) t.setAttribute('data-caret-set','1');
+});
+
+function insertAtCaret(el, text){
+  if(!text) return;
+  var useCaret=el.getAttribute('data-caret-set')==='1';
+  var start=useCaret ? el.selectionStart : el.value.length;
+  var end=useCaret ? el.selectionEnd : el.value.length;
+  // カーソルを置いていないときは末尾に足す。前の文字とくっつかないよう改行してから足す
+  if(!useCaret && el.value && !/\s$/.test(el.value)) text='\n'+text;
+  el.setRangeText(text, start, end, 'end');
+  el.setAttribute('data-caret-set','1');   // 続けて話した分は、入れた文字の後ろに続ける
+  // 入力したことを他の処理にも知らせる（文字数表示などが動くように）
+  el.dispatchEvent(new Event('input',{bubbles:true}));
+}
+
+function micLiveEl(id){ return document.querySelector('[data-mic-live-for="'+id+'"]'); }
+
+// 止める。ボタンで止めたとき（stop）は話し途中の分も文字にしてから終わる。
+// 会話の切り替えなどで止めるとき（abort）は、その場で捨てる（別の欄に入らないように）
+function stopMic(keepPending){
+  if(!micRec) return;
+  var r=micRec;
+  if(keepPending){ try{ r.stop(); }catch(e){} return; }
+  micReset();
+  try{ r.abort(); }catch(e){}
+}
+
+function micReset(){
+  if(micBtn){ micBtn.classList.remove('on'); micBtn.innerHTML='&#127908; 音声入力'; }
+  var live=micLiveEl(micTargetId); if(live) live.textContent='';
+  micRec=null; micTargetId=''; micBtn=null;
+}
+
+function toggleMic(targetId, btn){
+  // 同じ欄でもう一度押したら止める
+  if(micRec && micTargetId===targetId){ stopMic(true); return; }
+  // 別の欄で動いていたら止めてから始める
+  if(micRec){ var old=micRec; micReset(); try{ old.abort(); }catch(e){} }
+
+  if(!micSupported()){
+    alert('このブラウザでは音声入力が使えません。\nGoogle Chrome または Microsoft Edge で開いてください。');
+    return;
+  }
+  var el=document.getElementById(targetId);
+  if(!el) return;
+
+  var SR=window.SpeechRecognition || window.webkitSpeechRecognition;
+  var rec=new SR();
+  rec.lang='ja-JP';
+  rec.continuous=true;        // 話し続けても止めない（無音が続くとブラウザ側で止まる）
+  rec.interimResults=true;    // 話している途中の文字も見せる
+
+  rec.onresult=function(ev){
+    if(micRec!==rec) return;   // 止めた後に遅れて届いた結果は入れない
+    var interim='';
+    for(var i=ev.resultIndex;i<ev.results.length;i++){
+      var r=ev.results[i];
+      if(r.isFinal) insertAtCaret(el, r[0].transcript);
+      else interim+=r[0].transcript;
+    }
+    var live=micLiveEl(targetId); if(live) live.textContent=interim;
+  };
+  rec.onerror=function(ev){
+    var msg='';
+    if(ev.error==='not-allowed' || ev.error==='service-not-allowed'){
+      msg='マイクの使用が許可されていません。\nアドレスバーの左にある鍵（またはカメラ・マイク）のマークを押して、マイクを「許可」にしてください。';
+    } else if(ev.error==='audio-capture'){
+      msg='マイクが見つかりません。パソコンにマイクがつながっているか確認してください。';
+    } else if(ev.error==='network'){
+      msg='音声認識のサーバーに接続できませんでした。インターネットの接続を確認してください。';
+    } else if(ev.error==='no-speech' || ev.error==='aborted'){
+      msg='';   // 何も話さなかった・止めた場合は知らせない
+    } else {
+      msg='音声入力でエラーが起きました（'+ev.error+'）。もう一度押してください。';
+    }
+    if(msg) alert(msg);
+  };
+  rec.onend=function(){ if(micRec===rec) micReset(); };
+
+  micRec=rec; micTargetId=targetId; micBtn=btn;
+  btn.classList.add('on'); btn.innerHTML='&#9632; 停止';
+  try{ rec.start(); }
+  catch(e){ micReset(); alert('音声入力を始められませんでした。もう一度押してください。'); }
+}
+
 
 // 吹き出し1件をコピーする。日本語訳を表示中なら、訳も一緒にコピーする
 function copyBubble(btn){
@@ -4380,6 +4500,17 @@ async function loadBuyerDetail(buyer, idx){
         });
       }
     }
+    // バイヤーから受け取ったフィードバック。付いていないときは何も出さない
+    var fb=info.feedback;
+    if(fb && fb.type){
+      var FB={Positive:['positive','ポジティブ'],Neutral:['neutral','ニュートラル'],Negative:['negative','ネガティブ']};
+      var fk=FB[fb.type]||['neutral',fb.type];
+      var fd=fb.time?new Date(fb.time).toLocaleDateString('ja-JP',{month:'numeric',day:'numeric'}):'';
+      ob+='<div class="prod-kv-row fb-row"><span class="kv-k">評価</span><span class="kv-v">'
+        +'<span class="fb-badge '+fk[0]+'">'+esc(fk[1])+(fd?' '+esc(fd):'')+'</span>'
+        +(fb.text?'<span class="fb-text">'+esc(fb.text)+'</span>':'')
+        +'</span></div>';
+    }
     if(info.marketplace){
       ob+='<div class="prod-kv-row"><span class="kv-k">購入サイト</span><span class="kv-v">'+esc(info.marketplace)+'</span></div>';
     }
@@ -5117,6 +5248,7 @@ async function openResearch(){
   document.getElementById('research-modal').classList.add('open');
 }
 function closeResearch(){
+  stopMic();   // 閉じた欄に文字が入り続けないように
   document.getElementById('research-modal').classList.remove('open');
 }
 function copyResearch(openClaude){
@@ -5143,6 +5275,7 @@ function openAiHint(){
   setTimeout(function(){ if(ta) ta.focus(); },60);
 }
 function closeAiHint(){
+  stopMic();   // 閉じた欄に文字が入り続けないように
   document.getElementById('ai-hint-modal').classList.remove('open');
   var ta=document.getElementById('ai-hint-text');
   if(ta) ta.value='';
@@ -5802,6 +5935,7 @@ window.addEventListener('load',function(){
     <div class="ai-body">
       <div class="ai-guide">やり取りの全体と商品情報から、調べるための依頼文を作りました。まだ答えていない質問を、AIが会話の流れから見つけて調べます。必要なら書き足してから使ってください。<br>
         「コピーしてClaudeを開く」→ Claudeに貼り付けて送信 → 結果を確認したら「AIに情報を渡す」に貼ると、その内容で返信文を作れます。</div>
+      <div class="mic-row"><button class="mic-btn" type="button" data-mic-for="research-text" onclick="toggleMic('research-text',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります">&#127908; 音声入力</button><span class="mic-live" data-mic-live-for="research-text"></span></div>
       <textarea id="research-text" class="ai-hint-input" style="min-height:440px;font-size:12.5px;"></textarea>
     </div>
     <div class="ai-foot">
@@ -5820,6 +5954,7 @@ window.addEventListener('load',function(){
     </div>
     <div class="ai-body">
       <div class="ai-guide">バイヤーへ伝えたい情報を入力してください。箇条書きや単語だけでも構いません。<br>AIがこれをもとに自然な英文の返信案を作成します。</div>
+      <div class="mic-row"><button class="mic-btn" type="button" data-mic-for="ai-hint-text" onclick="toggleMic('ai-hint-text',this)" title="押して話すと、カーソルの位置に文字が入ります。もう一度押すと止まります">&#127908; 音声入力</button><span class="mic-live" data-mic-live-for="ai-hint-text"></span></div>
       <textarea id="ai-hint-text" class="ai-hint-input" placeholder="例：&#10;在庫あり&#10;発送まで1週間&#10;支払いはPayPalのみ&#10;サイズは全長25cm"></textarea>
       <div class="ai-chips-hdr">
         <span class="ai-chips-label">よく使う情報（クリックで追加）</span>
