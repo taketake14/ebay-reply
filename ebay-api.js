@@ -1922,6 +1922,43 @@ function cancelReasonLabel(r) {
 // ===== Post-Order API: キャンセル情報を取得 =====
 // Fulfillment API では cancelRequests が空のため、こちらから取得する
 const cancelSearchCache = { data: null, at: 0 };
+// eBayのキャンセル情報を、このツールで使う形に整える。
+// 一覧の取得と1件の取得で同じ部品を使う（別々に書くと「状態」の読み方がずれるため）
+function normalizeCancel(cn) {
+  cn = cn || {};
+  return {
+    cancelId: String(cn.cancelId || ''),
+    orderId: String(cn.legacyOrderId || cn.orderId || ''),
+    state: cn.cancelStatus || cn.cancelState || '',
+    requestedAt: cn.cancelRequestDate && cn.cancelRequestDate.value || cn.creationDate && cn.creationDate.value || '',
+    closedAt: cn.cancelCloseDate && cn.cancelCloseDate.value || '',
+    reason: cn.cancelReason || '',
+    initiator: cn.requestorType || cn.cancelInitiator || '',
+  };
+}
+
+// 1件のキャンセルの今の状態を取る（Post-Order API: GET /post-order/v2/cancellation/{cancelId}）。
+// 承認・拒否の前の確認や、その後の状態の見張りに使う。180日分の一覧を取り直すより速く確実
+async function getCancellationById(cancelId) {
+  const token = await getAccessToken();
+  const res = await fetch('https://api.ebay.com/post-order/v2/cancellation/' + encodeURIComponent(cancelId), {
+    headers: {
+      'Authorization': 'TOKEN ' + token,
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US',
+    },
+  });
+  const t = await res.text();
+  if (!res.ok) throw new Error('キャンセル情報を取得できませんでした（' + res.status + '）');
+  let d = null; try { d = JSON.parse(t); } catch (e) {}
+  const e = normalizeCancel((d && (d.cancelDetail || d)) || {});
+  if (!e.cancelId) e.cancelId = String(cancelId);
+  // 一覧の記憶にも反映する（他の画面が古い状態を出さないように）
+  if (e.orderId && cancelSearchCache.data) cancelSearchCache.data[e.orderId] = e;
+  return e;
+}
+
 async function getCancellations(daysBack) {
   const now = Date.now();
   // 5分キャッシュ
@@ -1965,16 +2002,8 @@ async function getCancellations(daysBack) {
     // legacyOrderId をキーにしたマップにする
     const map = {};
     list.forEach(cn => {
-      const oid = (cn.legacyOrderId || cn.orderId || '').toString();
-      if (!oid) return;
-      map[oid] = {
-        cancelId: cn.cancelId || '',
-        state: cn.cancelStatus || cn.cancelState || '',
-        requestedAt: cn.cancelRequestDate && cn.cancelRequestDate.value || cn.creationDate && cn.creationDate.value || '',
-        closedAt: cn.cancelCloseDate && cn.cancelCloseDate.value || '',
-        reason: cn.cancelReason || '',
-        initiator: cn.requestorType || cn.cancelInitiator || '',
-      };
+      const e = normalizeCancel(cn);
+      if (e.orderId) map[e.orderId] = e;
     });
     cancelSearchCache.data = map;
     cancelSearchCache.at = now;
@@ -2510,6 +2539,7 @@ module.exports = {
   getBuyerFeedback: getBuyerFeedback,
   endFixedPriceItem: endFixedPriceItem,
   respondCancellation: respondCancellation,
+  getCancellationById: getCancellationById,
   clearCancellationCache: clearCancellationCache,
   cancelReasonLabel: cancelReasonLabel,
   extractTaxId: extractTaxId,
