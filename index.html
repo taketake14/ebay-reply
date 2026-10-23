@@ -1953,25 +1953,17 @@ function renderList(){
   var urgent=messages.filter(function(m){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(tagSourceText(m));}).length;
   document.getElementById('msg-count').textContent=messages.length+'件 / 未読'+unread;
 
-  var filtered=messages.filter(function(m){
-    if(currentFilter==='unread') return !m.read;
-    if(currentFilter==='starred') return m.starred;
-    if(currentFilter==='sold') return m.sold;
-    if(currentFilter==='cancel') return !!(m.cancel && m.cancel.short);
-    if(currentFilter==='memo') return !!(m.memo && m.memo.trim());
-    if(currentFilter==='urgent'){var u=TAG_DEFS.find(function(t){return t.key==='urgent';});return u&&u.test(tagSourceText(m));}
-    if(currentFilter==='replied') return m.replied;
-    return true;
-  });
-  if(searchQuery){
-    filtered=filtered.filter(function(m){
-      return m.buyer.toLowerCase().includes(searchQuery)||
-        (m.item||'').toLowerCase().includes(searchQuery)||
-        (m.orderId||'').toLowerCase().includes(searchQuery)||
-        (m.msg||'').toLowerCase().includes(searchQuery);
-    });
+  // 絞り込みは getFiltered() だけで行う（チャット画面の受信トレイと同じ検索の判定を使う）。
+  // 以前はここに古い判定を別に書いていたため、Item ID・SKU・レコード番号や空白区切りで検索すると、
+  // チャット画面では見つかるのに、一覧に戻ると「該当するメッセージがありません」になっていた
+  var filtered=getFiltered();
+  if(!filtered.length){
+    // 検索中なのか、分類に該当が無いのかを分けて伝える（検索が残っていることに気づけるように）
+    el.innerHTML='<div class="s1-empty">'+(searchQuery
+      ? '「'+esc(searchQuery)+'」に該当するメッセージがありません<br><span style="font-size:12px;">検索欄の×を押すと、すべて表示に戻ります</span>'
+      : '該当するメッセージがありません')+'</div>';
+    return;
   }
-  if(!filtered.length){el.innerHTML='<div class="s1-empty">該当するメッセージがありません</div>';return;}
 
   el.innerHTML=filtered.map(function(m,rowIdx){
     var ri=messages.indexOf(m);
@@ -2272,6 +2264,27 @@ function noteListRebuilt(reason){
 // 一覧は新着のたびに並び替わるため、「何番目か」だけで管理すると
 // 別のバイヤーを指してしまう（誤送信の原因になる）
 var currentConvId='';
+
+// ===== 会話を見分ける共通の部品 =====
+// 取り寄せを待っている間に、一覧の並び（何番目か）は変わることがある
+// （起動直後の読み込み・自動更新・検索の×・注文番号検索の仮の行など）。
+// 「何番目か」で書き込み先を決めると、別の会話に書き込んでしまう
+// （2026年10月、別バイヤーの注文情報が表示された不具合の原因）。
+// 待ったあとに書き込む処理は、必ずこの部品で会話を見分けること
+function msgKey(m){
+  if(!m) return '';
+  return m.conversationId ? 'c:'+m.conversationId : 'i:'+m.id;
+}
+// その会話を今も開いているか
+function isOpenConv(key){
+  return !!key && currentIdx!==null && !!messages[currentIdx] && msgKey(messages[currentIdx])===key;
+}
+// その会話のデータ（一覧が作り直されていても、今のデータを返す）
+function findMsgByKey(key){
+  if(!key) return null;
+  for(var i=0;i<messages.length;i++){ if(msgKey(messages[i])===key) return messages[i]; }
+  return null;
+}
 var currentBuyerName='';
 
 // 会話IDから、今の一覧での位置を取り直す。
@@ -2360,7 +2373,7 @@ async function verifyOpenedConversation(m){
           messages[idx].msgFrom=fresh.msgFrom||messages[idx].msgFrom;
           messages[idx].msgMedia=fresh.msgMedia||null;
           messages[idx].timestamp=fresh.timestamp||messages[idx].timestamp;
-          if(currentIdx===idx) renderChatBubbles();
+          if(isOpenConv(msgKey(messages[idx]))) renderChatBubbles();
         }
       }
       console.log('[検証] 送信者情報を修復しました:', cid);
@@ -4271,8 +4284,11 @@ async function endListing(){
 // ===== 商品情報を取得して表示 =====
 var itemDetailCache={};
 async function loadItemDetail(itemId, idx, hasBasics){
+  var targetKey=msgKey(messages[idx]);
   function render(info){
-    if(currentIdx!==idx) return;
+    // その会話を今も開いていて、商品も同じときだけ表示・書き込みする
+    if(!isOpenConv(targetKey)) return;
+    if(!messages[currentIdx] || String(messages[currentIdx].itemId||'')!==String(itemId)) return;
     var nameEl=document.getElementById('prod-name');
     var skuEl=document.getElementById('prod-sku');
     var priceEl=document.getElementById('prod-price');
@@ -4280,7 +4296,7 @@ async function loadItemDetail(itemId, idx, hasBasics){
     if(!info) return;
     if(nameEl && info.title) setProdName(info.title, itemId);
     if(skuEl) skuEl.textContent=info.sku||'—';
-    var mI=messages[idx];
+    var mI=findMsgByKey(targetKey);
     if(mI && info.sku) mI.sku=info.sku;
     if(priceEl) priceEl.textContent=info.price||'—';
     var qtyEl=document.getElementById('prod-qty');
@@ -4299,8 +4315,8 @@ async function loadItemDetail(itemId, idx, hasBasics){
       imgEl.innerHTML='<img src="'+esc(ebayImg(info.imageUrl,500))+'" style="width:100%;height:100%;object-fit:contain;">';
     }
     // 一覧と詳細で画像が食い違わないよう、最新のURLをメッセージにも反映
-    var mm=messages[idx];
-    if(mm && info.imageUrl && mm.imgUrl!==info.imageUrl){
+    var mm=findMsgByKey(targetKey);
+    if(mm && String(mm.itemId||'')===String(itemId) && info.imageUrl && mm.imgUrl!==info.imageUrl){
       mm.imgUrl=info.imageUrl;
       if(info.title) mm.item=info.title;
       renderList();
@@ -4346,11 +4362,15 @@ function renderPurchaseHistory(info){
 async function loadBuyerDetail(buyer, idx){
   var el=document.getElementById('buyer-detail');
   if(!el||!buyer) return;
+  // 書き込み先は「何番目か」ではなく会話で覚える（待っている間に並びが変わっても取り違えないように）
+  var targetKey=msgKey(messages[idx]);
 
   function render(info){
     var el2=document.getElementById('buyer-detail');
     if(!el2) return;
-    if(currentIdx!==idx) return;
+    // その会話を今も開いていて、バイヤーも同じときだけ表示・書き込みする
+    if(!isOpenConv(targetKey)) return;
+    if(!messages[currentIdx] || messages[currentIdx].buyer!==buyer) return;
     if(!info){
       el2.innerHTML='<div class="bd-empty">情報を取得できませんでした</div>';
       return;
@@ -4420,9 +4440,9 @@ async function loadBuyerDetail(buyer, idx){
       }
     }
 
-    // チャットに表示するイベント情報を保持
-    var mm=messages[idx];
-    if(mm){
+    // チャットに表示するイベント情報を保持（書き込み先は会話で決める）
+    var mm=findMsgByKey(targetKey);
+    if(mm && mm.buyer===buyer){
       // 前の値は、書き換える前に控える。
       // 以前は書き換えた後に控えていたため、前と今がいつも同じになり、
       // 購入情報が届いても描き直されず「ご購入いただきました」が出なかった
@@ -4444,10 +4464,12 @@ async function loadBuyerDetail(buyer, idx){
       if(info.salesRecordNo) mm.salesRecordNo=info.salesRecordNo;
       if(info.orderId) mm.orderId=info.orderId;
       // 注文情報が届いたときの描き直しは、表示が変わる場合だけにする。
-      // 毎回描き直すと、翻訳中やスクロール中に画面が作り直されてしまう
-      var needRedraw = (mm.cancelLabel && mm.cancelLabel !== prevCancelLabel)
-        || (mm.orderDate && mm.orderDate !== prevOrderDate)
-        || (mm.cancelId !== prevCancelId)
+      // 毎回描き直すと、翻訳中やスクロール中に画面が作り直されてしまう。
+      // 「空に変わった」場合も描き直す（以前は値が入ったときだけだったため、
+      // 誤って出ていた購入カードが、正しい情報が届いても消えずに残っていた）
+      var needRedraw = ((mm.cancelLabel||'') !== prevCancelLabel)
+        || ((mm.orderDate||'') !== prevOrderDate)
+        || ((mm.cancelId||'') !== prevCancelId)
         || ((mm.buyerNote||'') !== prevBuyerNote);
       if(needRedraw) renderChatBubbles();
     }
@@ -5435,6 +5457,8 @@ function generateWithHint(){
 // ===== 返信案生成 =====
 async function generateReply(i, hint){
   var m=messages[i];
+  // 生成を待っている間に別の会話へ移ったら、返信欄には入れない（別のバイヤー宛ての文を送らないように）
+  var genKey=msgKey(m);
   var sEl=document.getElementById('d-status');
   var rEl=document.getElementById('d-reply');
   var jaEl=document.getElementById('d-reply-ja');
@@ -5483,9 +5507,12 @@ async function generateReply(i, hint){
     en=en.replace(/\n{3,}/g,'\n\n');
     ja=ja.replace(/\n{3,}/g,'\n\n');
 
-    if(m.reply) m.replyHistory.push(m.reply);
-    m.reply=en; m.replyJa=ja; m.status='done';
-    if(currentIdx===i){
+    // 保存先も会話で探し直す（待っている間に一覧が作り直されていても、今のデータに残す）
+    var mT=findMsgByKey(genKey)||m;
+    if(!mT.replyHistory) mT.replyHistory=[];
+    if(mT.reply) mT.replyHistory.push(mT.reply);
+    mT.reply=en; mT.replyJa=ja; mT.status='done';
+    if(isOpenConv(genKey)){
       rEl.value=en;
       var jaInput=document.getElementById('d-input-ja');
       if(jaInput) jaInput.value=ja;
@@ -5496,7 +5523,7 @@ async function generateReply(i, hint){
   }catch(e){
     // 返信欄に「エラー」という文字を入れない（そのまま送ってしまう危険があるため）。
     // 生成前の内容に戻し、理由は別の画面で知らせる
-    if(currentIdx===i){
+    if(isOpenConv(genKey)){
       rEl.value=beforeEn==='返信案を生成中です...'?'':beforeEn;
       if(jaInput) jaInput.value=beforeJa;
       sEl.className='reply-status status-error';sEl.textContent='エラー';
@@ -5514,6 +5541,7 @@ function makeEditable(){
 async function translateReply(i){
   var m=messages[i];
   if(!m.reply) return;
+  var trKey=msgKey(m);
   var jaEl=document.getElementById('d-reply-ja');
   var cacheKey=m.reply.substring(0,40);
   if(!replyJaCache[m.id]) replyJaCache[m.id]={};
@@ -5522,9 +5550,9 @@ async function translateReply(i){
   try{
     var text=await callClaude('以下の英文を自然な日本語に翻訳してください。翻訳文だけを出力してください。\n\n'+m.reply, 3000);
     replyJaCache[m.id][cacheKey]=text;
-    if(currentIdx===i) jaEl.textContent=text;
+    if(isOpenConv(trKey)) jaEl.textContent=text;
   }catch(e){
-    if(currentIdx===i){ jaEl.textContent='（翻訳できませんでした）'; showAiError(e); }
+    if(isOpenConv(trKey)){ jaEl.textContent='（翻訳できませんでした）'; showAiError(e); }
   }
 }
 
