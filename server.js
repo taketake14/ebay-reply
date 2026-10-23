@@ -1822,6 +1822,8 @@ app.get('/api/ebay/sync', async (req, res) => {
     const days = parseInt(req.query.days) || 7;
     const force = req.query.force === '1';   // 既存行も上書き更新する
     const ebayMsgs = await ebayApi.getMessagesForApp(days);
+    // eBayアプリやBayChatで読んだ・未読にした会話を、ReplAIにも反映する（逆向きの連動）
+    try { mirrorEbayReadState(ebayMsgs); } catch (e) { console.error('[readSync] 逆向きの連動で失敗:', e.message); }
     let added = 0, updated = 0;
 
     // シート上の既存conversationIdを取得（メモリだけだと再起動後に重複する）
@@ -2849,9 +2851,204 @@ function rememberConvState(cid, st) {
     // 既読にした時刻。これより新しいメッセージが来たら未読に戻す
     readAt: st.read ? new Date().toISOString() : (prev.readAt || null),
     at: new Date().toISOString(),
+    // eBayへ伝えた既読の状態（{read, ok, at, tries}）。連動の仕組みが使う
+    ebay: prev.ebay || null,
+    // 本人が既読・未読を変えた時刻（eBay側の状態で上書きしないための目印）
+    localAt: st.readChanged ? new Date().toISOString() : (prev.localAt || null),
   };
   convStateDirty = true;
+  // 本人が既読・未読を実際に変えたときだけ、eBayにも伝える
+  // （フラグやメモの保存でも既読の値が一緒に届くため、変化の印 readChanged がある時だけ）
+  if (st.readChanged && st.read !== undefined && !st.fromEbay) queueEbayRead(cid, !!st.read);
 }
+
+// ===== 既読の連動（ReplAI ⇔ eBay） =====
+// ReplAIの既読・未読を、eBayの会話の既読・未読（Message API: update_conversation）に伝える。
+// eBayの会話は「バイヤー × 商品」の単位で、ReplAIの受信トレイの1行と1対1で対応する。
+// 送る順番待ちの列に入れて1件ずつ送り、失敗したら時間をおいてやり直す。
+// やり直し待ちは convState に残るので、サーバーが再起動しても失われない
+const READ_SYNC_FILE = require('path').join(process.env.DISK_PATH || '/var/data', 'read-sync.json');
+let readSync = { reverse: true, alignedAt: null };
+try {
+  const fs = require('fs');
+  if (fs.existsSync(READ_SYNC_FILE)) readSync = Object.assign(readSync, JSON.parse(fs.readFileSync(READ_SYNC_FILE, 'utf8')) || {});
+} catch (e) {}
+function saveReadSync() {
+  try {
+    const fs = require('fs');
+    fs.mkdirSync(require('path').dirname(READ_SYNC_FILE), { recursive: true });
+    fs.writeFileSync(READ_SYNC_FILE, JSON.stringify(readSync));
+  } catch (e) { console.error('[readSync] 設定の保存に失敗:', e.message); }
+}
+const readQueue = new Map();   // cid -> 伝えたい既読（true/false）
+let readQueueBusy = false;
+const readSyncStats = { sent: 0, failed: 0, lastError: '', lastErrorAt: null, mirroredRead: 0, mirroredUnread: 0 };
+const align = { running: false, total: 0, done: 0, mismatched: 0, error: '', startedAt: null, finishedAt: null };
+
+function queueEbayRead(cid, read) {
+  if (!cid) return;
+  readQueue.set(String(cid), !!read);
+  const cs = convState[cid];
+  if (cs) { cs.ebay = { read: !!read, ok: false, at: new Date().toISOString(), tries: (cs.ebay && cs.ebay.read === !!read) ? (cs.ebay.tries || 0) : 0 }; convStateDirty = true; }
+  processReadQueue();
+}
+
+async function processReadQueue() {
+  if (readQueueBusy) return;
+  readQueueBusy = true;
+  try {
+    while (readQueue.size) {
+      const [cid, read] = readQueue.entries().next().value;
+      readQueue.delete(cid);
+      const cs = convState[cid] || (convState[cid] = {});
+      try {
+        await ebayApi.updateConversationRead(cid, read);
+        cs.ebay = { read, ok: true, at: new Date().toISOString(), tries: 0 };
+        readSyncStats.sent++;
+      } catch (e) {
+        const tries = ((cs.ebay && cs.ebay.tries) || 0) + 1;
+        cs.ebay = { read, ok: false, at: new Date().toISOString(), tries };
+        readSyncStats.failed++;
+        readSyncStats.lastError = String(e.message || e).substring(0, 300);
+        readSyncStats.lastErrorAt = new Date().toISOString();
+        console.error('[readSync] eBayへの既読の連絡に失敗 cid=' + cid + ' (' + tries + '回目):', readSyncStats.lastError);
+      }
+      convStateDirty = true;
+      await new Promise(r => setTimeout(r, 250));   // eBayへの呼び出しを詰め込みすぎない
+    }
+  } finally {
+    readQueueBusy = false;
+  }
+}
+
+// 失敗したものを、時間をおいてやり直す（再起動後も convState から拾い直す）。
+// 何度やっても失敗するもの（会話が消えた等）は、10回で諦める
+function retryFailedReads() {
+  Object.keys(convState).forEach(cid => {
+    const e = convState[cid] && convState[cid].ebay;
+    if (e && e.ok === false && (e.tries || 0) < 10 && !readQueue.has(cid)) readQueue.set(cid, !!e.read);
+  });
+  processReadQueue();
+}
+setInterval(retryFailedReads, 5 * 60 * 1000);
+setTimeout(retryFailedReads, 30 * 1000);
+
+// ReplAIで、その会話を今「既読」と見ているか（受信トレイの表示と同じ考え方）。
+// 判断できないとき（記録が無い）は null を返し、eBay側の状態でも上書きしない
+function replaiReadOf(cid, lastBuyerTs) {
+  const cs = convState[cid];
+  if (!cs || cs.read === undefined) return null;
+  if (cs.manualUnread) return false;
+  if (!cs.read) return false;
+  const readAt = cs.readAt ? new Date(cs.readAt).getTime() : 0;
+  if (lastBuyerTs && readAt && lastBuyerTs > readAt) return false;   // 既読の後にバイヤーから新着
+  return true;
+}
+
+// 逆向きの連動：eBayで読んだ／未読にした会話を、ReplAIにも反映する。
+// 2分ごとの取り込みで受け取った、eBay側の会話の状態を使う（呼び出しは増えない）
+function mirrorEbayReadState(ebayMsgs) {
+  if (!readSync.reverse || !readSync.alignedAt) return;   // 最初に揃えるまでは動かさない
+  const now = Date.now();
+  ebayMsgs.forEach(em => {
+    const cid = String(em.conversationId || '');
+    if (!cid) return;
+    const cs = convState[cid];
+    if (!cs) return;
+    // 本人が5分以内に操作した会話・eBayへの連絡が済んでいない会話は、eBay側の状態で上書きしない
+    if (cs.localAt && now - new Date(cs.localAt).getTime() < 5 * 60 * 1000) return;
+    if (readQueue.has(cid) || (cs.ebay && cs.ebay.ok === false)) return;
+    const lastBuyerTs = Math.max(0, ...((em.history || []).concat([{ from: em.msgFrom, time: em.timestamp }])
+      .filter(h => h && h.from !== 'me').map(h => new Date(h.time || 0).getTime() || 0)));
+    const mine = replaiReadOf(cid, lastBuyerTs);
+    if (mine === null) return;
+    const theirs = !!em.read;   // eBay側：未読数が0なら既読
+    if (theirs === mine) return;
+    if (theirs && !mine) {
+      // eBayアプリやBayChatで読んだ → ReplAIも既読
+      rememberConvState(cid, { read: true, fromEbay: true });
+      convState[cid].ebay = { read: true, ok: true, at: new Date().toISOString(), tries: 0 };
+      readSyncStats.mirroredRead++;
+      console.log('[readSync] eBay側で既読 → ReplAIも既読 cid=' + cid);
+    } else if (!theirs && mine) {
+      // eBay側で未読。ReplAIが「既読」とeBayに伝え済みなら、eBayで未読に戻されたもの → ReplAIも未読
+      if (cs.ebay && cs.ebay.ok && cs.ebay.read === true) {
+        rememberConvState(cid, { read: false, manualUnread: true, fromEbay: true });
+        convState[cid].ebay = { read: false, ok: true, at: new Date().toISOString(), tries: 0 };
+        readSyncStats.mirroredUnread++;
+        noteUnreadEvent(cid, 'eBay側で未読に戻された（逆向きの連動）');
+      } else {
+        // まだeBayに伝えていない → ReplAIの状態に揃える
+        queueEbayRead(cid, true);
+      }
+    }
+  });
+}
+
+// 最初に一度だけ揃える：ReplAIの状態を正として、eBayを揃える。
+// items：画面が持っている全会話の既読の状態（受信トレイの表示と同じもの）
+async function runReadAlign(items, days) {
+  align.running = true; align.total = items.length; align.done = 0; align.mismatched = 0;
+  align.error = ''; align.startedAt = new Date().toISOString(); align.finishedAt = null;
+  try {
+    // eBay側の今の状態（直近 days 日に動きのあった会話）
+    const list = await ebayApi.getConversations(days);
+    const ebayRead = {};
+    (list || []).forEach(c => { ebayRead[String(c.conversationId)] = (Number(c.unreadCount || 0) === 0); });
+    for (const it of items) {
+      const cid = String(it.conversationId || '');
+      align.done++;
+      if (!cid) continue;
+      const want = !!it.read;
+      // ReplAIの状態を記録として残す（以後の連動の基準にする）
+      const cs = convState[cid] || {};
+      convState[cid] = Object.assign({}, cs, {
+        read: want,
+        readAt: want ? (cs.readAt || new Date().toISOString()) : (cs.readAt || null),
+        manualUnread: want ? false : !!cs.manualUnread,
+        at: new Date().toISOString(),
+      });
+      convStateDirty = true;
+      if (!(cid in ebayRead)) continue;          // eBay側の一覧に無い（古い）会話は触らない
+      if (ebayRead[cid] === want) {
+        convState[cid].ebay = { read: want, ok: true, at: new Date().toISOString(), tries: 0 };
+        continue;
+      }
+      align.mismatched++;
+      readQueue.set(cid, want);
+      convState[cid].ebay = { read: want, ok: false, at: new Date().toISOString(), tries: 0 };
+    }
+    processReadQueue();
+    readSync.alignedAt = new Date().toISOString();
+    saveReadSync();
+  } catch (e) {
+    align.error = String(e.message || e).substring(0, 300);
+    console.error('[readSync] 揃える作業に失敗:', align.error);
+  } finally {
+    align.running = false;
+    align.finishedAt = new Date().toISOString();
+  }
+}
+
+app.get('/api/read-sync/status', (req, res) => {
+  let failedNow = 0;
+  Object.keys(convState).forEach(cid => { const e = convState[cid] && convState[cid].ebay; if (e && e.ok === false) failedNow++; });
+  res.json({ ok: true, reverse: !!readSync.reverse, alignedAt: readSync.alignedAt,
+    queue: readQueue.size, waitingRetry: failedNow, stats: readSyncStats, align });
+});
+app.post('/api/read-sync/settings', (req, res) => {
+  if (req.body && typeof req.body.reverse === 'boolean') readSync.reverse = req.body.reverse;
+  saveReadSync();
+  res.json({ ok: true, reverse: readSync.reverse });
+});
+app.post('/api/read-sync/align', (req, res) => {
+  if (align.running) return res.json({ ok: false, error: '揃える作業はすでに実行中です' });
+  const items = Array.isArray(req.body && req.body.items) ? req.body.items : [];
+  if (!items.length) return res.json({ ok: false, error: '揃える会話がありません' });
+  const days = Math.min(Math.max(Number(req.body.days) || 90, 7), 180);
+  runReadAlign(items, days);   // 時間がかかるので、裏で進める
+  res.json({ ok: true, started: true, total: items.length });
+});
 
 // 既読などの記録が実際に残っているか確認するための窓口。
 // 未読に戻る原因を追うために使う
@@ -2907,7 +3104,7 @@ app.get('/api/state/unread-log', (req, res) => {
 });
 
 app.post('/api/state', async (req, res) => {
-  const { id, read, starred, replied, memo, conversationId, manualUnread } = req.body;
+  const { id, read, starred, replied, memo, conversationId, manualUnread, readChanged } = req.body;
   if (!id) return res.json({ ok: false });
 
   // メモリに保存（既読にした時刻も記録＝その後の新着で未読に戻せる）
@@ -2918,7 +3115,7 @@ app.post('/api/state', async (req, res) => {
   };
 
   // 会話IDでも残す（行が動いても失われないように）
-  rememberConvState(convIdOfMessageId(id, conversationId), { read, starred, replied, memo, manualUnread });
+  rememberConvState(convIdOfMessageId(id, conversationId), { read, starred, replied, memo, manualUnread, readChanged: !!readChanged });
 
   // messagesにも反映
   const msg = messages.find(m => m.id == id);
@@ -3334,6 +3531,8 @@ async function autoSyncFromEbay() {
     const days = Math.min(Math.max(Math.ceil(elapsedDays) + 1, 1), 7);
 
     const ebayMsgs = await ebayApi.getMessagesForApp(days);
+    // eBayアプリやBayChatで読んだ・未読にした会話を、ReplAIにも反映する（逆向きの連動）
+    try { mirrorEbayReadState(ebayMsgs); } catch (e) { console.error('[readSync] 逆向きの連動で失敗:', e.message); }
     const complete = ebayMsgs.complete !== false;
     const sheetState = await getSheetConvState();
     let added = 0, refreshed = 0, healed = 0;
