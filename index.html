@@ -945,10 +945,27 @@ a.kv-v:hover{text-decoration:underline;}
 .nav-tab-btn:hover:not(.on){background:var(--bg3);}
 .tab-content{display:none;flex:1;overflow-y:auto;padding:22px;}
 .tab-content.on{display:block;}
+/* 受信タブは縦に並べる。表示・非表示は他のタブと同じく .on で切り替える
+   （以前は常に表示する指定が直接書かれていて、マニュアル・Zapierを開いても隠れなかった） */
+#tab-messages.on{display:flex;}
 .tab-content textarea{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:14px;color:var(--text);font-size:13px;font-family:var(--mono);line-height:1.7;resize:vertical;min-height:360px;outline:none;}
 .tab-content textarea:focus{border-color:var(--accent);}
 .tab-content h3{font-size:13px;color:var(--text2);margin-bottom:8px;font-weight:600;}
 .tab-content p{font-size:12px;color:var(--text2);margin-bottom:10px;line-height:1.75;}
+/* 設定：既読の連動 */
+.rs-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:6px 18px;max-width:820px;}
+.rs-row{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border);}
+.rs-row:last-child{border-bottom:none;}
+.rs-k{width:130px;flex-shrink:0;font-size:13px;font-weight:700;color:var(--text);}
+.rs-v{flex:1;font-size:13px;color:var(--text);line-height:1.7;}
+.rs-note{font-size:11.5px;color:var(--text3);margin-top:4px;}
+.rs-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;}
+.rs-toggle input{width:16px;height:16px;cursor:pointer;}
+.rs-btn{margin-top:8px;font-size:13px;font-weight:700;padding:7px 16px;border-radius:7px;border:none;background:var(--teal);color:#fff;cursor:pointer;}
+.rs-btn:disabled{opacity:0.55;cursor:default;}
+.rs-ok{color:#047857;font-weight:700;}
+.rs-warn{color:#b45309;font-weight:700;}
+.rs-err{color:#b91c1c;font-weight:700;}
 .manual-actions{display:flex;gap:8px;margin-top:10px;align-items:center;}
 .save-ok{font-size:12px;color:var(--success);font-weight:600;display:none;}
 .step-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;}
@@ -1082,10 +1099,11 @@ a.kv-v:hover{text-decoration:underline;}
     <button class="nav-tab-btn on" onclick="showMainTab('messages',this)">受信</button>
     <button class="nav-tab-btn" onclick="showMainTab('manual',this)">マニュアル</button>
     <button class="nav-tab-btn" onclick="showMainTab('zapier',this)">Zapier</button>
+    <button class="nav-tab-btn" onclick="showMainTab('settings',this)">設定</button>
   </div>
 
   <!-- 受信タブ -->
-  <div id="tab-messages" class="tab-content on" style="padding:0;display:flex;flex-direction:column;flex:1;overflow:hidden;">
+  <div id="tab-messages" class="tab-content on" style="padding:0;flex-direction:column;flex:1;overflow:hidden;">
     <div class="s1-toolbar">
       <span class="s1-title">受信トレイ</span>
       <span class="s1-count-badge" id="msg-count">0</span>
@@ -1177,6 +1195,23 @@ a.kv-v:hover{text-decoration:underline;}
   </div>
 
   <!-- Zapierタブ -->
+  <div id="tab-settings" class="tab-content">
+    <h3>// 既読の連動（ReplAI ⇔ eBay）</h3>
+    <div class="rs-card">
+      <div class="rs-row"><span class="rs-k">ReplAI → eBay</span><span class="rs-v"><b>常にオン</b>　ReplAIで既読・未読にすると、eBayの会話も同じ状態になります</span></div>
+      <div class="rs-row"><span class="rs-k">eBay → ReplAI</span><span class="rs-v">
+        <label class="rs-toggle"><input type="checkbox" id="rs-reverse" onchange="setReadSyncReverse(this.checked)"> eBayアプリやBayChatで読んだ・未読にした会話を、ReplAIにも反映する</label>
+        <div class="rs-note">反映は2分ごとの自動更新のときに行います。ReplAIで5分以内に操作した会話は、eBay側の状態で上書きしません。</div>
+      </span></div>
+      <div class="rs-row"><span class="rs-k">最初に揃える</span><span class="rs-v">
+        <div id="rs-align-state">確認中...</div>
+        <button class="rs-btn" id="rs-align-btn" onclick="startReadAlign()">ReplAIの状態でeBayを揃える</button>
+        <div class="rs-note">ReplAIの既読・未読を正として、eBay側を同じ状態にします（直近90日に動きのあった会話）。揃え終わるまで「eBay → ReplAI」の反映は止まっています。</div>
+      </span></div>
+      <div class="rs-row"><span class="rs-k">状況</span><span class="rs-v" id="rs-stats">—</span></div>
+    </div>
+  </div>
+
   <div id="tab-zapier" class="tab-content">
     <h3>// Zapier連携セットアップ手順</h3>
     <div class="step-card"><div class="step-num">STEP 01</div><div class="step-title">GmailトリガーをZapierで設定</div><div class="step-desc">Zapierで新規Zapを作成。トリガーに「Gmail」→「New Email（ラベル: eBay/ebay_msgs）」を選択。</div></div>
@@ -1677,13 +1712,17 @@ function saveState(m, opts){
   // manualUnread：本人が「未読に戻す」を押したときだけtrue。
   // サーバーはバイヤー受信の無い会話を既読扱いにするため、意図した未読と区別する
   var manualUnread=!!(opts && opts.manualUnread);
+  // 既読・未読が実際に変わったか（サーバーはこの印があるときだけeBayにも伝える）。
+  // フラグやメモの保存でも既読の値は一緒に送るため、印で区別する
+  var readChanged=(m._srvRead===undefined) ? true : (m._srvRead!==!!m.read);
+  m._srvRead=!!m.read;
   // 会話IDも一緒に送る。
   // サーバー側は行番号から会話IDを引けないことがあり、
   // 引けないと既読の記録が残らず、同期のときに未読へ戻ってしまう
   fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({id:m.id, conversationId:m.conversationId||'',
       read:m.read, starred:m.starred, replied:m.replied, memo:m.memo||'',
-      manualUnread:manualUnread})}).catch(function(){});
+      manualUnread:manualUnread, readChanged:readChanged})}).catch(function(){});
 }
 
 // ===== 画面切り替え =====
@@ -1714,6 +1753,70 @@ function showMainTab(name, btn){
   document.querySelectorAll('.tab-content').forEach(function(el){el.classList.remove('on');});
   var t = document.getElementById('tab-'+name);
   if(t) t.classList.add('on');
+  if(name==='settings') loadReadSyncStatus();
+}
+
+// ===== 設定：既読の連動 =====
+var readSyncPollTimer=null;
+async function loadReadSyncStatus(){
+  try{
+    var d=await fetch('/api/read-sync/status').then(function(r){return r.json();});
+    if(!d || !d.ok) return;
+    var rev=document.getElementById('rs-reverse');
+    if(rev) rev.checked=!!d.reverse;
+    var st=document.getElementById('rs-align-state');
+    var btn=document.getElementById('rs-align-btn');
+    var a=d.align||{};
+    if(a.running){
+      st.innerHTML='<span class="rs-warn">揃えています… '+(a.done||0)+' / '+(a.total||0)+' 件</span>';
+      btn.disabled=true;
+    } else if(d.alignedAt){
+      st.innerHTML='<span class="rs-ok">揃え済み</span>（'+esc(fmtTime(d.alignedAt))+'）'
+        +(a.finishedAt && a.mismatched!==undefined ? '　食い違っていた会話：'+a.mismatched+' 件' : '');
+      btn.disabled=false; btn.textContent='もう一度揃える';
+    } else {
+      st.innerHTML='<span class="rs-warn">まだ揃えていません</span>（「eBay → ReplAI」の反映は止まっています）';
+      btn.disabled=false;
+    }
+    if(a.error) st.innerHTML+='<div class="rs-err">揃える作業でエラー：'+esc(a.error)+'</div>';
+    var s=d.stats||{};
+    document.getElementById('rs-stats').innerHTML=
+      'eBayへ伝えた：'+(s.sent||0)+' 件　／　送る順番待ち：'+(d.queue||0)+' 件　／　やり直し待ち：'+(d.waitingRetry||0)+' 件<br>'
+      +'eBay側の操作を反映：既読 '+(s.mirroredRead||0)+' 件・未読 '+(s.mirroredUnread||0)+' 件'
+      +(s.lastError ? '<div class="rs-err">最後の失敗（'+esc(fmtTime(s.lastErrorAt))+'）：'+esc(s.lastError)+'</div>' : '');
+    // 揃えている間は、3秒ごとに表示を更新する
+    clearTimeout(readSyncPollTimer);
+    if(a.running || d.queue>0) readSyncPollTimer=setTimeout(loadReadSyncStatus, 3000);
+  }catch(e){
+    var st2=document.getElementById('rs-align-state');
+    if(st2) st2.innerHTML='<span class="rs-err">状況を取得できませんでした：'+esc(e.message)+'</span>';
+  }
+}
+async function setReadSyncReverse(on){
+  try{
+    var d=await fetch('/api/read-sync/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reverse:!!on})}).then(function(r){return r.json();});
+    if(!d.ok) throw new Error(d.error||'保存できませんでした');
+    showToast(on?'eBay → ReplAI の反映をオンにしました':'eBay → ReplAI の反映をオフにしました');
+  }catch(e){
+    alert('設定を保存できませんでした。\n'+e.message);
+  }
+  loadReadSyncStatus();
+}
+async function startReadAlign(){
+  // 受信トレイが表示している既読・未読（＝ReplAIの状態）を、そのまま正として送る
+  var items=messages.filter(function(m){ return m.conversationId && !m.orderOnly; })
+    .map(function(m){ return {conversationId:m.conversationId, read:!!m.read}; });
+  if(!items.length){ alert('揃える会話がありません。受信一覧の読み込みが終わってから押してください。'); return; }
+  var unread=items.filter(function(x){return !x.read;}).length;
+  if(!confirm('ReplAIの状態で、eBayの既読・未読を揃えます。\n\n対象：'+items.length+' 件（うちReplAIで未読 '+unread+' 件）\neBay側で状態が違う会話だけを書き換えます。\n\nよろしいですか？')) return;
+  try{
+    var d=await fetch('/api/read-sync/align',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:items, days:90})}).then(function(r){return r.json();});
+    if(!d.ok) throw new Error(d.error||'開始できませんでした');
+    showToast('揃える作業を始めました');
+  }catch(e){
+    alert('揃える作業を始められませんでした。\n'+e.message);
+  }
+  setTimeout(loadReadSyncStatus, 800);
 }
 
 // ===== フィルター・検索 =====
@@ -3073,8 +3176,9 @@ async function markFilterRead(key){
     var res=await fetch('/api/state/bulk',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({items:targets.map(function(m){
+        m._srvRead=true;
         return {id:m.id, conversationId:m.conversationId||'',
-                read:true, starred:!!m.starred, replied:!!m.replied, memo:m.memo||''};
+                read:true, starred:!!m.starred, replied:!!m.replied, memo:m.memo||'', readChanged:true};
       })})
     });
     var d=await res.json();
@@ -4973,30 +5077,47 @@ async function sendReplyToEbay(){
     if(!tm) tm=m;
     tm.replied=true;
     if(!tm.history) tm.history=[];
-    // 送信できた添付を履歴の吹き出しに反映して、添付欄を空にする
+    // 送信できた添付を履歴の吹き出しに反映する
     // eBayに登録されたURLを使う。自前URLのままだと、あとで表示できなくなる
     var sentMedia=(d.sentMedia&&d.sentMedia.length)?d.sentMedia
       :atts.map(function(a){return {name:a.name,mediaType:a.mediaType,url:a.url};});
-    clearAttachments();
+    // 送信中に別の会話へ移っていたら、画面（チャット欄・入力欄・添付）には触らない。
+    // 以前は「表示中の会話を送信先に戻す」処理があり、別の会話を開いていると
+    // 商品欄は新しい会話・チャット欄と受信トレイは前の会話、という食い違いが起き、
+    // さらに新しい会話で書き始めた返信や添付まで消していた
+    var stillOpen=isOpenConv(msgKey(tm));
+    if(stillOpen){
+      clearAttachments();
+    } else {
+      // 送った添付だけを外す（新しい会話で付けた添付は残す）
+      pendingAttachments=pendingAttachments.filter(function(a){ return atts.indexOf(a)<0; });
+      atts.forEach(function(a){ if(typeof releasePreview==='function') releasePreview(a); });
+      renderAttachments();
+    }
     var nowTs=new Date();
     var msgTs=new Date(targetTs||0);
     if(!isNaN(msgTs.getTime()) && nowTs<=msgTs) nowTs=new Date(msgTs.getTime()+1000);
     tm.history.push({from:'me', text:text, time:nowTs.toISOString(),
       media: sentMedia.length ? sentMedia : undefined});
     saveState(tm);
-    // 表示中の会話を送信対象に合わせ直す
-    var ti=messages.indexOf(tm);
-    if(ti>=0) currentIdx=ti;
-    // 入力欄と保存済み返信案をクリア（次に開いた時に残らないように）
-    document.getElementById('d-input-ja').value='';
-    document.getElementById('d-reply').value='';
-    collapseReplyArea();   // 送信完了したら返信欄を元の高さに戻す
+    // 送った会話の返信案の控えは消す（次に開いた時に残らないように）
     tm.reply=''; tm.replyJa=''; tm.status='pending';
-    var sEl=document.getElementById('d-status');
-    if(sEl){sEl.className='reply-status';sEl.textContent='';}
-    renderChatBubbles();
+    if(stillOpen){
+      // まだその会話を開いているときだけ、入力欄とチャット欄を片付ける
+      document.getElementById('d-input-ja').value='';
+      document.getElementById('d-reply').value='';
+      collapseReplyArea();   // 送信完了したら返信欄を元の高さに戻す
+      var sEl=document.getElementById('d-status');
+      if(sEl){sEl.className='reply-status';sEl.textContent='';}
+      renderChatBubbles();
+      setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    } else {
+      // 別の会話に移っていたら、通知だけ出す。送信ボタンはすぐ使えるように戻す
+      showToast((tm.buyer||'')+' さんに送信しました');
+      btn.innerHTML=orig; btn.disabled=false;
+    }
     renderList();
-    setTimeout(function(){btn.innerHTML=orig;btn.disabled=false;},2500);
+    if(typeof renderMiniList==='function') renderMiniList();
   }
 
   try{
@@ -6121,6 +6242,7 @@ window.addEventListener('load',function(){
     messages=list.map(function(m){
       var jst=toJST(m.timestamp);
       var n={id:m.id,conversationId:m.conversationId||'',buyer:m.buyer||'unknown',orderId:m.orderId||'',itemId:m.itemId||'',item:m.item||'',imgUrl:m.imgUrl||'',sold:!!m.sold,cancel:m.cancel||null,read:!!m.read,unreadCount:m.unreadCount||0,starred:!!m.starred,replied:!!m.replied,memo:m.memo||'',msg:m.msg||'',msgFrom:m.msgFrom||'buyer',msgMedia:m.msgMedia||null,timestamp:m.timestamp||'',history:m.history||[],replyHistory:[],reply:'',status:'pending',date:jst.date,time:jst.time};
+      n._srvRead=n.read;   // サーバーが知っている既読の状態（変化したかを見分けるため）
       var o=prev[convKey(n)];
       if(o){
         CLIENT_ONLY_FIELDS.forEach(function(k){
