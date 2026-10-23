@@ -362,6 +362,33 @@ function findCancelForThread(buyerLower, itemId, orderId) {
 }
 
 // Post-Order APIからキャンセル一覧を取得し、注文単位のマップを作る
+// 一覧のキャンセル表示1件分を作る（全体の更新と1件の更新で同じ部品を使う）
+function cancelMapEntry(oid, hit) {
+  const ci = ebayApi.cancelInfo(hit.state);
+  return {
+    state: hit.state,
+    label: ci.label,
+    short: ci.short,
+    kind: ci.kind,
+    requestedAt: hit.requestedAt,
+    closedAt: hit.closedAt,
+    reason: hit.reason,
+    reasonLabel: ebayApi.cancelReasonLabel(hit.reason),
+    initiator: hit.initiator,
+    cancelId: hit.cancelId,
+    orderId: oid,
+  };
+}
+// 1件だけ一覧のキャンセル表示を更新する（承認・拒否の後、全体を取り直さずに済むように）
+function applyCancelToMap(hit) {
+  if (!hit || !hit.orderId) return null;
+  const info = cancelMapEntry(hit.orderId, hit);
+  cancelByOrderId[hit.orderId] = info;
+  const lu = buyerByOrderId[hit.orderId];
+  if (lu) cancelByBuyer[lu] = info;
+  return info;
+}
+
 async function refreshCancelMap() {
   try {
     const cmap = await ebayApi.getCancellations(180);
@@ -371,19 +398,7 @@ async function refreshCancelMap() {
     Object.keys(cmap).forEach(oid => {
       const hit = cmap[oid];
       const ci = ebayApi.cancelInfo(hit.state);
-      const info = {
-        state: hit.state,
-        label: ci.label,
-        short: ci.short,
-        kind: ci.kind,
-        requestedAt: hit.requestedAt,
-        closedAt: hit.closedAt,
-        reason: hit.reason,
-        reasonLabel: ebayApi.cancelReasonLabel(hit.reason),
-        initiator: hit.initiator,
-        cancelId: hit.cancelId,
-        orderId: oid,
-      };
+      const info = cancelMapEntry(oid, hit);
       // 注文単位のマップ（表示に使う）
       byOrder[oid] = info;
 
@@ -1707,11 +1722,15 @@ app.post('/api/ebay/cancellation/:cancelId/:action', async (req, res) => {
     if (!/^[0-9]+$/.test(cancelId)) return res.json({ ok: false, error: 'キャンセルIDが正しくありません' });
     if (action !== 'approve' && action !== 'reject') return res.json({ ok: false, error: '操作の指定が正しくありません' });
 
-    // 最新の状態で確かめる（記憶している一覧は使わない）
-    ebayApi.clearCancellationCache();
-    const cmap = await ebayApi.getCancellations(180);
-    if (!cmap) return res.json({ ok: false, error: 'eBayからキャンセル情報を取得できませんでした。時間をおいて再度お試しください' });
-    const hit = Object.values(cmap).find(c => String(c.cancelId) === cancelId);
+    // 送る前に、このキャンセルの今の状態を確かめる（1件だけ取るので速い）
+    let hit = null;
+    try { hit = await ebayApi.getCancellationById(cancelId); }
+    catch (e) {
+      // 1件の取得に失敗したときだけ、一覧から探す
+      ebayApi.clearCancellationCache();
+      const cmap = await ebayApi.getCancellations(180);
+      hit = cmap ? Object.values(cmap).find(c => String(c.cancelId) === cancelId) : null;
+    }
     if (!hit) return res.json({ ok: false, error: 'このキャンセルリクエストが見つかりません（すでに決着した可能性があります）' });
     const ci = ebayApi.cancelInfo(hit.state);
     if (ci.kind !== 'open') return res.json({ ok: false, error: 'このキャンセルはすでに決着しています（' + ci.label + '）' });
@@ -1727,11 +1746,51 @@ app.post('/api/ebay/cancellation/:cancelId/:action', async (req, res) => {
     await ebayApi.respondCancellation(cancelId, action, opts);
     console.log('[cancel] ' + action + ' 成功 cancelId=' + cancelId);
 
-    // 一覧のキャンセル表示も最新にする
-    try { await refreshCancelMap(); } catch (e) { console.error('[cancel] refreshCancelMap:', e.message); }
-    res.json({ ok: true });
+    // eBayが受け付けたら、すぐ画面に返す（成立まで待たない。eBay側の処理には数分かかることがある）。
+    // 成立するまでは、サーバーが裏で状態を見張り、一覧のキャンセル表示を更新する
+    watchCancellation(cancelId);
+    res.json({ ok: true, orderId: hit.orderId || '' });
   } catch (e) {
     console.error('[cancel] ' + action + ' 失敗 cancelId=' + cancelId + ':', e.message, e.raw || '');
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// 承認・拒否の後、eBayで決着する（成立・取引継続）まで状態を見張る。
+// 画面を閉じても一覧のキャンセル表示が古いまま残らないよう、サーバー側で行う
+const watchingCancels = {};
+function watchCancellation(cancelId) {
+  if (watchingCancels[cancelId]) return;
+  watchingCancels[cancelId] = true;
+  let tries = 0;
+  const tick = async () => {
+    tries++;
+    try {
+      const hit = await ebayApi.getCancellationById(cancelId);
+      applyCancelToMap(hit);
+      if (ebayApi.cancelInfo(hit.state).kind !== 'open') {
+        console.log('[cancel] 決着 cancelId=' + cancelId + ' state=' + hit.state);
+        delete watchingCancels[cancelId];
+        return;
+      }
+    } catch (e) {
+      console.error('[cancel] 状態の確認に失敗 cancelId=' + cancelId + ':', e.message);
+    }
+    if (tries < 30) setTimeout(tick, 10 * 1000);   // 10秒ごと・最大5分
+    else delete watchingCancels[cancelId];
+  };
+  setTimeout(tick, 3000);
+}
+
+// 1件のキャンセルの今の状態（画面から、承認・拒否の後に呼ぶ）
+app.get('/api/ebay/cancellation/:cancelId/status', async (req, res) => {
+  const cancelId = String(req.params.cancelId || '').trim();
+  try {
+    if (!/^[0-9]+$/.test(cancelId)) return res.json({ ok: false, error: 'キャンセルIDが正しくありません' });
+    const hit = await ebayApi.getCancellationById(cancelId);
+    const info = applyCancelToMap(hit) || cancelMapEntry(hit.orderId || '', hit);
+    res.json({ ok: true, cancel: info });
+  } catch (e) {
     res.json({ ok: false, error: e.message });
   }
 });
