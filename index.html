@@ -296,6 +296,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .cancel-tag.open{background:#dc2626;color:#fff;}
 .cancel-tag.closed{background:#e8ecf0;color:#475569;border:1px solid #cbd5e1;}
 .cancel-tag.keep{background:#d1fae5;color:#047857;border:1px solid #6ee7b7;}
+.cancel-tag.processing{background:#fef3c7;color:#92400e;border:1px solid #fcd34d;}
 
 /* ミニリストの返信済み */
 .mini-replied{display:inline-flex;align-items:center;color:#0f766e;margin-left:auto;flex-shrink:0;}
@@ -316,6 +317,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .cxl-btn.reject{background:#fff;border-color:#94a3b8;color:#334155;}
 .cxl-btn.reject:hover{background:#f1f5f9;}
 .cxl-btn:disabled{opacity:0.55;cursor:default;}
+.cxl-proc{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;color:#92400e;background:#fef3c7;border:1px solid #fcd34d;border-radius:6px;padding:4px 10px;}
+.cxl-proc::before{content:'';width:10px;height:10px;border-radius:50%;border:2px solid #f59e0b;border-top-color:transparent;animation:cxlSpin 0.9s linear infinite;}
+@keyframes cxlSpin{to{transform:rotate(360deg);}}
 .chat-event.has-tools{flex-direction:column;gap:7px;border-radius:14px;padding:10px 18px;}
 .chat-event.has-tools .cxl-tools{justify-content:center;}
 
@@ -419,6 +423,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14
 .mini-cancel-tag.open{background:#dc2626;color:#fff;}
 .mini-cancel-tag.closed{background:#fff;color:#64748b;border:1.2px solid #cbd5e1;}
 .mini-cancel-tag.keep{background:#fff;color:#047857;border:1.2px solid #6ee7b7;}
+.mini-cancel-tag.processing{background:#fef3c7;color:#92400e;border:1.2px solid #fcd34d;}
 .mini-sold-tag{display:block;width:56px;text-align:center;background:#0f766e;color:#fff;border:1.2px solid #0f766e;font-size:8.5px;font-weight:800;letter-spacing:0.1em;padding:1px 0;border-radius:3px;line-height:1.3;box-sizing:border-box;}
 
 .mini-thumb img{width:100%;height:100%;object-fit:contain;}
@@ -3607,6 +3612,11 @@ function cancelToolsHtml(cancelId, actionable){
   var id=esc(String(cancelId));
   var h='<div class="cxl-tools">'
     +'<span class="cxl-id">キャンセルID <a href="'+esc(cancelPageUrl(cancelId))+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="eBayのキャンセルページを開く">'+id+'</a></span>';
+  if(cancelProcessing[String(cancelId)]){
+    // 承認・拒否を受け付けて、eBayの処理を待っている間
+    h+='<span class="cxl-proc" title="eBayの処理が終わると、自動で表示が切り替わります">'+(cancelProcessing[String(cancelId)]==='approve'?'承認済み':'拒否済み')+'・eBayで処理中…</span>';
+    return h+'</div>';
+  }
   if(actionable){
     h+='<span class="cxl-btns">'
       +'<button class="cxl-btn approve" onclick="event.stopPropagation();respondCancel(\'approve\',\''+id+'\',this)">承認する</button>'
@@ -3617,6 +3627,9 @@ function cancelToolsHtml(cancelId, actionable){
 }
 
 var cancelBusy=false;
+// 承認・拒否を受け付けて、eBayで決着するのを待っているキャンセル（cancelId → 'approve' / 'reject'）
+var cancelProcessing={};
+
 async function respondCancel(action, cancelId, btn){
   if(cancelBusy) return;
   var opts={};
@@ -3629,6 +3642,10 @@ async function respondCancel(action, cancelId, btn){
     tn=String(tn).trim();
     if(tn) opts.trackingNumber=tn;
   }
+  // 結果を反映する会話は、押した時点の会話で覚える（待っている間に別の会話へ移っても取り違えないように）
+  var m0=(currentIdx!==null)?messages[currentIdx]:null;
+  var key=msgKey(m0), buyer=m0?m0.buyer:'';
+
   cancelBusy=true;
   // 同じキャンセルのボタンはすべて押せなくする（チャット欄と右側の二重押しを防ぐ）
   var allBtns=document.querySelectorAll('.cxl-btn');
@@ -3645,22 +3662,64 @@ async function respondCancel(action, cancelId, btn){
       if(btn) btn.textContent=(action==='approve'?'承認する':'拒否する');
       return;
     }
-    alert(action==='approve'?'キャンセルを承認しました。':'キャンセルを拒否しました。');
-    // 表示を最新にする。購入者情報の記憶を捨てて取り直す
-    var m=(currentIdx!==null)?messages[currentIdx]:null;
-    var buyer=m?m.buyer:'';
-    Object.keys(buyerDetailCache).forEach(function(k){
-      if(buyer && k.indexOf(buyer+'|')===0) delete buyerDetailCache[k];
-    });
-    if(typeof window.loadFromSheet==='function') await window.loadFromSheet();
-    if(currentIdx!==null && messages[currentIdx]) loadBuyerDetail(messages[currentIdx].buyer, currentIdx);
+    // eBayが受け付けた。ここで画面を止めずに「処理中」を出し、決着するまで自動で見張る
+    cancelProcessing[String(cancelId)]=action;
+    setCancelOnMessage(key, {short:'キャンセル処理中', kind:'processing', label:'キャンセル処理中（eBayで処理しています）'});
+    redrawCancelViews(key, buyer, false);
+    showToast(action==='approve'?'承認しました。eBayの処理が終わると自動で更新されます':'拒否しました。eBayの処理が終わると自動で更新されます');
+    watchCancelOnScreen(String(cancelId), action, key, buyer);
   }catch(e){
-    alert((action==='approve'?'承認':'拒否')+'できませんでした。\n\n'+e.message);
+    alert((action==='approve'?'承認':'拒否')+'できたかどうか分かりませんでした。\n\n'+e.message+'\n\neBayのキャンセルページで状態を確認してください：\n'+cancelPageUrl(cancelId));
     allBtns.forEach(function(b){ b.disabled=false; });
     if(btn) btn.textContent=(action==='approve'?'承認する':'拒否する');
   }finally{
     cancelBusy=false;
   }
+}
+
+// 一覧（受信トレイ）用のキャンセル表示を、その会話のデータに入れる
+function setCancelOnMessage(key, c){
+  var m=findMsgByKey(key);
+  if(m) m.cancel=c;
+}
+
+// キャンセルの表示を、チャット欄・左の情報欄・受信トレイの3か所すべてで描き直す。
+// fresh=true のときは、購入者情報（キャンセルの詳しい状態）をeBayから取り直す
+function redrawCancelViews(key, buyer, fresh){
+  if(fresh && buyer){
+    Object.keys(buyerDetailCache).forEach(function(k){ if(k.indexOf(buyer+'|')===0) delete buyerDetailCache[k]; });
+  }
+  renderList();
+  if(typeof renderMiniList==='function') renderMiniList();
+  if(isOpenConv(key)){
+    renderChatBubbles({keepScroll:true});
+    loadBuyerDetail(buyer, currentIdx);
+  }
+}
+
+// 承認・拒否のあと、eBayで決着するまで5秒ごとに状態を確かめ、決着したら3か所を自動で更新する
+function watchCancelOnScreen(cancelId, action, key, buyer){
+  var tries=0;
+  var tick=async function(){
+    tries++;
+    try{
+      var r=await fetch('/api/ebay/cancellation/'+encodeURIComponent(cancelId)+'/status');
+      var d=await r.json();
+      if(d && d.ok && d.cancel && d.cancel.kind && d.cancel.kind!=='open'){
+        delete cancelProcessing[cancelId];
+        setCancelOnMessage(key, {short:d.cancel.short, kind:d.cancel.kind, label:d.cancel.label});
+        redrawCancelViews(key, buyer, true);
+        showToast(d.cancel.kind==='closed'?'キャンセルが成立しました':(d.cancel.kind==='keep'?'キャンセルを拒否しました（取引継続）':d.cancel.label));
+        return;
+      }
+    }catch(e){ /* 一時的に確かめられなくても、次の回でもう一度 */ }
+    if(tries<60){ setTimeout(tick, 5000); return; }   // 最大5分
+    // 5分たっても決着しないとき：「処理中」の表示を外し、最新の状態を取り直す
+    delete cancelProcessing[cancelId];
+    redrawCancelViews(key, buyer, true);
+    showToast('eBayの処理に時間がかかっています。少したってから「eBayから取得」を押してください');
+  };
+  setTimeout(tick, 4000);
 }
 
 function fmtTime(t){
@@ -4461,6 +4520,17 @@ async function loadBuyerDetail(buyer, idx){
       mm.cancelClosedAt=info.cancelClosedAt||'';
       var prevCancelId=mm.cancelId||'';
       mm.cancelId=info.cancelId||'';
+      // 受信トレイのキャンセル表示も、同じ最新の情報で揃える（別々の情報を見ると食い違うため）。
+      // 承認・拒否を受け付けて処理中のものは、決着するまで「処理中」のままにする
+      if(!(mm.cancelId && cancelProcessing[String(mm.cancelId)])){
+        var newCancel=info.cancelShort ? {short:info.cancelShort, kind:info.cancelKind||'', label:info.cancelLabel||''} : null;
+        var oldC=mm.cancel||null;
+        var changedC=(!!oldC!==!!newCancel) || (oldC && newCancel && (oldC.short!==newCancel.short || oldC.kind!==newCancel.kind));
+        if(changedC){
+          mm.cancel=newCancel;
+          setTimeout(function(){ renderList(); if(typeof renderMiniList==='function') renderMiniList(); },0);
+        }
+      }
       if(info.salesRecordNo) mm.salesRecordNo=info.salesRecordNo;
       if(info.orderId) mm.orderId=info.orderId;
       // 注文情報が届いたときの描き直しは、表示が変わる場合だけにする。
@@ -4496,8 +4566,13 @@ async function loadBuyerDetail(buyer, idx){
     if(slot){
       var tags='';
       if(info.cancelShort){
-        var cls='cancel-tag '+(info.cancelKind||'open');
-        tags+='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+esc(info.cancelShort)+'</span>';
+        // 承認・拒否を受け付けて処理中のものは「処理中」と出す（受信トレイ・チャット欄と揃える）
+        if(info.cancelId && cancelProcessing[String(info.cancelId)]){
+          tags+='<span class="cancel-tag processing" title="eBayで処理しています">キャンセル処理中</span>';
+        } else {
+          var cls='cancel-tag '+(info.cancelKind||'open');
+          tags+='<span class="'+cls+'" title="'+esc(info.cancelLabel)+'">'+esc(info.cancelShort)+'</span>';
+        }
       }
       // 購入歴（今回の注文を除いた件数）
       var cnt=info.orderCount||0;
